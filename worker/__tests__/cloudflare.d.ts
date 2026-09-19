@@ -10,8 +10,9 @@ declare global {
       mainModule: typeof WorkerModule;
     }
 
+    // The bindings from wrangler.toml, plus the migrations the pool injects for
+    // tests to apply with `applyD1Migrations`.
     interface Env extends WorkerModule.Env {
-      /** Migrations read by worker/vitest.config.ts and applied before tests. */
       TEST_MIGRATIONS: D1Migration[];
     }
   }

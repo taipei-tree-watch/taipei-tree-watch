@@ -3,10 +3,11 @@
  *
  * `fetch` serves the JSON API under /api/* and hands every other request to the
  * static assets binding. `scheduled` runs on the cron trigger in wrangler.toml
- * and will build the KV snapshot.
+ * and rebuilds the KV snapshot.
  */
-
 import { handleCreateReport } from './routes/reports.ts';
+import { runSnapshotCron } from './snapshot/cron.ts';
+import { handleSnapshotRequest } from './snapshot/route.ts';
 
 export interface Env {
   /** D1 database holding the `reports` table. */
@@ -39,12 +40,14 @@ export default {
       return handleCreateReport(request, env);
     }
 
+    if (request.method === 'GET' && url.pathname === '/api/snapshot') {
+      return handleSnapshotRequest(request, env.SNAPSHOTS);
+    }
+
     return env.ASSETS.fetch(request);
   },
 
-  async scheduled(controller): Promise<void> {
-    console.log(
-      `scheduled: cron=${controller.cron} at=${new Date(controller.scheduledTime).toISOString()}`,
-    );
+  async scheduled(controller, env): Promise<void> {
+    await runSnapshotCron(env, new Date(controller.scheduledTime));
   },
 } satisfies ExportedHandler<Env>;
