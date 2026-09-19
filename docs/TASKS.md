@@ -75,6 +75,8 @@
 - 送出、成功訊息、`localStorage` 暫存點
 - 前端驗證與 `shared/` 共用同一份 tag 與白名單
 - 完成條件：真機（iOS Safari、Android Chrome）完成一筆回報；錯誤訊息逐欄顯示
+- 狀態（2026-09-19）：本機端到端完成（選點、關聯、送出、cron 後出現、暫存清空），真機待部署。實作差異：選點與填表分兩個模式（手機 sheet 會蓋住準心）；說明欄改「打字時提示、貼上與 blur 時剝除」（即時剝會讓 `www.` 打不出來）；Turnstile site key 先用 build 期 `VITE_TURNSTILE_SITE_KEY`，未設時用 Cloudflare 測試 key
+- 待修：sheet 開啟時，桌面側欄與手機 sheet 都會蓋住右下角的縮放控制，選點時只能靠滾輪、雙指或 GPS 放大；zoom 門檻比較改用顯示值（一位小數），避免按鈕放大到 17.9999 時顯示 18.0 卻被擋
 
 ### E1.7 說明、免責、安全警語
 - 安全警語常駐表單開頭（SPEC 第 8 節措辭，引臺東場與北市手冊原文）
@@ -86,7 +88,7 @@
 - 快照回滾演練一次
 - `snapshot-backup.yml`、`d1-export.yml` 排程啟用
 - Web Analytics beacon 上線
-- Turnstile 正式 widget 建好後，在 siteverify 回應加 `hostname` 比對（本機開發階段不比對）
+- Turnstile 正式 widget 建好後，在 siteverify 回應加 `hostname` 比對（本機開發階段不比對）；決定 site key 注入方式並在 deploy.yml 帶入（見 TECH-SPEC 3.2）；真機確認 widget 挑戰 iframe 正常產生 token（自動化瀏覽器裡不會產生）
 - 完成條件：以上皆演練過並記在 `workdocs/`
 
 ---

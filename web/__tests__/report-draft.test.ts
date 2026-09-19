@@ -82,6 +82,14 @@ describe('submitBlock', () => {
     expect(submitBlock({ ...INSIDE, zoom: 19.4 }, BBOX)).toBeNull();
   });
 
+  it('passes a zoom that rounds to the threshold, as the map buttons produce', () => {
+    expect(submitBlock({ ...INSIDE, zoom: MIN_SUBMIT_ZOOM - 0.00004 }, BBOX)).toBeNull();
+  });
+
+  it('blocks a zoom that still rounds below the threshold', () => {
+    expect(submitBlock({ ...INSIDE, zoom: MIN_SUBMIT_ZOOM - 0.06 }, BBOX)).toBe('zoom');
+  });
+
   it('blocks a point outside the box', () => {
     expect(submitBlock({ lat: 24.8, lng: 120.97, zoom: 19 }, BBOX)).toBe('bbox');
   });

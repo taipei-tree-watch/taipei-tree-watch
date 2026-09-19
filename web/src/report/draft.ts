@@ -89,11 +89,20 @@ export function withEvidence(draft: ReportDraft, evidence: EvidenceCode): Report
 /** Why the submit button is disabled, or null when the point is usable. */
 export type SubmitBlock = 'zoom' | 'bbox' | null;
 
+/**
+ * Zoom as the form displays it, to one decimal. The map's zoom buttons land on
+ * values such as 17.9999, which the sheet shows as 18.0; comparing the rounded
+ * value keeps the threshold consistent with what the reporter reads.
+ */
+export function displayedZoom(zoom: number): number {
+  return Math.round(zoom * 10) / 10;
+}
+
 export function submitBlock(view: PickedView, bbox: Bbox): SubmitBlock {
   if (!isInsideBbox(bbox, view.lat, view.lng)) {
     return 'bbox';
   }
-  if (view.zoom < MIN_SUBMIT_ZOOM) {
+  if (displayedZoom(view.zoom) < MIN_SUBMIT_ZOOM) {
     return 'zoom';
   }
   return null;

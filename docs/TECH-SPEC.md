@@ -100,6 +100,8 @@ taipei-tree-watch/
 
 Bindings：`DB`（D1）、`SNAPSHOTS`（KV）；secrets：`TURNSTILE_SECRET_KEY`、`REPORTER_SALT`；vars：`TURNSTILE_SITE_KEY`（公開）、`BBOX`。
 
+靜態前端讀不到 Worker vars，所以前端目前另有兩份副本：`web/src/config.ts` 的 BBOX（只用來提前停用送出鈕，Worker 才是執行點）與 build 期的 `VITE_TURNSTILE_SITE_KEY`（未設時退回 Cloudflare 測試 key）。正式注入方式（`GET /api/config`、HTML rewrite 或部署時帶 build 變數）在 E1.8 定案；`wrangler.toml` 現值 `0x…AA` 不是 Cloudflare 測試 key，上線前要換成正式值。
+
 ### 3.3 D1
 
 一張表。tag 存 JSON 陣列文字，因為所有篩選都在前端對快照做，D1 沒有依 tag 查詢的路徑。
