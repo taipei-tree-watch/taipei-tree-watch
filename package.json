@@ -1,0 +1,37 @@
+{
+  "name": "taipei-tree-watch",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Citizen-reported map of diseased and removed trees in Taipei, aimed at locating brown root rot hotspots",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24.21.0"
+  },
+  "scripts": {
+    "build:shared": "tsx scripts/build-shared.ts",
+    "build:web": "vite build",
+    "build": "npm run build:shared && npm run build:web",
+    "typecheck": "tsc -p tsconfig.web.json && tsc -p tsconfig.worker.json && tsc -p tsconfig.scripts.json",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "dev": "wrangler dev"
+  },
+  "dependencies": {
+    "maplibre-gl": "^6.10.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.22.0",
+    "@cloudflare/workers-types": "^5.20260919.1",
+    "@eslint/js": "^10.0.0",
+    "@types/node": "^24.0.0",
+    "eslint": "^10.0.0",
+    "tsx": "^4.23.0",
+    "typescript": "^6.0.0",
+    "typescript-eslint": "^8.70.0",
+    "vite": "^8.0.0",
+    "vitest": "^4.1.0",
+    "wrangler": "^4.135.0"
+  }
+}

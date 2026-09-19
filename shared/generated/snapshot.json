@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "columns": [
+    "id",
+    "lat",
+    "lng",
+    "species",
+    "causes",
+    "dispositions",
+    "evidence",
+    "source",
+    "note",
+    "link",
+    "observed_at",
+    "protected_tree_id",
+    "inventory_tree_id",
+    "created_at"
+  ]
+}
