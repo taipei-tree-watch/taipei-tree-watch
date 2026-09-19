@@ -241,20 +241,20 @@ export const causes = [
 
 全部在 Worker 執行，順序如下，任一失敗即停：
 
-1. `Content-Type` 為 JSON、body 小於 16 KB。
+1. `Content-Type` 為 JSON、body 小於 16 KB、可解析為 JSON（Turnstile token 在 body 裡，所以解析失敗算在這一條）。
 2. Turnstile token 向 Cloudflare 驗證成功，且 `remoteip` 一致。
 3. zod schema：欄位型別、未知欄位拒收。
 4. `lat`、`lng` 落在 `BBOX`（緯度 24.85 到 25.35、經度 121.30 到 121.75），四捨五入到 5 位。
 5. `causes`、`dispositions`、`evidence` 的每個代碼存在於 `shared/tags.ts`；`source` 由伺服器強制為 1，客戶端傳的值忽略。
 6. `evidence` 為「無公告，僅目擊」或「高風險掛牌」時，`causes` 必須為空。
 7. `species` 去頭尾空白、50 字內。
-8. `note` 剝除所有 URL 與 `www.` 起頭的字串、300 字內。
+8. `note` 剝除所有 URL 與 `www.` 起頭的字串，剝除後 300 字內（字數以 code point 計，`species` 同）。
 9. `link` 為合法 `https` URL，hostname 等於或以 `.` 結尾比對白名單網域。
 10. `observed_at` 為合法日期、不晚於今天（Asia/Taipei）、不早於 2000-01-01。
-11. `protected_tree_id`、`inventory_tree_id` 為字串且符合格式（前者數字、後者兩碼字母加十碼數字）；不驗證存在性。
+11. `protected_tree_id`、`inventory_tree_id` 為字串且符合格式（前者數字、後者兩碼字母加十碼數字，接受大小寫、存成大寫）；不驗證存在性。
 12. 計算 `reporter_hash = sha256(REPORTER_SALT + CF-Connecting-IP)`。
 
-錯誤回應為 `400 { errors: [{ field, message }] }`，Turnstile 失敗為 `403`。不做 IP 限流（SPEC 第 2 節）。
+錯誤回應為 `400 { errors: [{ field, message }] }`（停在第一個失敗的步驟，但回報該步驟找到的所有欄位錯誤），Turnstile 失敗為 `403`，body 過大為 `413`。不做 IP 限流（SPEC 第 2 節）。純函式規則放 `shared/validation.ts`，前端表單直接共用。
 
 ---
 

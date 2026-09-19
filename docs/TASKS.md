@@ -84,6 +84,7 @@
 - 快照回滾演練一次
 - `snapshot-backup.yml`、`d1-export.yml` 排程啟用
 - Web Analytics beacon 上線
+- Turnstile 正式 widget 建好後，在 siteverify 回應加 `hostname` 比對（本機開發階段不比對）
 - 完成條件：以上皆演練過並記在 `workdocs/`
 
 ---
