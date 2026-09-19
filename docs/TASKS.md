@@ -52,13 +52,12 @@
 - **CPU 實測**：塞一萬筆假資料，用 `wrangler dev` 與 remote 各觸發 cron 一次，記錄 CPU time；超過 8 ms 就在此 epic 內改為分批（多個 key 加 manifest）或決定升 Paid
 - 完成條件：remote cron 跑過、`/api/snapshot` 回傳含剛寫入的那筆；CPU 實測數字寫進 `RESEARCH.md` 附錄或 TECH-SPEC 第 12 節
 
-### E1.4 受保護樹木管線與資產
-- `pipelines protected-trees`：下載 CSV、丟壞座標列、解析行政區、輸出 `data/protected-trees/trees.json`；與前版 diff 產 `changes/<date>.json`
+### E1.4 受保護樹木資產（第一版：一次性 dump）
+- `pipelines protected-trees`：讀 CSV（`--input` 指定本機檔）、丟壞座標列、解析行政區、輸出 `data/protected-trees/trees.json`；與前版 diff 產 `changes/<date>.json`
 - pytest：欄位對應、壞列處理、diff 邏輯
-- `pipeline-protected-trees.yml` 每週排程加手動觸發，commit 回 `main`
 - build 時把 `trees.json` 複製進 `web/public/`
-- 完成條件：`trees.json` 3,869 筆（3,874 減 5 壞列，見 TECH-SPEC 3.6）進 repo；Actions 跑過一次
-- 狀態（2026-09-19）：程式、測試、workflow、`trees.json` 已進 main；httpx 下載因 data.taipei 憑證問題未實測（TECH-SPEC 第 12 節），**暫停**，解法待決定後才啟用排程
+- 完成條件：`trees.json` 3,869 筆（3,874 減 5 壞列，見 TECH-SPEC 3.6）進 repo
+- 狀態（2026-09-19）：**完成**。資料由 curl 手動下載後以 `--input` 產出；決定第一版不做自動更新，每週排程與 httpx 直連（data.taipei 憑證問題，TECH-SPEC 第 12 節）移到「後續版本」
 
 ### E1.5 前端地圖與圖層
 - MapLibre 初始化、NLSC 底圖、都發局正射（預設關）、attribution
@@ -156,6 +155,10 @@
 完成條件：每一項在說明頁有一段「這張圖怎麼算的」。
 
 ---
+
+## 後續版本
+
+- **受保護樹木自動更新**：`pipeline-protected-trees.yml` 每週排程加手動觸發，commit 回 `main`。前提是先解 data.taipei 憑證問題（TECH-SPEC 第 12 節三個候選解法擇一）。第一版手動重跑：curl 下載 CSV 後 `uv run ttw-pipelines protected-trees --input <csv>`，commit `trees.json` 與 `changes/`。
 
 ## 橫向事項
 

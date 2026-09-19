@@ -16,6 +16,6 @@ Rows whose latitude or longitude is not numeric, or carries fewer than two decim
 
 When `trees.json` already exists, the tree id sets are compared and the difference is written to `changes/<fetched_at>.json`. Ids that disappeared are flagged `suspected-delisting`: the dataset drops a tree once its protected status is lifted, so the disappearance is the only public trace. No file is written when the id set is unchanged.
 
-Output is byte-stable for identical input, so a scheduled rerun produces an empty git diff unless the source data moved. `.github/workflows/pipeline-protected-trees.yml` runs this weekly and commits the result.
+Output is byte-stable for identical input, so a rerun produces an empty git diff unless the source data moved. The first release refreshes the dataset by hand: download the CSV with curl, run the command with `--input`, and commit `trees.json` together with any `changes/` file. Scheduled runs are deferred until the data.taipei TLS issue noted in docs/TECH-SPEC.md section 12 is resolved.
 
 The dataset is published under the Open Government Data License v1; the site must credit the provider, year and dataset name.
