@@ -9,6 +9,7 @@
     "shared/*.ts",
     "shared/__tests__",
     "shared/vitest.config.ts",
+    "web/vitest.config.ts",
     "worker/vitest.config.ts",
     "vite.config.ts",
     "vitest.config.ts"
