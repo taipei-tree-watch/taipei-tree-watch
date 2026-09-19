@@ -1,0 +1,72 @@
+{
+  "app": {
+    "title": "台北樹木觀測",
+    "brand": "台北樹木觀測",
+    "tagline": "公民回報的台北市病樹與移除樹木地圖"
+  },
+  "topbar": {
+    "filters": "篩選",
+    "info": "說明",
+    "ortho": "航照",
+    "report": "回報"
+  },
+  "attribution": {
+    "map": "底圖 © 內政部國土測繪中心｜航照 © 臺北市政府都市發展局｜受保護樹木 © 臺北市政府文化局（政府資料開放授權條款－第1版）｜回報資料 CC BY 4.0",
+    "orthoFallbackSuffix": "（航照改用國土測繪中心正射影像）"
+  },
+  "filters": {
+    "title": "篩選",
+    "close": "關閉篩選",
+    "reset": "清除全部條件",
+    "causes": "病因",
+    "dispositions": "處置",
+    "evidence": "證據來源",
+    "sources": "資料來源",
+    "observed": "發現日期",
+    "observedFrom": "起",
+    "observedTo": "迄",
+    "noCause": "未記載病因",
+    "reportSummary": "回報 {shown} ／ {total} 筆",
+    "treeSummary": "受保護樹木 {count} 株",
+    "observedHint": "設定日期範圍後，沒有填發現日期的回報不會顯示。"
+  },
+  "card": {
+    "close": "關閉",
+    "reportTitle": "回報",
+    "treeTitle": "受保護樹木",
+    "noticeReason": "此處的公告記載原因為{causes}。",
+    "causes": "病因",
+    "dispositions": "處置",
+    "evidence": "證據來源",
+    "source": "資料來源",
+    "observedAt": "發現日期",
+    "note": "說明",
+    "link": "存證連結",
+    "protectedTree": "關聯受保護樹木",
+    "protectedTreeValue": "樹木編號 {id}",
+    "treeId": "樹木編號",
+    "species": "樹種",
+    "dbh": "胸徑",
+    "dbhValue": "{value} 公尺",
+    "address": "地址",
+    "manager": "管理單位",
+    "unknownValue": "未填寫",
+    "listSeparator": "、"
+  },
+  "info": {
+    "title": "說明與免責",
+    "close": "關閉說明"
+  },
+  "sheet": {
+    "title": "回報這棵樹",
+    "close": "關閉",
+    "placeholder": "選點準心與回報表單還在施工中，下一個工作項目才會開放。"
+  },
+  "status": {
+    "loading": "正在載入地圖資料……",
+    "snapshotFailed": "回報資料載入失敗，地圖上只會看到受保護樹木。",
+    "treesFailed": "受保護樹木圖層載入失敗。",
+    "bothFailed": "地圖資料載入失敗。",
+    "retry": "重新載入"
+  }
+}
