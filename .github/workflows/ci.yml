@@ -1,0 +1,59 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build:shared
+
+      # shared/generated/*.json is committed so the Python pipelines can read
+      # it without a Node toolchain. It must match the TypeScript sources.
+      - name: Check shared/generated is up to date
+        run: |
+          if ! git diff --exit-code -- shared/generated; then
+            echo "::error::shared/generated is out of date. Run 'npm run build:shared' and commit the result."
+            exit 1
+          fi
+
+      - run: npm run typecheck
+
+      - run: npm run lint
+
+      - run: npm test
+
+      - run: npm run build
+
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - run: uv sync --directory pipelines
+
+      - run: uv run --directory pipelines ruff check .
+
+      - run: uv run --directory pipelines pytest
