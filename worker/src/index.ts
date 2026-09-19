@@ -6,6 +6,8 @@
  * and will build the KV snapshot.
  */
 
+import { handleCreateReport } from './routes/reports.ts';
+
 export interface Env {
   /** D1 database holding the `reports` table. */
   DB: D1Database;
@@ -31,6 +33,10 @@ export default {
 
     if (request.method === 'GET' && url.pathname === '/api/health') {
       return Response.json({ ok: true });
+    }
+
+    if (request.method === 'POST' && url.pathname === '/api/reports') {
+      return handleCreateReport(request, env);
     }
 
     return env.ASSETS.fetch(request);
