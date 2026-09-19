@@ -57,7 +57,8 @@
 - pytest：欄位對應、壞列處理、diff 邏輯
 - `pipeline-protected-trees.yml` 每週排程加手動觸發，commit 回 `main`
 - build 時把 `trees.json` 複製進 `web/public/`
-- 完成條件：`trees.json` 3,872 筆（3,874 減 2 壞列）進 repo；Actions 跑過一次
+- 完成條件：`trees.json` 3,869 筆（3,874 減 5 壞列，見 TECH-SPEC 3.6）進 repo；Actions 跑過一次
+- 狀態（2026-09-19）：程式、測試、workflow、`trees.json` 已進 main；httpx 下載因 data.taipei 憑證問題未實測（TECH-SPEC 第 12 節），**暫停**，解法待決定後才啟用排程
 
 ### E1.5 前端地圖與圖層
 - MapLibre 初始化、NLSC 底圖、都發局正射（預設關）、attribution
