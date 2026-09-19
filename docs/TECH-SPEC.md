@@ -136,9 +136,11 @@ CREATE UNIQUE INDEX idx_reports_external_ref ON reports(external_ref) WHERE exte
 |---|---|
 | `snapshot:latest` | 最新快照 JSON |
 | `snapshot:<ISO ts>` | 歷史版本，保留最近 48 份（12 小時） |
-| `snapshot:index` | 歷史 key 清單，避免用 `list()`（每日 1,000 次上限） |
+| `snapshot:index` | 歷史 key 清單（由舊到新），避免用 `list()`（每日 1,000 次上限） |
 
-回滾：把某個 `snapshot:<ts>` 的值寫回 `snapshot:latest`，用 wrangler 手動做。
+`<ts>` 是 `generated_at`，取 cron 的 `scheduledTime`，ISO 8601 含毫秒。兩個快照 key 都帶 KV metadata `{ generated_at }`，讓讀取路徑不必解析 body 就能組 ETag。列依 `id`（ULID）排序，同資料產出同位元組。
+
+回滾：把某個 `snapshot:<ts>` 的值寫回 `snapshot:latest`，用 wrangler 手動做。手動寫入的值沒有 metadata，讀取路徑會退而從 body 前 256 字元抓 `generated_at`。
 
 ### 3.5 Turnstile
 
@@ -154,7 +156,7 @@ Managed 模式 widget 放在表單送出前。Worker 向 `https://challenges.clo
   "rows": [["768","榕",25.0232,121.5056,1.13,"臺北市萬華區…","臺北市政府工務局公園路燈工程管理處","公園、綠地","萬華區"], …] }
 ```
 
-- 匯入時丟棄緯度或經度非數值或小數少於 2 位的列（目前 2 筆），丟棄數量記在 `dropped` 欄位；`district` 從地址前綴「臺北市XX區」解析，解析不到為 null。
+- 匯入時丟棄緯度或經度非數值或小數少於 2 位的列（2026-09-19 為 5 筆：2 筆緯度為整數、3 筆經度只有 1 位小數，後者定位誤差約 1.1 公里），丟棄數量記在 `dropped` 欄位；`district` 從地址前綴「臺北市XX區」解析，解析不到為 null。`rows` 每列一行 compact JSON，讓 git diff 一列一行。
 - Cloudflare 自動 gzip/brotli，3,874 筆約 400 KB 壓後約 100 KB。
 
 ### 3.7 資料管線 `pipelines/`
@@ -302,7 +304,7 @@ D1 免費層無自動備份；若之後需要更長的完整備份再評估綁�
 - **軟刪除**：`wrangler d1 execute taipei-tree-watch --remote --command "UPDATE reports SET status = 1 WHERE id = '…'"`，最多 15 分鐘後從快照消失；要立即生效再手動觸發 cron（`wrangler triggers` 或 dashboard）。
 - **回滾快照**：從 `snapshot:index` 挑版本，`wrangler kv key get` 再 `put` 回 `snapshot:latest`；或從 `data/snapshots/<date>.json` 復原。
 - **觀測**：Workers Logs（dashboard）與 `wrangler tail`；Web Analytics 看流量。不接第三方錯誤追蹤。
-- **額度警戒**：D1 每日 5M rows read，cron 每次讀全表，一萬筆時每日 96 萬 rows；寫入 Worker 每筆 1 row。KV 每日 1,000 writes，cron 用 96 加 index 更新 96。Workers 每日 10 萬 requests，靠 `max-age=300` 讓快照讀取多數命中邊緣快取。
+- **額度警戒**：D1 每日 5M rows read，cron 每次讀全表，一萬筆時每日 96 萬 rows；寫入 Worker 每筆 1 row。KV 每日 1,000 writes，每次 cron 是 3 次 put（latest、ts key、index）加穩定期 1 次 delete，96 次排程約 384 次。Workers 每日 10 萬 requests，靠 `max-age=300` 讓快照讀取多數命中邊緣快取。
 
 ---
 
@@ -319,7 +321,7 @@ D1 免費層無自動備份；若之後需要更長的完整備份再評估綁�
 
 | 項目 | 處理 |
 |---|---|
-| Workers Free 的 10 ms CPU 也套用在 cron，一萬筆 JSON 序列化可能貼近上限 | M1 用假資料實測；不夠就分批寫多個 key 或升 Paid（USD 5/月） |
+| Workers Free 的 10 ms CPU 也套用在 cron，一萬筆 JSON 序列化可能貼近上限 | 本機實測（2026-09-19，10,000 筆可見列）：cron wall-clock 40 到 66 ms 含本機 D1 與 KV I/O，本機 workerd 量不到 CPU time；純 JS 序列化與 JSON.parse 在 Node 粗估 4 到 5 ms。快照 1,894,799 bytes（ASCII 假資料，真實資料更大），gzip 約 385 KB。結論是沒有明顯超標的證據但餘裕不大，remote 實測前不當作安全；超標就切成多個 `snapshot:part:<n>` 加 manifest，或升 Paid（USD 5/月） |
 | 都發局正射 WMTS「不得對外流通發布予第三方」條款 | 上線前寄信確認；`basemaps.ts` 一鍵切 `PHOTO2` |
 | 已解列的樹在現有資料集無座標 | M2 先匯能對到的，`pending.json` 統計數量再決定是否做地址地理編碼 |
 | 清冊 diff 誤判（重編號、資料修正） | M3 離線觀察數週再決定上線 |
