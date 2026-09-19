@@ -150,11 +150,11 @@ Managed 模式 widget 放在表單送出前。Worker 向 `https://challenges.clo
 
 ```json
 { "schema": 1, "source": "臺北市政府文化局 臺北市受保護樹木", "fetched_at": "2026-09-18",
-  "columns": ["id","species","lat","lng","dbh_m","address","manager","site_type"],
-  "rows": [["768","榕",25.0232,121.5056,1.13,"臺北市萬華區…","臺北市政府工務局公園路燈工程管理處","公園、綠地"], …] }
+  "columns": ["id","species","lat","lng","dbh_m","address","manager","site_type","district"],
+  "rows": [["768","榕",25.0232,121.5056,1.13,"臺北市萬華區…","臺北市政府工務局公園路燈工程管理處","公園、綠地","萬華區"], …] }
 ```
 
-- 匯入時丟棄緯度非數值或小數少於 2 位的列（目前 2 筆），行政區從地址前綴解析。
+- 匯入時丟棄緯度或經度非數值或小數少於 2 位的列（目前 2 筆），丟棄數量記在 `dropped` 欄位；`district` 從地址前綴「臺北市XX區」解析，解析不到為 null。
 - Cloudflare 自動 gzip/brotli，3,874 筆約 400 KB 壓後約 100 KB。
 
 ### 3.7 資料管線 `pipelines/`
