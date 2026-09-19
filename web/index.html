@@ -2,19 +2,34 @@
 <html lang="zh-Hant-TW">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light" />
     <title>Taipei Tree Watch</title>
   </head>
   <body>
-    <main id="app">
-      <h1>Taipei Tree Watch</h1>
-      <p>公民回報的台北市病樹與移除樹木地圖，目的是找出褐根病的空間熱點。</p>
-      <p id="status" hidden></p>
-      <section id="info" aria-label="說明、免責與安全警語"></section>
-      <noscript>
-        <p>這個頁面的說明、免責與安全警語需要 JavaScript 才會顯示。</p>
-      </noscript>
-    </main>
+    <div id="map" class="map"></div>
+
+    <header class="topbar">
+      <span id="brand" class="brand"></span>
+      <nav class="topbar-actions">
+        <button id="filters-toggle" type="button" class="chip" aria-expanded="false"></button>
+        <button id="ortho-toggle" type="button" class="chip" aria-pressed="false"></button>
+        <button id="info-toggle" type="button" class="chip" aria-expanded="false"></button>
+        <button id="report-open" type="button" class="chip chip-primary"></button>
+      </nav>
+    </header>
+
+    <div id="status-bar" class="status-bar" role="status" hidden></div>
+
+    <aside id="filter-panel" class="panel panel-filters" aria-label="filters" hidden></aside>
+    <aside id="info-panel" class="panel panel-info" aria-label="information" hidden></aside>
+    <div id="detail-card" class="card" role="dialog" aria-label="detail" hidden></div>
+    <section id="report-sheet" class="sheet" aria-hidden="true" hidden></section>
+
+    <noscript>
+      <p class="noscript">這個網站的地圖、說明與安全警語都需要 JavaScript 才會顯示。</p>
+    </noscript>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
