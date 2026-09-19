@@ -1,10 +1,9 @@
 /**
  * Shell for the report bottom sheet.
  *
- * The crosshair picker and the form itself are the next work item. This module
- * exists so that work only has to fill `contentElement`: the button, the sheet
- * container, the open and close behaviour and the layout are already here, and
- * the map controller exposes getCenter, getZoom and onMove for the picker.
+ * The shell owns the header, the open and close behaviour and the layout; the
+ * crosshair picker and the form are mounted into `contentElement` by
+ * ui/report-form.ts.
  */
 import strings from '../ui-strings.json';
 
@@ -34,11 +33,6 @@ export function createReportSheet(element: HTMLElement): ReportSheet {
 
   const content = document.createElement('div');
   content.className = 'sheet-content';
-
-  const placeholder = document.createElement('p');
-  placeholder.className = 'sheet-placeholder';
-  placeholder.textContent = strings.sheet.placeholder;
-  content.append(placeholder);
 
   element.replaceChildren(header, content);
 

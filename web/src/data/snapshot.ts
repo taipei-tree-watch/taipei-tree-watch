@@ -40,6 +40,11 @@ export interface ReportRecord {
   readonly protectedTreeId: string | null;
   readonly inventoryTreeId: string | null;
   readonly createdAt: string | null;
+  /**
+   * True only for a report this browser submitted that no snapshot carries
+   * yet. The decoder never sets it; it comes from report/pending.ts.
+   */
+  readonly pending?: boolean;
 }
 
 export interface DecodedSnapshot {

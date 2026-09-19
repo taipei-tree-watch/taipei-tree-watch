@@ -27,6 +27,7 @@ import type { ProtectedTree } from '../data/trees.ts';
 import {
   CLUSTER_ALERT_COLOR,
   CLUSTER_COLOR,
+  PENDING_STROKE_COLOR,
   PROTECTED_TREE_COLOR,
   bucketForCauses,
   colorForCauses,
@@ -156,8 +157,10 @@ function buildStyle(): StyleSpecification {
         filter: ['!', ['has', 'point_count']],
         paint: {
           'circle-color': ['get', 'color'],
-          'circle-stroke-width': 1.5,
-          'circle-stroke-color': '#ffffff',
+          // A locally pending report is drawn with a dark ring so the reporter
+          // can tell their own unsynced point from one that is in the snapshot.
+          'circle-stroke-width': ['case', ['get', 'pending'], 3, 1.5],
+          'circle-stroke-color': ['case', ['get', 'pending'], PENDING_STROKE_COLOR, '#ffffff'],
           'circle-radius': [
             'interpolate',
             ['linear'],
@@ -182,6 +185,7 @@ function reportFeature(report: ReportRecord): Feature<Point> {
       id: report.id,
       bucket,
       color: colorForCauses(report.causes),
+      pending: report.pending === true,
     },
   };
 }

@@ -51,6 +51,9 @@ export const BUCKET_COLORS: Readonly<Record<CauseBucket, string>> = {
 /** Protected trees: small, grey, clearly not a report. */
 export const PROTECTED_TREE_COLOR = '#9aa5b1';
 
+/** Ring drawn around a report this browser submitted that is not in a snapshot yet. */
+export const PENDING_STROKE_COLOR = '#1f2933';
+
 /** Cluster bubbles, and the warmer variant used when a cluster holds brown root rot. */
 export const CLUSTER_COLOR = '#4c5c72';
 export const CLUSTER_ALERT_COLOR = '#a8243b';

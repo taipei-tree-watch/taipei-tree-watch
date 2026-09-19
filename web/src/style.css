@@ -367,12 +367,289 @@ body {
   color: var(--accent);
 }
 
-/* Report sheet ----------------------------------------------------------- */
+/* Crosshair --------------------------------------------------------------- */
 
-.sheet-placeholder {
-  margin: 0;
-  color: var(--ink-muted);
+/*
+ * Pinned to the centre of the viewport, which is what the map reports as its
+ * centre: the aimed point and the submitted point are the same pixel. It never
+ * takes a pointer event, so the map can still be dragged underneath it.
+ */
+.crosshair {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.crosshair-ring,
+.crosshair-dot {
+  position: absolute;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+}
+
+.crosshair-ring {
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 2px solid var(--danger);
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 85%), inset 0 0 0 2px rgb(255 255 255 / 85%);
+}
+
+.crosshair-dot {
+  width: 0.4rem;
+  height: 0.4rem;
+  background: var(--danger);
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 85%);
+}
+
+/* Report sheet ------------------------------------------------------------ */
+
+/* While the point is being aimed the sheet stays short so the crosshair, at
+   the centre of the screen, is never behind it. */
+.sheet-content[data-mode='picking'] {
+  max-height: 40dvh;
+}
+
+.form-picker h3 {
+  margin: 0 0 0.25rem;
+  font-size: 0.9375rem;
+}
+
+.form-coords {
+  margin: 0.5rem 0 0.125rem;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.form-gate {
+  margin: 0.375rem 0 0;
+  padding: 0.375rem 0.625rem;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  background: var(--surface-muted);
+}
+
+.form-gate[data-tone='blocked'] {
+  border-left: 3px solid var(--danger);
+  color: var(--danger);
+}
+
+.form-gate[data-tone='ok'] {
+  border-left: 3px solid var(--accent);
+}
+
+.form-picker-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.625rem;
+}
+
+.form-secondary {
+  flex: 1 1 auto;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: var(--surface-muted);
+  color: var(--ink);
+  font: inherit;
   font-size: 0.875rem;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+}
+
+.form-secondary:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.form-nearby {
+  margin-top: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--accent);
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+
+.form-nearby-question {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+/* Report form ------------------------------------------------------------- */
+
+.form-fields {
+  margin-top: 0.875rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.875rem;
+}
+
+.form-safety {
+  border: 2px solid var(--danger);
+  border-radius: 0.5rem;
+  padding: 0.75rem 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.form-safety h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.9375rem;
+  color: var(--danger);
+}
+
+.form-row {
+  margin-bottom: 1rem;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+
+.form-optional {
+  margin-left: 0.375rem;
+  font-weight: 400;
+  font-size: 0.75rem;
+}
+
+.form-label input,
+.form-label textarea {
+  display: block;
+  width: 100%;
+  margin-top: 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: 0.375rem;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9375rem;
+  padding: 0.4rem 0.5rem;
+}
+
+.form-label textarea {
+  resize: vertical;
+}
+
+.form-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+.form-hint[data-tone='bad'] {
+  color: var(--danger);
+}
+
+.form-counter {
+  font-variant-numeric: tabular-nums;
+}
+
+.form-error {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--danger);
+}
+
+.form-notice {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  border-left: 3px solid var(--line);
+  padding-left: 0.5rem;
+}
+
+.form-locked {
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.375rem;
+  background: var(--surface-muted);
+  font-size: 0.8125rem;
+}
+
+.form-group {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 0 0 1rem;
+  padding: 0.75rem 0 0;
+}
+
+.form-group legend {
+  padding: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+
+.form-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.form-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.25rem 0.625rem 0.25rem 0.4rem;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.form-option:has(input:checked) {
+  border-color: var(--ink);
+  background: var(--surface-muted);
+}
+
+.form-turnstile {
+  margin: 1rem 0 0.5rem;
+  min-height: 1px;
+}
+
+.form-submit {
+  width: 100%;
+  margin-top: 0.5rem;
+  border: 1px solid var(--accent);
+  border-radius: 0.5rem;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 0.6rem;
+  cursor: pointer;
+}
+
+.form-submit:disabled {
+  background: var(--surface-muted);
+  border-color: var(--line);
+  color: var(--ink-muted);
+  cursor: default;
+}
+
+.form-result {
+  margin: 0.625rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  background: var(--surface-muted);
+  font-size: 0.9375rem;
+}
+
+.form-result[data-tone='ok'] {
+  border-left: 3px solid var(--accent);
+}
+
+.form-result[data-tone='error'] {
+  border-left: 3px solid var(--danger);
+  color: var(--danger);
 }
 
 /* Explanatory sections --------------------------------------------------- */
@@ -462,6 +739,12 @@ body {
     right: 0;
     border-right: 0;
     border-left: 1px solid var(--line);
+  }
+
+  /* The sheet is a side column here, so it never covers the crosshair and the
+     picking mode height cap is not needed. */
+  .sheet-content[data-mode='picking'] {
+    max-height: none;
   }
 
   /* Opposite edge from the filter and info panels, so both can stay open. */
