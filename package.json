@@ -10,8 +10,9 @@
   },
   "scripts": {
     "build:shared": "tsx scripts/build-shared.ts",
+    "build:assets": "tsx scripts/copy-assets.ts",
     "build:web": "vite build",
-    "build": "npm run build:shared && npm run build:web",
+    "build": "npm run build:shared && npm run build:assets && npm run build:web",
     "typecheck": "tsc -p tsconfig.web.json && tsc -p tsconfig.worker.json && tsc -p tsconfig.scripts.json",
     "lint": "eslint .",
     "test": "vitest run",

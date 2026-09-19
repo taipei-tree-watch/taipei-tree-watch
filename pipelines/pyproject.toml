@@ -11,6 +11,9 @@ dependencies = [
     "pypdf>=6.0",
 ]
 
+[project.scripts]
+ttw-pipelines = "ttw_pipelines.cli:main"
+
 [dependency-groups]
 dev = [
     "pytest>=8.4",

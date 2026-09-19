@@ -2,8 +2,10 @@ workdocs/
 .DS_Store
 node_modules/
 web/dist/
+web/public/trees.json
 .wrangler/
 pipelines/.venv/
+pipelines/.cache/
 __pycache__/
 .pytest_cache/
 .ruff_cache/
