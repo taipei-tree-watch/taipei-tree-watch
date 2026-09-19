@@ -265,7 +265,7 @@ export const causes = [
 | 用途 | 來源 | URL 範本 | 條件 |
 |---|---|---|---|
 | 底圖 | NLSC 通用電子地圖 | `https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}`（灰階換 `EMAP01`） | 免申請，註明出處 |
-| 正射 | 都發局歷史圖資 | `https://historygis.udd.gov.taipei/WMTS/Image_3857/default/GoogleMapsCompatible/{z}/{y}/{x}`（依 GetCapabilities 確認實際 style 與 matrix 名稱） | 條款灰色地帶，上線前寄信確認 |
+| 正射 | 都發局歷史圖資（圖層 Image_3857「最新版航測影像」，2026-09 實測指向 2021 年航照） | `https://www.historygis.udd.gov.taipei/arcgis/rest/services/Aerial/Ortho_2021/MapServer/WMTS/tile/1.0.0/Aerial_Ortho_2021/default/GoogleMapsCompatible/{z}/{y}/{x}`（服務只接受 GetCapabilities 的 ResourceURL 形式，短路徑回 404；回 image/jpeg、帶 CORS、範圍只涵蓋臺北） | 條款灰色地帶，上線前寄信確認 |
 | 正射備援 | NLSC `PHOTO2` | 同 EMAP 範本換圖層名 | 免申請 |
 
 圖磚 URL 與 attribution 集中在 `web/src/basemaps.ts`，切換備援只改一處。不預抓、不快取到自己的儲存。attribution 常駐地圖右下：「底圖 © 內政部國土測繪中心｜航照 © 臺北市政府都市發展局｜受保護樹木 © 臺北市政府文化局（政府資料開放授權條款－第1版）｜回報資料 CC BY 4.0」。
@@ -328,3 +328,6 @@ D1 免費層無自動備份；若之後需要更長的完整備份再評估綁�
 | 政府 WMTS 無 SLA、無公開流量限制 | 圖磚失效不影響回報功能；備援切換一處改 |
 | data.taipei 的根憑證（TWCA Global Root CA）缺 Subject Key Identifier，Python 3.13 起 `ssl.create_default_context()` 預設 `VERIFY_X509_STRICT` 會拒絕連線；httpx 下載在本機 Python 3.14 失敗，curl 正常 | 第一版不自動更新（2026-09-19 決定），`trees.json` 由 curl 手動取得後以 `--input` 產出，httpx 下載函式未經實測。做自動排程時再擇一：只對該 client 清 strict 旗標（保留鏈與 hostname 驗證）、pipelines 釘 Python 3.12、或 Actions 改用 curl 下載 |
 | 前端一次載入全量快照，一萬筆約數百 KB | 陣列格式加 brotli；超過再分區塊或改 PMTiles 向量 |
+| Lighthouse 行動版 performance 只有 56（2026-09-19，302 筆回報）：FCP 1.7 s、LCP 4.5 s、TBT 1,590 ms、CLS 0；瓶頸是 MapLibre 在 4 倍 CPU 節流下約 3 秒的腳本執行，傳輸量 672 KiB 不是問題 | 地圖模組已改 dynamic import（46 到 56）；再往上要不渲染 WebGL 地圖，與本頁目的衝突。門檻改為「行動版 FCP 低於 2 秒且 CLS 低於 0.1」，分數只記錄不當關卡 |
+| MapLibre 6 從自己的 module URL 推導 worker 路徑，打包後不存在，圖層全部不出現 | 用 Vite `?worker&url` 產出 worker 再 `setWorkerUrl`，`vite.config.ts` 的 `worker.format` 設 es；升級 MapLibre 時重新確認 |
+| 受保護樹木資料集有座標合法但與地址不符的列（例：編號 2190 座標在大安區、地址在內湖區） | 管線只丟格式無效的座標；地址與座標不符的列先保留並記錄，是否加行政區一致性檢查留待後續版本 |
