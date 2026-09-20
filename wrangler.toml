@@ -24,18 +24,14 @@ enabled = true
 
 [vars]
 # Public Turnstile site key. The frontend build reads it from here through
-# scripts/turnstile-site-key.ts, so this file is the single source.
-# Currently Cloudflare's always-passing test key: no production widget exists
-# yet. The matching secret key is set with `wrangler secret put
-# TURNSTILE_SECRET_KEY`.
-TURNSTILE_SITE_KEY = "1x00000000000000000000AA"
-# Hostname the Turnstile widget is expected to be served from. An empty value
-# turns the check off, which is what local `wrangler dev` and the test suite
-# rely on. It stays empty while TURNSTILE_SITE_KEY is a test key, because
-# siteverify answers "example.com" for test keys regardless of the real origin.
-# Set it to "taipei-tree-watch.taipeitreewatch.workers.dev" together with the
-# production keys.
-TURNSTILE_HOSTNAME = ""
+# scripts/wrangler-vars.ts, so this file is the single source. The matching
+# secret key is set with `wrangler secret put TURNSTILE_SECRET_KEY`.
+TURNSTILE_SITE_KEY = "0x4AAAAAAE9dYsoPZcxqgf-E"
+# Hostname the Turnstile widget is served from. siteverify reports the page
+# that served the widget, so this rejects a token farmed from a copy of the
+# form hosted elsewhere. An empty value turns the comparison off, which is
+# what local `wrangler dev` and the test suite rely on.
+TURNSTILE_HOSTNAME = "taipei-tree-watch.taipeitreewatch.workers.dev"
 # Accepted report coordinates: minLng,minLat,maxLng,maxLat (WGS84).
 # Taipei City plus roughly two kilometres, so a report aimed from a
 # boundary street is still accepted. See SPEC section 2.

@@ -103,7 +103,7 @@ Bindings：`DB`（D1）、`SNAPSHOTS`（KV）；secrets：`TURNSTILE_SECRET_KEY`
 
 site key 注入方式（2026-09-20 定案）：以 `wrangler.toml` 的 `[vars]` 為單一來源，`vite.config.ts` 透過 `scripts/wrangler-vars.ts` 讀出 `TURNSTILE_SITE_KEY`，用 Vite `define` 烘進 `import.meta.env.VITE_TURNSTILE_SITE_KEY`。`npm run deploy` 不必額外帶環境變數，改 key 只改一個檔。不選 `GET /api/config` 是因為那會讓表單多一次往返才能顯示 widget；不選 HTML rewrite 是因為靜態資產由 Static Assets 直送，Worker 不在路徑上。`scripts/wrangler-vars.ts` 只解析 `[vars]` 底下的字串項，另有一個測試比對 `BBOX` 與 `web/src/config.ts` 的副本是否仍一致。單元測試不經 Vite，所以 `web/src/turnstile.ts` 在讀不到值時仍退回 Cloudflare 測試 key。
 
-`TURNSTILE_SITE_KEY` 現值為 Cloudflare 測試 key `1x…AA`（正式 widget 尚未建立），搭配的測試 secret 已用 `wrangler secret put` 設定。
+`TURNSTILE_SITE_KEY` 與搭配的 secret 都是正式 widget 的金鑰（2026-09-20 設定），secret 用 `wrangler secret put` 管入，不進 repo。
 
 ### 3.3 D1
 
@@ -151,7 +151,7 @@ CREATE UNIQUE INDEX idx_reports_external_ref ON reports(external_ref) WHERE exte
 
 Managed 模式 widget 放在表單送出前。Worker 向 `https://challenges.cloudflare.com/turnstile/v0/siteverify` 驗 token，同時比對 `remoteip` 與 siteverify 回應的 `hostname`。
 
-hostname 的期望值來自 var `TURNSTILE_HOSTNAME`，正式值為 `taipei-tree-watch.taipeitreewatch.workers.dev`；值為空字串或未設時不比對，本機 `wrangler dev` 與 vitest 走的是這條。目前刻意留空：測試 key 的 siteverify 一律回 `example.com`，不論請求實際來自哪個網域，所以比對只能跟正式 key 一起開啟。回應沒有 `hostname` 欄位時視為不符，不放行。
+hostname 的期望值來自 var `TURNSTILE_HOSTNAME`，值為 `taipei-tree-watch.taipeitreewatch.workers.dev`；值為空字串或未設時不比對，本機 `wrangler dev` 與 vitest 走的是這條。比對只能配正式 key 使用：測試 key 的 siteverify 一律回 `example.com`，不論請求實際來自哪個網域。回應沒有 `hostname` 欄位時視為不符，不放行。
 
 ### 3.6 靜態資產
 

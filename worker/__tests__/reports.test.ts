@@ -29,8 +29,15 @@ interface ReportRow {
 /**
  * The Worker under test shares this isolate, so replacing the global fetch is
  * what intercepts its outbound call to Turnstile. Any other host is a bug.
+ *
+ * The stand-in answers with the hostname the Worker is configured to expect,
+ * so these tests run against the same TURNSTILE_HOSTNAME value production
+ * uses. The comparison itself is covered in turnstile.test.ts.
  */
-function mockTurnstile(success: boolean): { calls: FormData[] } {
+function mockTurnstile(
+  success: boolean,
+  hostname: string = env.TURNSTILE_HOSTNAME ?? '',
+): { calls: FormData[] } {
   const calls: FormData[] = [];
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const request = new Request(input as RequestInfo, init);
@@ -40,7 +47,11 @@ function mockTurnstile(success: boolean): { calls: FormData[] } {
     // Read the form here: a request body cannot be consumed once the call
     // returns, because it belongs to the Worker's I/O context.
     calls.push(await request.formData());
-    return Response.json({ success, 'error-codes': success ? [] : ['invalid-input-response'] });
+    return Response.json({
+      success,
+      hostname,
+      'error-codes': success ? [] : ['invalid-input-response'],
+    });
   });
   return { calls };
 }
@@ -131,6 +142,16 @@ describe('POST /api/reports check 2: Turnstile', () => {
 
     expect(response.status).toBe(403);
     expect(calls).toHaveLength(0);
+  });
+
+  it('rejects a token solved on another hostname with 403', async () => {
+    vi.restoreAllMocks();
+    mockTurnstile(true, 'copy.example');
+
+    const response = await post(validBody());
+
+    expect(response.status).toBe(403);
+    await expect(errorFields(response)).resolves.toEqual(['turnstile_token']);
   });
 
   it('sends the secret, token and client IP to Cloudflare', async () => {
