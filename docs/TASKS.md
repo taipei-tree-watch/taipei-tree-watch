@@ -97,7 +97,18 @@
   - 信中問一件事：公開網站把圖磚網址放在網頁中，由每位訪客的瀏覽器直接向都發局取圖、訪客為最終使用者，是否屬於介接說明第四點第三項的「對外流通發布予其他第三方使用」。一併問不允許時有無其他授權途徑、以及對公開網站的請求頻率期待
   - 同意則把 `web/src/basemaps.ts` 的 `ACTIVE_ORTHO` 改回 `ORTHO_UDD`，並同步 attribution 的四個檔案（TECH-SPEC 第 7 節）；不同意或未回覆則維持 `PHOTO2`，此項即為結案
   - 風險備註：圖磚由訪客瀏覽器直接取，違規時被終止服務的是訪客 IP，我方不會收到任何錯誤訊號，所以不能用「沒出事」當作可以用
-- 完成條件：以上皆演練過並記在 `workdocs/`；都發局授權確認已有回覆，或已明確決定維持 `PHOTO2`
+- 完成條件：以上皆演練過並記在 `docs/RUNBOOK.md`；都發局授權確認已有回覆，或已明確決定維持 `PHOTO2`
+- 狀態（2026-09-20）：
+  - 遠端 D1 與 KV namespace 已建立、id 已填進 `wrangler.toml`、migration 已套用，`reports` 表與兩個索引都在
+  - Secrets 已設：`REPORTER_SALT` 隨機產生後存進密碼管理工具再管入；`TURNSTILE_SECRET_KEY` 為正式 widget 的 secret
+  - 首次部署完成，`https://taipei-tree-watch.taipeitreewatch.workers.dev` 的首頁、`/api/health`、`/api/snapshot` 都正常；`/api/snapshot` 在還沒有快照時回一份空文件並帶 `Cache-Control: no-store`
+  - site key 注入定案：以 `wrangler.toml` 的 `[vars]` 為單一來源，build 期由 `scripts/wrangler-vars.ts` 讀出烘進前端（TECH-SPEC 3.2）
+  - siteverify 的 `hostname` 比對已實作，期望值來自新 var `TURNSTILE_HOSTNAME`，空值不比對；正式 widget 已上線並驗證偽造 token 回 403
+  - 軟刪除與快照回滾都已在遠端演練過，步驟與觀察寫在 `docs/RUNBOOK.md`
+  - `snapshot-backup` 與 `d1-export` 兩支腳本已寫好並實跑成功，launchd plist 範例與安裝步驟在 `docs/RUNBOOK.md` 第 3 節
+  - cron 遠端量測（1 到 2 列）：CPU 2 ms、wall 560 到 596 ms，記在 TECH-SPEC 第 12 節
+  - 待辦：Web Analytics beacon token 尚未建立，`web/index.html` 還沒加 beacon；真機 widget 挑戰 iframe 仍待人工確認；launchd plist 待在部署機器上安裝
+  - 都發局授權確認仍為人工作業，未動
 
 ---
 

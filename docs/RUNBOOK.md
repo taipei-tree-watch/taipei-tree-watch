@@ -16,6 +16,103 @@ CLOUDFLARE_ACCOUNT_ID=$(lpass show --username taipei-tree-watch/cloudflare-api) 
 
 線上位址是 `https://taipei-tree-watch.taipeitreewatch.workers.dev`。cron 每 15 分鐘重建一次快照，所以任何對資料庫的修改最多 15 分鐘後才會反映到 `/api/snapshot`。
 
+## 1. 軟刪除一筆回報
+
+系統沒有管理介面，隱藏一筆回報是直接改資料庫的 `status` 欄位：0 是顯示、1 是隱藏。列不會被刪掉，只是下一次 cron 重建快照時不會被選進去。
+
+### 步驟
+
+先確認要隱藏的是哪一筆，用座標、樹種或 `created_at` 找出 id：
+
+```bash
+npx wrangler d1 execute taipei-tree-watch --remote --command "SELECT id, lat, lng, species, note, created_at FROM reports WHERE status = 0 ORDER BY created_at DESC LIMIT 20"
+```
+
+把那一筆標成隱藏：
+
+```bash
+npx wrangler d1 execute taipei-tree-watch --remote --command "UPDATE reports SET status = 1 WHERE id = '<id>'"
+```
+
+回應裡的 `changes` 要是 1。是 0 代表 id 打錯，不是已經隱藏。
+
+等下一次 cron（最多 15 分鐘）重建快照，或到 dashboard 手動觸發一次。之後確認該筆已從公開快照消失：
+
+```bash
+curl -s "https://taipei-tree-watch.taipeitreewatch.workers.dev/api/snapshot?cb=$(date +%s)" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['generated_at'], len(d['rows']))"
+```
+
+查詢字串是為了避開邊緣快取（快照的 `Cache-Control` 是 `max-age=300`）。沒有這一段的話，就算 KV 已經換版，讀到的也可能是最多五分鐘前的副本。
+
+要復原就把 `status` 改回 0，資料沒有被刪除。
+
+### 2026-09-20 演練結果
+
+資料庫裡放兩筆測試回報，一筆用 `wrangler d1 execute` 直接寫入，一筆從線上 API 送出（回 201 與一個 ULID）。
+
+| 時間（UTC） | 動作 | 觀察 |
+|---|---|---|
+| 04:00:51 | cron 重建 | `rows=2`，`/api/snapshot` 兩筆都在 |
+| 04:16 | `UPDATE … SET status = 1` | `changes` 為 1 |
+| 04:15:51 | cron 重建 | Worker 日誌 `rows=1 chars=362` |
+| 04:17:10 | 讀公開快照 | 只剩一筆，被隱藏的那筆消失 |
+
+從 cron 寫完 KV 到公開端點讀得到新版，中間約 80 秒，這是 KV 的全球傳播延遲，不是邊緣快取。所以「最多 15 分鐘」的說法實務上要再加一到兩分鐘。
+
+演練後兩筆測試資料都用 `DELETE` 清掉，`SELECT COUNT(*)` 回 0。
+
+## 2. 把快照回滾到前一版
+
+cron 每次重建都會多存一個 `snapshot:<generated_at>` 的歷史版本，保留最近 48 份，也就是 12 小時。回滾就是把其中一份的內容寫回 `snapshot:latest`。
+
+會用到這一節的情況是快照本身壞了（例如某次匯入寫進了錯的資料），而不是要隱藏單一筆回報。隱藏單筆看第 1 節。
+
+### 步驟
+
+先看有哪些版本可以選：
+
+```bash
+npx wrangler kv key list --binding SNAPSHOTS --remote
+```
+
+輸出每個 key 都帶 `metadata.generated_at`。挑一個要回去的版本，取出它的內容：
+
+```bash
+npx wrangler kv key get "snapshot:<generated_at>" --binding SNAPSHOTS --remote --text > rollback.json
+```
+
+確認取出來的是預期的那一份，再寫回去：
+
+```bash
+npx wrangler kv key put "snapshot:latest" --binding SNAPSHOTS --remote --path rollback.json
+```
+
+確認公開端點已經換版：
+
+```bash
+curl -si "https://taipei-tree-watch.taipeitreewatch.workers.dev/api/snapshot?cb=$(date +%s)" | grep -i etag
+```
+
+手動寫入的值沒有 KV metadata，所以讀取路徑會退而從內容前 256 字元抓 `generated_at` 來組 ETag。ETag 仍然正確就代表這條退路有在運作。
+
+**回滾只撐到下一次 cron。** cron 不看 `snapshot:latest` 現在是什麼，它每 15 分鐘就用資料庫的現況重新蓋過去。如果問題出在資料庫的資料，回滾只是爭取時間，真正要做的是修資料庫，否則下一次 cron 又會把壞資料寫回來。
+
+12 小時以前的版本不在 KV 裡，要從 `data/snapshots/<date>.json` 的每日備份復原（見第 3 節）。
+
+### 2026-09-20 演練結果
+
+當時 `snapshot:latest` 是 04:45:51 的版本，回滾目標是前一版 04:30:51。
+
+| 時間（UTC） | 動作 | 觀察 |
+|---|---|---|
+| 04:47:09 | 把 04:30:51 的內容寫回 `snapshot:latest` | 寫入成功 |
+| 04:47:37 | 讀公開快照 | `generated_at` 變成 04:30:51，ETag 同值 |
+| 04:47 到 04:50 | 持續讀 | 八次讀取都是回滾後的版本，穩定 |
+| 05:00:51 | cron 重建 | Worker 日誌 `rows=1`，key 為 05:00:51 |
+| 05:01:41 | 讀公開快照 | `generated_at` 回到 05:00:51 |
+
+寫入到公開端點換版約 28 秒。ETag 在沒有 metadata 的情況下仍然正確，退路如設計運作。
+
 ## 3. 本機備份排程
 
 兩支工作都在本機跑，不經 CI。

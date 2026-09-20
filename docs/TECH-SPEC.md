@@ -1,6 +1,6 @@
 # Taipei Tree Watch 技術規格 Overview
 
-- 需求：`SPEC.md`；查證依據：`RESEARCH.md`；詞彙：根目錄 `CONTEXT.md`（本文件的名詞以它為準）
+- 需求：`SPEC.md`；查證依據：`RESEARCH.md`；詞彙：根目錄 `CONTEXT.md`（本文件的名詞以它為準）；上線後的重複操作：`RUNBOOK.md`
 - 定案日期：2026-09-18。本文件是 overview，寫到「每個元件負責什麼、邊界在哪、資料長什麼樣」的深度；實作細節在 task 展開時決定。
 - 選型唯一標準沿用 SPEC 第 4 節：免費、方便、不因無流量被停用。所有額度數字見 `RESEARCH.md` 第 7 節。
 
@@ -49,7 +49,7 @@
 ```
 taipei-tree-watch/
 ├── CONTEXT.md                 詞彙表
-├── docs/                      SPEC、RESEARCH、TECH-SPEC、TASKS
+├── docs/                      SPEC、RESEARCH、TECH-SPEC、TASKS、RUNBOOK
 ├── shared/                    前後端與管線共用的 source of truth
 │   ├── tags.ts                病因、處置、證據來源、資料來源的代碼表
 │   ├── domains.ts             連結網域白名單
@@ -310,7 +310,8 @@ D1 免費層無自動備份；若之後需要更長的完整備份再評估綁�
 ## 10. 維運
 
 - **軟刪除**：`wrangler d1 execute taipei-tree-watch --remote --command "UPDATE reports SET status = 1 WHERE id = '…'"`，最多 15 分鐘後從快照消失；要立即生效再手動觸發 cron（`wrangler triggers` 或 dashboard）。
-- **回滾快照**：從 `snapshot:index` 挑版本，`wrangler kv key get` 再 `put` 回 `snapshot:latest`；或從 `data/snapshots/<date>.json` 復原。
+- **回滾快照**：從 `snapshot:index` 挑版本，`wrangler kv key get` 再 `put` 回 `snapshot:latest`；或從 `data/snapshots/<date>.json` 復原。回滾只撐到下一次 cron，cron 會用資料庫現況蓋回去。
+- 兩者的完整步驟與 2026-09-20 的演練紀錄在 `RUNBOOK.md`。實測 cron 寫完 KV 後，公開端點還要約 30 到 80 秒才讀得到新版（KV 全球傳播），另外 `/api/snapshot` 的 `max-age=300` 會讓沒帶查詢字串的讀取再晚最多五分鐘。
 - **觀測**：Workers Logs（dashboard）與 `wrangler tail`；Web Analytics 看流量。不接第三方錯誤追蹤。
 - **額度警戒**：D1 每日 5M rows read，cron 每次讀全表，一萬筆時每日 96 萬 rows；寫入 Worker 每筆 1 row。KV 每日 1,000 writes，每次 cron 是 3 次 put（latest、ts key、index）加穩定期 1 次 delete，96 次排程約 384 次。Workers 每日 10 萬 requests，靠 `max-age=300` 讓快照讀取多數命中邊緣快取。
 
@@ -329,7 +330,7 @@ D1 免費層無自動備份；若之後需要更長的完整備份再評估綁�
 
 | 項目 | 處理 |
 |---|---|
-| Workers Free 的 10 ms CPU 也套用在 cron，一萬筆 JSON 序列化可能貼近上限 | 本機實測（2026-09-19，10,000 筆可見列）：cron wall-clock 40 到 66 ms 含本機 D1 與 KV I/O，本機 workerd 量不到 CPU time；純 JS 序列化與 JSON.parse 在 Node 粗估 4 到 5 ms。快照 1,894,799 bytes（ASCII 假資料，真實資料更大），gzip 約 385 KB。結論是沒有明顯超標的證據但餘裕不大，remote 實測前不當作安全；超標就切成多個 `snapshot:part:<n>` 加 manifest，或升 Paid（USD 5/月） |
+| Workers Free 的 10 ms CPU 也套用在 cron，一萬筆 JSON 序列化可能貼近上限 | 本機實測（2026-09-19，10,000 筆可見列）：cron wall-clock 40 到 66 ms 含本機 D1 與 KV I/O，本機 workerd 量不到 CPU time；純 JS 序列化與 JSON.parse 在 Node 粗估 4 到 5 ms。快照 1,894,799 bytes（ASCII 假資料，真實資料更大），gzip 約 385 KB。遠端實測（2026-09-20，1 到 2 列）：`wrangler tail` 三次 cron 都是 CPU 2 ms、wall 560 到 596 ms，其中 build 259 到 263 ms、store 284 到 321 ms，幾乎全是 D1 與 KV 的往返；同期一次 `POST /api/reports` 是 CPU 8 ms、wall 78 ms，那一筆含冷啟動。遠端的量還不能外推到一萬筆，因為列數幾乎為零，序列化成本尚未進場；資料長到數千筆時要重量一次。超標就切成多個 `snapshot:part:<n>` 加 manifest，或升 Paid（USD 5/月） |
 | 都發局正射 WMTS「不得對外流通發布予第三方」條款 | 2026-09-20 決定：確認前不使用，航照已切 NLSC `PHOTO2`；授權確認為獨立待辦（找窗口、擬信、人工寄出），同意後切回並改 attribution 四個檔案（第 7 節） |
 | 已解列的樹在現有資料集無座標 | M2 先匯能對到的，`pending.json` 統計數量再決定是否做地址地理編碼 |
 | 清冊 diff 誤判（重編號、資料修正） | M3 離線觀察數週再決定上線 |

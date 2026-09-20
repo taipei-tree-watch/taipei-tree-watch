@@ -17,6 +17,16 @@ import { fileURLToPath } from 'node:url';
 
 const SNAPSHOT_URL = 'https://taipei-tree-watch.taipeitreewatch.workers.dev/api/snapshot';
 
+/**
+ * The snapshot is served with max-age=300, and a request-side no-cache header
+ * does not reach past Cloudflare's edge cache. A unique query string does, so
+ * a backup taken right after a cron run records that run rather than the copy
+ * the edge still holds.
+ */
+function snapshotUrl(now: Date): string {
+  return `${SNAPSHOT_URL}?cb=${String(now.getTime())}`;
+}
+
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const outDir = join(repoRoot, 'data', 'snapshots');
 
@@ -49,7 +59,8 @@ function assertSnapshot(value: unknown): asserts value is Snapshot {
   }
 }
 
-const response = await fetch(SNAPSHOT_URL, { headers: { 'cache-control': 'no-cache' } });
+const startedAt = new Date();
+const response = await fetch(snapshotUrl(startedAt));
 if (!response.ok) {
   throw new Error(`${SNAPSHOT_URL} answered ${String(response.status)}`);
 }
@@ -73,7 +84,7 @@ const document = [
 ].join('\n');
 
 mkdirSync(outDir, { recursive: true });
-for (const name of ['latest.json', `${taipeiDate(new Date())}.json`]) {
+for (const name of ['latest.json', `${taipeiDate(startedAt)}.json`]) {
   const path = join(outDir, name);
   writeFileSync(path, document);
   console.log(`wrote ${relative(repoRoot, path)}`);
