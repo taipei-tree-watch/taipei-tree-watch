@@ -22,13 +22,12 @@ import {
   NOTE_MAX_CHARS,
   SPECIES_MAX_CHARS,
   countCharacters,
-  isAllowedLink,
   stripUrls,
   taipeiDate,
 } from '../../../shared/validation.ts';
 import { sections } from '../content/index.ts';
 import type { ProtectedTree } from '../data/trees.ts';
-import { formatTemplate, linkHostname } from '../format.ts';
+import { formatTemplate } from '../format.ts';
 import type { Nearby } from '../geo.ts';
 import { PROTECTED_TREE_RADIUS_M, nearestWithin } from '../geo.ts';
 import type { DraftIssue, PickedView, ReportDraft } from '../report/draft.ts';
@@ -38,6 +37,7 @@ import {
   causesAllowed,
   draftIssues,
   emptyDraft,
+  linkFeedback,
   submitBlock,
   withEvidence,
 } from '../report/draft.ts';
@@ -709,19 +709,18 @@ export function createReportForm(
   linkInput.addEventListener('input', () => {
     draft = { ...draft, link: linkInput.value };
     clearFieldError('link');
-    const value = linkInput.value.trim();
-    if (value === '') {
-      linkDomain.hidden = true;
-    } else if (isAllowedLink(value)) {
+    // Only an accepted domain is named here. A rejected one is stated once,
+    // by the field error slot, which render() fills from the draft issue or
+    // from the server's answer.
+    const feedback = linkFeedback(linkInput.value);
+    if (feedback.kind === 'accepted') {
       linkDomain.hidden = false;
       linkDomain.dataset.tone = 'ok';
       linkDomain.textContent = formatTemplate(strings.form.linkDomainOk, {
-        domain: linkHostname(value) ?? '',
+        domain: feedback.domain,
       });
     } else {
-      linkDomain.hidden = false;
-      linkDomain.dataset.tone = 'bad';
-      linkDomain.textContent = strings.form.linkDomainBad;
+      linkDomain.hidden = true;
     }
     render();
   });

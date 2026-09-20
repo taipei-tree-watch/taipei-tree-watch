@@ -11,6 +11,7 @@ import {
   causesAllowed,
   draftIssues,
   emptyDraft,
+  linkFeedback,
   submitBlock,
   withEvidence,
 } from '../src/report/draft.ts';
@@ -235,5 +236,38 @@ describe('buildRequestBody', () => {
 
   it('carries the challenge token', () => {
     expect(buildRequestBody(emptyDraft(), INSIDE, token).turnstile_token).toBe(token);
+  });
+});
+
+describe('linkFeedback', () => {
+  it('says nothing about an empty field', () => {
+    expect(linkFeedback('')).toEqual({ kind: 'idle' });
+  });
+
+  it('names the domain of an accepted link', () => {
+    expect(linkFeedback('  https://www.threads.net/x  ')).toEqual({
+      kind: 'accepted',
+      domain: 'www.threads.net',
+    });
+  });
+
+  /**
+   * The rejected domain used to be stated twice: once by this live check and
+   * once by the field error that draftIssues raises for the same value. The
+   * live check now stays quiet so the error slot is the single place it is
+   * said.
+   */
+  it('leaves a rejected domain to the field error, which states it once', () => {
+    const link = 'https://example.com/post/1';
+    expect(linkFeedback(link)).toEqual({ kind: 'idle' });
+
+    const issues = draftIssues({ ...emptyDraft(), link }, TODAY);
+    expect(issues).toEqual([{ field: 'link', code: 'linkDomain' }]);
+
+    const messages = [
+      ...issues.map((issue) => issue.code),
+      ...(linkFeedback(link).kind === 'accepted' ? ['linkDomainOk'] : []),
+    ];
+    expect(messages).toHaveLength(1);
   });
 });

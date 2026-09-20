@@ -29,6 +29,7 @@ import {
   roundCoordinate,
   stripUrls,
 } from '../../../shared/validation.ts';
+import { linkHostname } from '../format.ts';
 
 /** Below this zoom the crosshair cannot be aimed at a single tree. */
 export const MIN_SUBMIT_ZOOM = 18;
@@ -126,6 +127,25 @@ export interface DraftIssue {
 function textOrNull(value: string): string | null {
   const trimmed = value.trim();
   return trimmed === '' ? null : trimmed;
+}
+
+/**
+ * What the live link check adds beside the field.
+ *
+ * Only an accepted domain is named here. A rejected domain is reported once,
+ * by the field error `draftIssues` raises for it, so that the hint and the
+ * error do not state the same refusal twice.
+ */
+export type LinkFeedback =
+  | { readonly kind: 'idle' }
+  | { readonly kind: 'accepted'; readonly domain: string };
+
+export function linkFeedback(value: string): LinkFeedback {
+  const link = textOrNull(value);
+  if (link === null || !isAllowedLink(link)) {
+    return { kind: 'idle' };
+  }
+  return { kind: 'accepted', domain: linkHostname(link) ?? '' };
 }
 
 /**
