@@ -300,7 +300,7 @@ https://pkl.gov.taipei/News.aspx?n=EADA2FE1CC599432&sms=1A78AA9B70F45574 。抽�
 
 ### 5.2 臺北市都發局歷史圖資 WMTS **[確認，條款有灰色地帶]**
 
-- 端點：`https://historygis.udd.gov.taipei/WMTS/`（EPSG:3857）；圖層 `Image_3857` 為最新航測影像（目前指向 Ortho_2025），另有 1945 到 2025 共 30 個年份、`EMap`、`DEM`、`DSM` 等。
+- 端點：`https://historygis.udd.gov.taipei/WMTS/`（EPSG:3857）；圖層 `Image_3857` 為最新航測影像（查證時記為 Ortho_2025），另有 1945 到 2025 共 30 個年份、`EMap`、`DEM`、`DSM` 等。**2026-09-19 實作更正**：GetCapabilities 的 ResourceURL 實際指向 `Aerial/Ortho_2021`，且服務只接受 ResourceURL 形式（`/WMTS/Image_3857/default/GoogleMapsCompatible/{z}/{y}/{x}` 短路徑回 404）；可用 URL 見 `TECH-SPEC.md` 第 7 節。
 - 使用限制（都發局 WMTS 圖磚服務介接說明 PDF 逐字）：「三、使用對象：不限。」「四、使用限制 1. 不得自行重製拷貝或交付轉供第三方使用。2. ……不得於短時間內連續進行大量批次查詢及取圖。3. ……介接單位不得擅自對外流通發布予其他第三方使用……5. 違反上述規定者……將立即終止對該 IP 位址的服務。」來源：https://www.historygis.udd.gov.taipei/urban/map/doc/臺北市政府都市發展局WMTS圖磚服務介接說明.pdf
 - 「不得對外流通發布予第三方」是否包含公開網站直接 hotlink 圖磚給訪客，沒有官方解釋。建議上線前寄信確認，備援用 NLSC PHOTO2。
 

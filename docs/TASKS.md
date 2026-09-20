@@ -68,7 +68,8 @@
 - 點擊回報顯示卡片：措辭依 SPEC 第 8 節，連結顯示網域、nofollow
 - 說明區塊沿用 `web/src/content/` 六個片段（E1.7 已寫好），重排版面即可；attribution 的顯名年份改由 `trees.json` 的 `fetched_at` 帶入，不寫死
 - 完成條件：手機與桌面各檢查一次；Lighthouse 行動版 FCP 低於 2 秒且 CLS 低於 0.1（performance 分數只記錄，理由見 TECH-SPEC 第 12 節）
-- 狀態（2026-09-19）：**完成**。cluster 不顯示數字（需 glyphs 服務），改用圓圈大小分級加含褐根病即轉警示色；病因篩選多「未記載病因」選項（code 0，不儲存）；正射預設接都發局，`basemaps.ts` 的 `ACTIVE_ORTHO` 一行可切 NLSC PHOTO2
+- 狀態（2026-09-19）：**完成**。cluster 不顯示數字（需 glyphs 服務），改用圓圈大小分級加含褐根病即轉警示色；病因篩選多「未記載病因」選項（code 0，不儲存）
+- 2026-09-20：正射切回 NLSC `PHOTO2`，都發局圖層保留在 `basemaps.ts` 但不啟用；切換要同時改 attribution 相關四個檔案（TECH-SPEC 第 7 節）。都發局授權確認是獨立待辦：找窗口、擬確認信由人工寄出，回覆同意後再切回並改 attribution；E1.8 前要閉環
 
 ### E1.6 選點與表單
 - 準心選點：GPS flyTo、zoom 門檻 18、選點時自動開正射

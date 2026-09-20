@@ -78,7 +78,7 @@ taipei-tree-watch/
 - Vite 加 TypeScript，無框架（DOM 直接操作），MapLibre GL JS，client-side clustering 用 MapLibre 內建 cluster 或 supercluster。
 - 單一頁面，手機優先，地圖全螢幕。回報表單是底部 sheet，桌面寬度變側欄。說明與免責是可展開區塊，安全警語常駐在表單開頭。
 - 啟動時載入兩個檔：`/api/snapshot`（回報）與 `/trees.json`（受保護樹木靜態資產）。兩者都是一次載入、全在記憶體篩選。
-- 圖層：底圖 raster（NLSC）、正射 raster（都發局，選點時預設開）、受保護樹木（灰色小點）、回報點（依病因著色，褐根病最醒目）、清冊消失層（M3 之後）。
+- 圖層：底圖 raster（NLSC）、正射 raster（目前 NLSC `PHOTO2`，都發局待授權確認，見第 7 節；選點時預設開）、受保護樹木（灰色小點）、回報點（依病因著色，褐根病最醒目）、清冊消失層（M3 之後）。
 - 篩選：病因、處置、證據來源、資料來源、發現日期範圍，全部在前端對快照做。
 - 選點流程（SPEC 第 6 節）：GPS 只用來 flyTo，地圖中心固定準心，zoom 未達 18 時送出鈕停用，正射圖層在此步驟預設開啟。準心 20 公尺內有受保護樹木時，sheet 顯示「這是受保護樹木 #編號 樹種 嗎？」讓使用者一鍵關聯。
 - 表單欄位對應 SPEC 第 3 節：只有位置必填。證據來源預設「無公告，僅目擊」；選了它或「高風險掛牌」時病因區塊收合並顯示「無憑據請留空」。說明欄 300 字，前端即時剝 URL 並提示「連結請填在下方欄位」。連結欄即時比對白名單並顯示網域。
@@ -266,10 +266,10 @@ export const causes = [
 | 用途 | 來源 | URL 範本 | 條件 |
 |---|---|---|---|
 | 底圖 | NLSC 通用電子地圖 | `https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}`（灰階換 `EMAP01`） | 免申請，註明出處 |
-| 正射 | 都發局歷史圖資（圖層 Image_3857「最新版航測影像」，2026-09 實測指向 2021 年航照） | `https://www.historygis.udd.gov.taipei/arcgis/rest/services/Aerial/Ortho_2021/MapServer/WMTS/tile/1.0.0/Aerial_Ortho_2021/default/GoogleMapsCompatible/{z}/{y}/{x}`（服務只接受 GetCapabilities 的 ResourceURL 形式，短路徑回 404；回 image/jpeg、帶 CORS、範圍只涵蓋臺北） | 條款灰色地帶，上線前寄信確認 |
-| 正射備援 | NLSC `PHOTO2` | 同 EMAP 範本換圖層名 | 免申請 |
+| 正射（使用中） | NLSC `PHOTO2` | 同 EMAP 範本換圖層名 | 免申請，註明出處 |
+| 正射（候選，2026-09-20 起暫不使用） | 都發局歷史圖資（圖層 Image_3857「最新版航測影像」，2026-09 實測指向 2021 年航照） | `https://www.historygis.udd.gov.taipei/arcgis/rest/services/Aerial/Ortho_2021/MapServer/WMTS/tile/1.0.0/Aerial_Ortho_2021/default/GoogleMapsCompatible/{z}/{y}/{x}`（服務只接受 GetCapabilities 的 ResourceURL 形式，短路徑回 404；回 image/jpeg、帶 CORS、範圍只涵蓋臺北） | 「不得對外流通發布予第三方」條款未澄清；授權確認是獨立待辦，回覆同意後再切回 |
 
-圖磚 URL 與 attribution 集中在 `web/src/basemaps.ts`，切換備援只改一處。不預抓、不快取到自己的儲存。attribution 常駐地圖右下：「底圖 © 內政部國土測繪中心｜航照 © 臺北市政府都市發展局｜受保護樹木 © 臺北市政府文化局（政府資料開放授權條款－第1版）｜回報資料 CC BY 4.0」。
+圖磚 URL 集中在 `web/src/basemaps.ts`（`ACTIVE_ORTHO`），但切換正射來源不是只改一行：attribution 字串標示航照的來源機關，`web/src/ui-strings.json`、`web/src/content/attribution.html`、`web/__tests__/content.test.ts` 必須同時改，否則顯名會錯。不預抓、不快取到自己的儲存。attribution 常駐地圖右下，現行字串：「底圖與航照 © 內政部國土測繪中心｜受保護樹木 © 臺北市政府文化局（政府資料開放授權條款－第1版）｜回報資料 CC BY 4.0」；切回都發局時改為「底圖 © 內政部國土測繪中心｜航照 © 臺北市政府都市發展局｜受保護樹木 © 臺北市政府文化局（政府資料開放授權條款－第1版）｜回報資料 CC BY 4.0」。
 
 ---
 
@@ -324,7 +324,7 @@ D1 免費層無自動備份；若之後需要更長的完整備份再評估綁�
 | 項目 | 處理 |
 |---|---|
 | Workers Free 的 10 ms CPU 也套用在 cron，一萬筆 JSON 序列化可能貼近上限 | 本機實測（2026-09-19，10,000 筆可見列）：cron wall-clock 40 到 66 ms 含本機 D1 與 KV I/O，本機 workerd 量不到 CPU time；純 JS 序列化與 JSON.parse 在 Node 粗估 4 到 5 ms。快照 1,894,799 bytes（ASCII 假資料，真實資料更大），gzip 約 385 KB。結論是沒有明顯超標的證據但餘裕不大，remote 實測前不當作安全；超標就切成多個 `snapshot:part:<n>` 加 manifest，或升 Paid（USD 5/月） |
-| 都發局正射 WMTS「不得對外流通發布予第三方」條款 | 上線前寄信確認；`basemaps.ts` 一鍵切 `PHOTO2` |
+| 都發局正射 WMTS「不得對外流通發布予第三方」條款 | 2026-09-20 決定：確認前不使用，航照已切 NLSC `PHOTO2`；授權確認為獨立待辦（找窗口、擬信、人工寄出），同意後切回並改 attribution 四個檔案（第 7 節） |
 | 已解列的樹在現有資料集無座標 | M2 先匯能對到的，`pending.json` 統計數量再決定是否做地址地理編碼 |
 | 清冊 diff 誤判（重編號、資料修正） | M3 離線觀察數週再決定上線 |
 | 政府 WMTS 無 SLA、無公開流量限制 | 圖磚失效不影響回報功能；備援切換一處改 |
