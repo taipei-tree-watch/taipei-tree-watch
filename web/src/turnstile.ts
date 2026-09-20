@@ -1,10 +1,11 @@
 /**
  * The Turnstile widget in front of the submit button.
  *
- * This is the one external script the page loads. The site key is baked in at
- * build time from VITE_TURNSTILE_SITE_KEY; with no value set the build falls
- * back to Cloudflare's always-passing test key, which is what local
- * development and the test suite run against.
+ * This is the one external script the page loads. The site key is public and
+ * lives in the [vars] table of wrangler.toml, the same place the Worker reads
+ * it from; the Vite build bakes that value in as VITE_TURNSTILE_SITE_KEY. Unit
+ * tests import this module without going through Vite, so an absent value
+ * falls back to Cloudflare's always-passing test key.
  */
 
 export const TURNSTILE_SCRIPT_URL =

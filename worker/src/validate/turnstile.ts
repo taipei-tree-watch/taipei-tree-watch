@@ -3,8 +3,11 @@
  *
  * The widget token is single-use and bound to the client that solved it, so the
  * client IP is sent along and Cloudflare rejects a token replayed from
- * elsewhere. A network or parsing failure counts as a failed verification:
- * an unverified submission must never reach the database.
+ * elsewhere. The hostname siteverify reports is the page that served the
+ * widget, so comparing it against the expected hostname rejects a token
+ * farmed from a copy of the form hosted elsewhere. A network or parsing
+ * failure counts as a failed verification: an unverified submission must never
+ * reach the database.
  */
 
 export const TURNSTILE_VERIFY_URL =
@@ -12,6 +15,7 @@ export const TURNSTILE_VERIFY_URL =
 
 interface TurnstileResponse {
   success?: boolean;
+  hostname?: string;
 }
 
 export interface VerifyTurnstileParams {
@@ -21,12 +25,19 @@ export interface VerifyTurnstileParams {
   readonly token: string;
   /** Value of the CF-Connecting-IP header, if the request carried one. */
   readonly remoteip: string | null;
+  /**
+   * Hostname the widget is expected to have been served from. An empty string
+   * skips the comparison, which is how local development and the test suite
+   * run: siteverify answers "example.com" for Cloudflare's test keys.
+   */
+  readonly expectedHostname: string;
 }
 
 export async function verifyTurnstile({
   secret,
   token,
   remoteip,
+  expectedHostname,
 }: VerifyTurnstileParams): Promise<boolean> {
   if (token === '') {
     return false;
@@ -54,7 +65,13 @@ export async function verifyTurnstile({
 
   try {
     const result = (await response.json()) as TurnstileResponse;
-    return result.success === true;
+    if (result.success !== true) {
+      return false;
+    }
+    if (expectedHostname === '') {
+      return true;
+    }
+    return result.hostname === expectedHostname;
   } catch {
     return false;
   }

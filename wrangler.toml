@@ -9,14 +9,12 @@ assets = { directory = "web/dist", binding = "ASSETS", run_worker_first = ["/api
 [[d1_databases]]
 binding = "DB"
 database_name = "taipei-tree-watch"
-# Placeholder. Replace with the id printed by `wrangler d1 create taipei-tree-watch`.
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "a6deb847-27c8-494f-8721-04accfd1b911"
 migrations_dir = "migrations"
 
 [[kv_namespaces]]
 binding = "SNAPSHOTS"
-# Placeholder. Replace with the id printed by `wrangler kv namespace create SNAPSHOTS`.
-id = "0000000000000000000000000000dead"
+id = "a46890929ba843c2810a54e1865637e6"
 
 [triggers]
 crons = ["*/15 * * * *"]
@@ -25,9 +23,19 @@ crons = ["*/15 * * * *"]
 enabled = true
 
 [vars]
-# Placeholder. Replace with the public site key from the Turnstile dashboard.
-# The matching secret key is set with `wrangler secret put TURNSTILE_SECRET_KEY`.
-TURNSTILE_SITE_KEY = "0x0000000000000000000000AA"
+# Public Turnstile site key. The frontend build reads it from here through
+# scripts/turnstile-site-key.ts, so this file is the single source.
+# Currently Cloudflare's always-passing test key: no production widget exists
+# yet. The matching secret key is set with `wrangler secret put
+# TURNSTILE_SECRET_KEY`.
+TURNSTILE_SITE_KEY = "1x00000000000000000000AA"
+# Hostname the Turnstile widget is expected to be served from. An empty value
+# turns the check off, which is what local `wrangler dev` and the test suite
+# rely on. It stays empty while TURNSTILE_SITE_KEY is a test key, because
+# siteverify answers "example.com" for test keys regardless of the real origin.
+# Set it to "taipei-tree-watch.taipeitreewatch.workers.dev" together with the
+# production keys.
+TURNSTILE_HOSTNAME = ""
 # Accepted report coordinates: minLng,minLat,maxLng,maxLat (WGS84).
 # Taipei City plus roughly two kilometres, so a report aimed from a
 # boundary street is still accepted. See SPEC section 2.

@@ -75,6 +75,7 @@ export async function handleCreateReport(request: Request, env: Env): Promise<Re
     secret: env.TURNSTILE_SECRET_KEY,
     token: readTurnstileToken(body),
     remoteip: request.headers.get('CF-Connecting-IP'),
+    expectedHostname: env.TURNSTILE_HOSTNAME ?? '',
   });
   if (!verified) {
     return singleError(403, 'turnstile_token', 'Turnstile verification failed');

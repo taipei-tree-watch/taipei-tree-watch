@@ -19,6 +19,11 @@ export interface Env {
 
   /** Public Turnstile site key rendered into the report form. */
   TURNSTILE_SITE_KEY: string;
+  /**
+   * Hostname the Turnstile widget is expected to be served from. Absent or
+   * empty turns the comparison off.
+   */
+  TURNSTILE_HOSTNAME?: string;
   /** Accepted coordinate range as "minLng,minLat,maxLng,maxLat". */
   BBOX: string;
 
