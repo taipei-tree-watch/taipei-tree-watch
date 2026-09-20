@@ -73,7 +73,7 @@
     "coords": "緯度 {lat}，經度 {lng}",
     "zoomLevel": "目前縮放 {zoom}，需要 {min} 以上",
     "blockedZoom": "請再拉近。放大到看得出單棵樹冠再送出。",
-    "blockedBbox": "這個位置超出收件範圍，請把地圖移回臺北都會區。",
+    "blockedBbox": "這個位置超出收件範圍。本站只收臺北市與市界附近的回報。",
     "positionReady": "位置可以送出。",
     "locate": "移到我的位置",
     "locating": "正在定位……",

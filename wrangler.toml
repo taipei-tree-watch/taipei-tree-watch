@@ -29,4 +29,6 @@ enabled = true
 # The matching secret key is set with `wrangler secret put TURNSTILE_SECRET_KEY`.
 TURNSTILE_SITE_KEY = "0x0000000000000000000000AA"
 # Accepted report coordinates: minLng,minLat,maxLng,maxLat (WGS84).
-BBOX = "121.30,24.85,121.75,25.35"
+# Taipei City plus roughly two kilometres, so a report aimed from a
+# boundary street is still accepted. See SPEC section 2.
+BBOX = "121.43,24.94,121.68,25.24"

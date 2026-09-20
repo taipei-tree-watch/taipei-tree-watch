@@ -16,7 +16,7 @@ import {
 } from '../src/report/draft.ts';
 
 /** Same values as the Worker's BBOX var. */
-const BBOX: Bbox = { minLng: 121.3, minLat: 24.85, maxLng: 121.75, maxLat: 25.35 };
+const BBOX: Bbox = { minLng: 121.43, minLat: 24.94, maxLng: 121.68, maxLat: 25.24 };
 
 const INSIDE = { lat: 25.033, lng: 121.5654, zoom: MIN_SUBMIT_ZOOM };
 const TODAY = '2026-09-19';
@@ -92,6 +92,12 @@ describe('submitBlock', () => {
 
   it('blocks a point outside the box', () => {
     expect(submitBlock({ lat: 24.8, lng: 120.97, zoom: 19 }, BBOX)).toBe('bbox');
+  });
+
+  // Sanxia, well inside New Taipei. The box covers Taipei City only, so this
+  // is rejected even though it is a short drive from the city boundary.
+  it('blocks a point in New Taipei', () => {
+    expect(submitBlock({ lat: 24.93, lng: 121.37, zoom: 19 }, BBOX)).toBe('bbox');
   });
 
   it('reports the box before the zoom when both fail', () => {

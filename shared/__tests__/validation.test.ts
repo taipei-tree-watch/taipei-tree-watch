@@ -71,27 +71,27 @@ describe('isAllowedLink', () => {
 });
 
 describe('parseBbox and isInsideBbox', () => {
-  const bbox = parseBbox('121.30,24.85,121.75,25.35');
+  const bbox = parseBbox('121.43,24.94,121.68,25.24');
 
   it('parses the minLng,minLat,maxLng,maxLat form', () => {
-    expect(bbox).toEqual({ minLng: 121.3, minLat: 24.85, maxLng: 121.75, maxLat: 25.35 });
+    expect(bbox).toEqual({ minLng: 121.43, minLat: 24.94, maxLng: 121.68, maxLat: 25.24 });
   });
 
   it('returns null for malformed or inverted boxes', () => {
-    expect(parseBbox('121.30,24.85,121.75')).toBeNull();
+    expect(parseBbox('121.43,24.94,121.68')).toBeNull();
     expect(parseBbox('a,b,c,d')).toBeNull();
-    expect(parseBbox('121.75,24.85,121.30,25.35')).toBeNull();
+    expect(parseBbox('121.68,24.94,121.43,25.24')).toBeNull();
   });
 
   it('accepts a point inside and on the edge', () => {
     expect(bbox).not.toBeNull();
     expect(isInsideBbox(bbox!, 25.0338, 121.5645)).toBe(true);
-    expect(isInsideBbox(bbox!, 24.85, 121.3)).toBe(true);
+    expect(isInsideBbox(bbox!, 24.94, 121.43)).toBe(true);
   });
 
   it('rejects a point outside', () => {
     expect(isInsideBbox(bbox!, 22.6273, 120.3014)).toBe(false);
-    expect(isInsideBbox(bbox!, 25.36, 121.5)).toBe(false);
+    expect(isInsideBbox(bbox!, 25.25, 121.5)).toBe(false);
   });
 });
 

@@ -247,7 +247,7 @@ export const causes = [
 1. `Content-Type` 為 JSON、body 小於 16 KB、可解析為 JSON（Turnstile token 在 body 裡，所以解析失敗算在這一條）。
 2. Turnstile token 向 Cloudflare 驗證成功，且 `remoteip` 一致。
 3. zod schema：欄位型別、未知欄位拒收。
-4. `lat`、`lng` 落在 `BBOX`（緯度 24.85 到 25.35、經度 121.30 到 121.75），四捨五入到 5 位。
+4. `lat`、`lng` 落在 `BBOX`（緯度 24.94 到 25.24、經度 121.43 到 121.68），四捨五入到 5 位。
 5. `causes`、`dispositions`、`evidence` 的每個代碼存在於 `shared/tags.ts`；`source` 由伺服器強制為 1，客戶端傳的值忽略。
 6. `evidence` 為「無公告，僅目擊」或「高風險掛牌」時，`causes` 必須為空。
 7. `species` 去頭尾空白、50 字內。

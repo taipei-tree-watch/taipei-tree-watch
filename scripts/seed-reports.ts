@@ -23,7 +23,7 @@ const count = Number(process.argv[3] ?? 10_000);
 const rowsPerStatement = 100;
 
 /** BBOX from wrangler.toml: minLng, minLat, maxLng, maxLat. */
-const BBOX = { minLng: 121.3, minLat: 24.85, maxLng: 121.75, maxLat: 25.35 };
+const BBOX = { minLng: 121.43, minLat: 24.94, maxLng: 121.68, maxLat: 25.24 };
 
 const SPECIES = [
   'Ficus microcarpa',

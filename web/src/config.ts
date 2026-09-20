@@ -9,7 +9,7 @@ import type { Bbox } from '../../shared/validation.ts';
 import { parseBbox } from '../../shared/validation.ts';
 
 /** Same string as the BBOX var in wrangler.toml. */
-export const BBOX_STRING = '121.30,24.85,121.75,25.35';
+export const BBOX_STRING = '121.43,24.94,121.68,25.24';
 
 function required(value: Bbox | null): Bbox {
   if (value === null) {
