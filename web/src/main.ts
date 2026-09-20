@@ -254,6 +254,7 @@ async function start(): Promise<void> {
     },
     fetchImpl: (input, init) => fetch(input, init),
     now: () => new Date(),
+    storage,
   });
   reportForm.setTrees(trees);
 

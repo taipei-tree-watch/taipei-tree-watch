@@ -87,6 +87,7 @@
     "nearbyClear": "取消關聯",
     "nearbyLinked": "已關聯受保護樹木 #{id}。",
     "optional": "可留空",
+    "safetyDismiss": "我知道了",
     "species": "樹種",
     "speciesHint": "自由填寫，最多 50 字。不確定可留空。",
     "evidence": "參考來源",

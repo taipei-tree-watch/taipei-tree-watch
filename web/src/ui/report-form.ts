@@ -42,7 +42,8 @@ import {
   withEvidence,
 } from '../report/draft.ts';
 import type { FormField } from '../report/errors.ts';
-import type { PendingReport } from '../report/pending.ts';
+import type { PendingReport, StorageLike } from '../report/pending.ts';
+import { dismissSafety, isSafetyDismissed } from '../report/safety.ts';
 import type { FetchLike } from '../report/submit.ts';
 import { submitReport } from '../report/submit.ts';
 import type { TurnstileWidget } from '../turnstile.ts';
@@ -61,6 +62,8 @@ export interface ReportFormOptions {
   readonly onModeChange: (mode: PickerMode) => void;
   readonly fetchImpl: FetchLike;
   readonly now: () => Date;
+  /** Holds the safety notice acknowledgement, one entry per browser. */
+  readonly storage: StorageLike;
 }
 
 export interface ReportForm {
@@ -159,7 +162,14 @@ function tagGroup(
   return { group, options, inputs, error };
 }
 
-function safetySection(): HTMLElement {
+/**
+ * The safety notice, with the button that puts it away.
+ *
+ * Acknowledging it hides the whole section and records that in storage, so a
+ * returning reporter goes straight to the fields. Where storage is refused
+ * the notice simply comes back on the next visit.
+ */
+function safetySection(storage: StorageLike): HTMLElement {
   const section = document.createElement('section');
   section.className = 'form-safety';
 
@@ -177,6 +187,18 @@ function safetySection(): HTMLElement {
   body.className = 'section-body';
   body.innerHTML = safety.html;
   section.append(body);
+
+  const dismiss = document.createElement('button');
+  dismiss.type = 'button';
+  dismiss.className = 'form-secondary';
+  dismiss.textContent = strings.form.safetyDismiss;
+  dismiss.addEventListener('click', () => {
+    section.hidden = true;
+    dismissSafety(storage);
+  });
+  section.append(dismiss);
+
+  section.hidden = isSafetyDismissed(storage);
 
   return section;
 }
@@ -283,7 +305,7 @@ export function createReportForm(
   form.noValidate = true;
   form.hidden = true;
 
-  form.append(safetySection());
+  form.append(safetySection(options.storage));
 
   const speciesInput = document.createElement('input');
   speciesInput.type = 'text';
