@@ -71,14 +71,13 @@ assertSnapshot(snapshot);
 
 // Reformat rather than echoing the response: one row per line keeps a git diff
 // down to the rows that actually changed.
+const rowLines = snapshot.rows.map((row) => `    ${JSON.stringify(row)}`).join(',\n');
 const document = [
   '{',
   `  "schema": ${JSON.stringify(snapshot.schema)},`,
   `  "generated_at": ${JSON.stringify(snapshot.generated_at)},`,
   `  "columns": ${JSON.stringify(snapshot.columns)},`,
-  '  "rows": [',
-  snapshot.rows.map((row) => `    ${JSON.stringify(row)}`).join(',\n'),
-  '  ]',
+  ...(rowLines === '' ? ['  "rows": []'] : ['  "rows": [', rowLines, '  ]']),
   '}',
   '',
 ].join('\n');

@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "generated_at": "2026-09-20T05:15:51.000Z",
+  "columns": ["id","lat","lng","species","causes","dispositions","evidence","source","note","link","observed_at","protected_tree_id","inventory_tree_id","created_at"],
+  "rows": []
+}
