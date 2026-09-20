@@ -169,7 +169,8 @@
 
 ## 後續版本
 
-- **受保護樹木自動更新**：`pipeline-protected-trees.yml` 每週排程加手動觸發，commit 回 `main`。前提是先解 data.taipei 憑證問題（TECH-SPEC 第 12 節三個候選解法擇一）。第一版手動重跑：curl 下載 CSV 後 `uv run ttw-pipelines protected-trees --input <csv>`，commit `trees.json` 與 `changes/`。
+- **受保護樹木自動更新**：本機排程每週執行管線，commit 回 `main`。前提是先解 data.taipei 憑證問題（TECH-SPEC 第 12 節三個候選解法擇一）。第一版手動重跑：curl 下載 CSV 後 `uv run ttw-pipelines protected-trees --input <csv>`，commit `trees.json` 與 `changes/`。
+- **假資料貼近真實分布**：`scripts/seed-reports.ts` 目前在收件框內均勻亂數撒點，只有約半數落在有樹的地方，用來看叢集配色與半徑會得到相反的印象。改成依受保護樹木或行道樹位置加擾動生成，讓空間聚集在本機就看得出來。
 
 ## 橫向事項
 
