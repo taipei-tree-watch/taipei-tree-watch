@@ -13,10 +13,13 @@ const BANNED_TERMS = [
   '\u5F85\u514B\u5229',
 ] as const;
 
-/** The four part map attribution fixed by TECH-SPEC.md section 7. */
+/**
+ * The attribution shown on the map. It names the orthophoto's source, so it
+ * follows the provider chosen in web/src/basemaps.ts and must stay identical
+ * to `attribution.map` in web/src/ui-strings.json.
+ */
 const MAP_ATTRIBUTION =
-  '\u5E95\u5716 \u00A9 \u5167\u653F\u90E8\u570B\u571F\u6E2C\u7E6A\u4E2D\u5FC3' +
-  '\uFF5C\u822A\u7167 \u00A9 \u81FA\u5317\u5E02\u653F\u5E9C\u90FD\u5E02\u767C\u5C55\u5C40' +
+  '\u5E95\u5716\u8207\u822A\u7167 \u00A9 \u5167\u653F\u90E8\u570B\u571F\u6E2C\u7E6A\u4E2D\u5FC3' +
   '\uFF5C\u53D7\u4FDD\u8B77\u6A39\u6728 \u00A9 \u81FA\u5317\u5E02\u653F\u5E9C\u6587\u5316\u5C40\uFF08\u653F\u5E9C\u8CC7\u6599\u958B\u653E\u6388\u6B0A\u689D\u6B3E\uFF0D\u7B2C1\u7248\uFF09' +
   '\uFF5C\u56DE\u5831\u8CC7\u6599 CC BY 4.0';
 

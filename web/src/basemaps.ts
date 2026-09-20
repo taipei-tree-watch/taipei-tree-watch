@@ -29,11 +29,18 @@ export const BASE_MAP: RasterBasemap = {
 
 /**
  * Taipei Department of Urban Development historical imagery, layer Image_3857
- * ("most recent aerial survey", currently the 2021 orthophoto). Style `default`
- * and tile matrix set `GoogleMapsCompatible` come from the service's own
- * GetCapabilities ResourceURL template, which is the only form the service
- * answers; the shorter /WMTS/<layer>/... path returns 404.
- * Bounds are the layer's declared WGS84 bounding box.
+ * ("most recent aerial survey", currently the 2021 orthophoto). Its resolution
+ * resolves individual tree crowns, which the base map's orthophoto does not,
+ * so it is the one the point picker wants.
+ *
+ * Not wired in: the service forbids redistributing tiles to third parties, and
+ * whether a public site's visitors count as third parties is unanswered. This
+ * stays here, verified, for the day that question is settled.
+ *
+ * Style `default` and tile matrix set `GoogleMapsCompatible` come from the
+ * service's own GetCapabilities ResourceURL template, which is the only form
+ * the service answers; the shorter /WMTS/<layer>/... path returns 404. Bounds
+ * are the layer's declared WGS84 bounding box.
  */
 export const ORTHO_UDD: RasterBasemap = {
   id: 'udd-ortho',
@@ -46,7 +53,10 @@ export const ORTHO_UDD: RasterBasemap = {
   bounds: [121.44793706776125, 24.958035579111545, 121.67115596679868, 25.213460888270184],
 };
 
-/** NLSC orthophoto, the standby provider with no licensing question attached. */
+/**
+ * NLSC orthophoto, nationwide and under the same open data terms as the base
+ * map. Coarser than the city's own imagery, and the one actually in use.
+ */
 export const ORTHO_NLSC: RasterBasemap = {
   id: 'nlsc-photo2',
   tiles: ['https://wmts.nlsc.gov.tw/wmts/PHOTO2/default/GoogleMapsCompatible/{z}/{y}/{x}'],
@@ -55,8 +65,11 @@ export const ORTHO_NLSC: RasterBasemap = {
   maxzoom: 20,
 };
 
-/** The orthophoto actually wired into the map. Swap to ORTHO_NLSC to switch providers. */
-export const ACTIVE_ORTHO: RasterBasemap = ORTHO_UDD;
+/**
+ * The orthophoto actually wired into the map. Switching to ORTHO_UDD also
+ * means rewording the attribution, which names the imagery's source.
+ */
+export const ACTIVE_ORTHO: RasterBasemap = ORTHO_NLSC;
 
 /** Shown bottom right at all times; the wording is fixed by the tech spec. */
 export const MAP_ATTRIBUTION: string = strings.attribution.map;
