@@ -16,7 +16,10 @@
     "typecheck": "tsc -p tsconfig.web.json && tsc -p tsconfig.worker.json && tsc -p tsconfig.scripts.json",
     "lint": "eslint .",
     "test": "vitest run",
-    "dev": "wrangler dev"
+    "dev": "wrangler dev",
+    "check": "npm run build:shared && git diff --exit-code -- shared/generated && npm run typecheck && npm run lint && npm test",
+    "check:pipelines": "uv sync --directory pipelines && uv run --directory pipelines ruff check . && uv run --directory pipelines pytest",
+    "deploy": "npm run check && npm run build && wrangler deploy"
   },
   "dependencies": {
     "maplibre-gl": "^6.10.0",

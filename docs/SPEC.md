@@ -253,7 +253,7 @@ tag 清單要放在**單一 source of truth 檔案**，前後端共用。
 兩個上線前要實測或另行安排的點：
 
 - Workers Free 的 10 ms CPU 上限也套用在 Cron，把一萬筆序列化成 JSON 可能貼近上限。不行就分批，或升 Paid（USD 5/月，同時解掉 D1 超額硬失敗的擔憂）
-- 公園處清冊 diff（每日下載 11 MB CSV、比對 9 萬筆）超出 Worker CPU 上限，這支 job 跑 GitHub Actions 或本機 cron，結果再寫進 D1
+- 公園處清冊 diff（每日下載 11 MB CSV、比對 9 萬筆）超出 Worker CPU 上限，這支 job 跑本機排程，結果再寫進 D1
 
 ---
 

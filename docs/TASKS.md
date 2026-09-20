@@ -8,15 +8,15 @@
 
 ## M0 帳號與 repo 骨架
 
-目標：空專案可以 `wrangler deploy` 出一個 hello world，CI 綠燈。
+目標：空專案可以從本機 `wrangler deploy` 出一個 hello world，`npm run check` 全數通過。
 
 ### E0.1 帳號建立（人工）
 - 建 Cloudflare 帳號，workers.dev 子網域 `taipeitreewatch`
 - 建 GitHub organization `taipei-tree-watch`，成員可見性 private，建 public repo `taipei-tree-watch`
-- 建 Cloudflare API token（Workers Scripts、D1、KV、Static Assets 編輯權）與 Account ID，放 GitHub secrets
+- 建 Cloudflare API token（Workers Scripts、D1、KV、Static Assets 編輯權）與 Account ID，只放部署機器的 shell 環境變數 `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`，不進 repo 也不放 GitHub
 - 建 Turnstile widget（hostname 為 workers.dev 網址），Site key 進 `wrangler.toml` vars、Secret key 用 `wrangler secret put`
 - 開 Web Analytics，取 beacon token
-- 完成條件：兩個帳號、API token、Turnstile widget、Web Analytics 皆就位，secrets 已放入 GitHub
+- 完成條件：兩個帳號、API token、Turnstile widget、Web Analytics 皆就位，本機 `npx wrangler whoami` 看得到專案帳號
 
 ### E0.2 Repo 骨架
 - 依 TECH-SPEC 第 2 節建目錄；`package.json`（Vite、TypeScript、ESLint、vitest、wrangler、zod、maplibre-gl）；`pipelines/pyproject.toml`（uv、ruff、pytest、pyproj、pypdf 或 pdfplumber、httpx）
@@ -25,9 +25,11 @@
 - `LICENSE`（MIT）、`README.md`（只寫專案目的與授權）
 - 完成條件：`npm run build` 產出 `web/dist`；`wrangler dev` 起得來；`uv run pytest` 跑空測試通過
 
-### E0.3 CI 與部署
-- `ci.yml`：typecheck、eslint、vitest、ruff、pytest
-- `deploy.yml`：`main` 綠燈後 `wrangler deploy`
+### E0.3 檢查與部署腳本
+- 狀態：2026-09-20 改為本機 npm script，不使用 GitHub Actions；原 `ci.yml`、`deploy.yml` 已移除
+- `npm run check`：`shared/generated` 一致性、typecheck、eslint、vitest
+- `npm run check:pipelines`：ruff、pytest
+- `npm run deploy`：`check` 通過後 build 並 `wrangler deploy`
 - 完成條件：push 一個 hello world 到 `main`，網址 `taipei-tree-watch.taipeitreewatch.workers.dev` 可開
 
 ---
@@ -86,9 +88,9 @@
 ### E1.8 上線檢查
 - 軟刪除 SOP 演練一次（隱藏一筆、觸發 cron、確認消失）
 - 快照回滾演練一次
-- `snapshot-backup.yml`、`d1-export.yml` 排程啟用
+- `snapshot-backup`、`d1-export` 的本機排程（launchd 或 cron）啟用
 - Web Analytics beacon 上線
-- Turnstile 正式 widget 建好後，在 siteverify 回應加 `hostname` 比對（本機開發階段不比對）；決定 site key 注入方式並在 deploy.yml 帶入（見 TECH-SPEC 3.2）；真機確認 widget 挑戰 iframe 正常產生 token（自動化瀏覽器裡不會產生）
+- Turnstile 正式 widget 建好後，在 siteverify 回應加 `hostname` 比對（本機開發階段不比對）；決定 site key 注入方式並在 `npm run deploy` 帶入（見 TECH-SPEC 3.2）；真機確認 widget 挑戰 iframe 正常產生 token（自動化瀏覽器裡不會產生）
 - 完成條件：以上皆演練過並記在 `workdocs/`
 
 ---

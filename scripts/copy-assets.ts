@@ -1,8 +1,8 @@
 /**
  * Copy pipeline output into web/public/ so Vite ships it as a static asset.
  *
- * The files under data/ are produced by the Python pipelines and committed by
- * GitHub Actions; web/public/trees.json is a build product and is gitignored.
+ * The files under data/ are produced by the Python pipelines and committed to
+ * the repo; web/public/trees.json is a build product and is gitignored.
  * Run with: npm run build:assets
  */
 import { copyFileSync, mkdirSync } from 'node:fs';

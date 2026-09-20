@@ -64,7 +64,6 @@ taipei-tree-watch/
 │   ├── inventory/             M3：清冊 diff 結果
 │   └── snapshots/             每日公開快照 latest.json ＋ <date>.json
 ├── pipelines/                 Python：pyproject.toml、src/ttw_pipelines/、tests/
-├── .github/workflows/         ci.yml、deploy.yml、pipeline-*.yml
 ├── wrangler.toml
 ├── package.json
 └── workdocs/                  gitignored
@@ -163,7 +162,7 @@ Managed 模式 widget 放在表單送出前。Worker 向 `https://challenges.clo
 
 ### 3.7 資料管線 `pipelines/`
 
-Python 3.12 以上，uv 管理，跑在 GitHub Actions。每支管線是一個 CLI 子命令，輸入是外部來源，輸出是 `data/` 下的 JSON，由 Actions commit。共用的 tag 代碼從 `shared/generated/*.json` 讀。
+Python 3.12 以上，uv 管理，在本機執行（排程用本機 launchd 或 cron）。每支管線是一個 CLI 子命令，輸入是外部來源，輸出是 `data/` 下的 JSON，執行後 commit 並 push。共用的 tag 代碼從 `shared/generated/*.json` 讀。
 
 | 管線 | 排程 | 輸入 | 輸出 |
 |---|---|---|---|
@@ -171,9 +170,9 @@ Python 3.12 以上，uv 管理，跑在 GitHub Actions。每支管線是一個 C
 | `delisting`（M2） | 每週 | 文化局樹保會列表頁 → 委員會議程／紀錄 PDF | `data/delisting/<meeting-id>.json`（可上圖的回報列）、`pending.json`（對不到座標的） |
 | `inventory-diff`（M3） | 每日 | 公園處 `TaipeiTree.csv`、`TaipeiParkTree.csv` | `data/inventory/<date>.json`（消失與新增的樹籤編號） |
 | `snapshot-backup` | 每日 | `GET /api/snapshot` | `data/snapshots/latest.json`、`<date>.json` |
-| `d1-export` | 每週 | `wrangler d1 export` | Actions artifact（含 `reporter_hash`，不進 repo，保留 90 天） |
+| `d1-export` | 每週 | `wrangler d1 export` | 本機備份目錄（含 `reporter_hash`，不進 repo，保留 90 天） |
 
-官方紀錄匯入 D1：`delisting` 管線另產出 `data/delisting/import.sql`（`INSERT OR IGNORE`，以 `external_ref` 去重），Actions 用 `wrangler d1 execute --remote --file` 執行。匯入是冪等的，重跑不會重複。
+官方紀錄匯入 D1：`delisting` 管線另產出 `data/delisting/import.sql`（`INSERT OR IGNORE`，以 `external_ref` 去重），以 `wrangler d1 execute --remote --file` 執行。匯入是冪等的，重跑不會重複。
 
 座標轉換：公園處清冊為 TWD97 TM2（EPSG:3826），用 pyproj 轉 WGS84。受保護樹木已是經緯度，不轉。
 
@@ -196,7 +195,7 @@ Python 3.12 以上，uv 管理，跑在 GitHub Actions。每支管線是一個 C
 3. `observed_at`：從說明欄解析民國日期（現勘日期），解析不到用會議日期並在 `note` 前綴「日期為會議日期」。
 4. 病因 tag 由關鍵字表對應（褐根病、倒伏、腐朽、枯死、颱風等），對不到留空。
 5. 座標：以 `protected_tree_id` 查 `data/protected-trees/` 的所有歷史版本，找到就上圖，找不到進 `pending.json`。
-6. 產 `import.sql`，Actions 匯入。
+6. 產 `import.sql`，以 `wrangler d1 execute --remote --file` 匯入。
 
 ### 4.3 清冊消失（M3，離線階段）
 
@@ -279,11 +278,12 @@ export const causes = [
 - 帳號：Cloudflare 帳號（子網域 `taipeitreewatch`）、GitHub organization `taipei-tree-watch`。網址 `https://taipei-tree-watch.taipeitreewatch.workers.dev`，不買網域。
 - `wrangler.toml`：`name = "taipei-tree-watch"`、`main = "worker/src/index.ts"`、`assets = { directory = "web/dist" }`、`triggers.crons = ["*/15 * * * *"]`、D1 與 KV bindings、`observability.enabled = true`。
 - 環境只有一個（production）。本機開發用 `wrangler dev` 加 `--local` D1 與 KV。
-- GitHub secrets：`CLOUDFLARE_API_TOKEN`（權限：Workers Scripts、D1、KV、Workers Static Assets）、`CLOUDFLARE_ACCOUNT_ID`。Worker secrets 用 `wrangler secret put` 設一次。
-- Workflows：
-  - `ci.yml`：push 與 PR 觸發；`npm ci` → `tsc --noEmit` → `eslint` → `vitest`（Worker 測試用 `@cloudflare/vitest-pool-workers`）；`uv sync` → `ruff check` → `pytest`。
-  - `deploy.yml`：push `main` 且 `ci` 成功後 `npm run build` → `wrangler deploy`。
-  - `pipeline-*.yml`：各管線的排程與手動觸發，產出 commit 回 `main`（commit 作者為 GitHub Actions bot）。
+- Cloudflare 憑證：`CLOUDFLARE_API_TOKEN`（權限：Workers Scripts、D1、KV、Workers Static Assets）與 `CLOUDFLARE_ACCOUNT_ID` 放在部署機器的 shell 環境，不進 repo。Worker secrets 用 `wrangler secret put` 設一次。
+- 不使用 GitHub Actions；檢查與部署都是本機 npm script：
+  - `npm run check`：`build:shared` 並確認 `shared/generated` 無 diff → `typecheck` → `lint` → `vitest`（Worker 測試用 `@cloudflare/vitest-pool-workers`）。
+  - `npm run check:pipelines`：`uv sync` → `ruff check` → `pytest`。
+  - `npm run deploy`：`check` 通過後 `npm run build` → `wrangler deploy`。
+  - 管線由本機排程執行，產出 commit 回 `main`。
 - 不開 PR、不做預覽環境；直接 push `main`。
 
 ---
@@ -294,7 +294,7 @@ export const causes = [
 |---|---|---|
 | 公開快照 | `snapshot-backup` 每日 commit 到 `data/snapshots/` | 永久（git 歷史） |
 | KV 歷史版本 | cron 保留最近 48 份 | 12 小時 |
-| D1 完整內容（含 `reporter_hash`） | `d1-export` 每週 Actions artifact | 90 天 |
+| D1 完整內容（含 `reporter_hash`） | `d1-export` 每週寫到本機備份目錄 | 90 天 |
 | 管線原始輸入 | 不保留原始 CSV 與 PDF，只保留轉換後 JSON 與來源 URL | 永久 |
 
 D1 免費層無自動備份；若之後需要更長的完整備份再評估綁卡開 R2。
@@ -328,7 +328,7 @@ D1 免費層無自動備份；若之後需要更長的完整備份再評估綁�
 | 已解列的樹在現有資料集無座標 | M2 先匯能對到的，`pending.json` 統計數量再決定是否做地址地理編碼 |
 | 清冊 diff 誤判（重編號、資料修正） | M3 離線觀察數週再決定上線 |
 | 政府 WMTS 無 SLA、無公開流量限制 | 圖磚失效不影響回報功能；備援切換一處改 |
-| data.taipei 的根憑證（TWCA Global Root CA）缺 Subject Key Identifier，Python 3.13 起 `ssl.create_default_context()` 預設 `VERIFY_X509_STRICT` 會拒絕連線；httpx 下載在本機 Python 3.14 失敗，curl 正常 | 第一版不自動更新（2026-09-19 決定），`trees.json` 由 curl 手動取得後以 `--input` 產出，httpx 下載函式未經實測。做自動排程時再擇一：只對該 client 清 strict 旗標（保留鏈與 hostname 驗證）、pipelines 釘 Python 3.12、或 Actions 改用 curl 下載 |
+| data.taipei 的根憑證（TWCA Global Root CA）缺 Subject Key Identifier，Python 3.13 起 `ssl.create_default_context()` 預設 `VERIFY_X509_STRICT` 會拒絕連線；httpx 下載在本機 Python 3.14 失敗，curl 正常 | 第一版不自動更新（2026-09-19 決定），`trees.json` 由 curl 手動取得後以 `--input` 產出，httpx 下載函式未經實測。做自動排程時再擇一：只對該 client 清 strict 旗標（保留鏈與 hostname 驗證）、pipelines 釘 Python 3.12、或改用 curl 下載 |
 | 前端一次載入全量快照，一萬筆約數百 KB | 陣列格式加 brotli；超過再分區塊或改 PMTiles 向量 |
 | Lighthouse 行動版 performance 只有 56（2026-09-19，302 筆回報）：FCP 1.7 s、LCP 4.5 s、TBT 1,590 ms、CLS 0；瓶頸是 MapLibre 在 4 倍 CPU 節流下約 3 秒的腳本執行，傳輸量 672 KiB 不是問題 | 地圖模組已改 dynamic import（46 到 56）；再往上要不渲染 WebGL 地圖，與本頁目的衝突。門檻改為「行動版 FCP 低於 2 秒且 CLS 低於 0.1」，分數只記錄不當關卡 |
 | MapLibre 6 從自己的 module URL 推導 worker 路徑，打包後不存在，圖層全部不出現 | 用 Vite `?worker&url` 產出 worker 再 `setWorkerUrl`，`vite.config.ts` 的 `worker.format` 設 es；升級 MapLibre 時重新確認 |
