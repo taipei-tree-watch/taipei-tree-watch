@@ -69,7 +69,7 @@
 - 說明區塊沿用 `web/src/content/` 六個片段（E1.7 已寫好），重排版面即可；attribution 的顯名年份改由 `trees.json` 的 `fetched_at` 帶入，不寫死
 - 完成條件：手機與桌面各檢查一次；Lighthouse 行動版 FCP 低於 2 秒且 CLS 低於 0.1（performance 分數只記錄，理由見 TECH-SPEC 第 12 節）
 - 狀態（2026-09-19）：**完成**。cluster 不顯示數字（需 glyphs 服務），改用圓圈大小分級加含褐根病即轉警示色；病因篩選多「未記載病因」選項（code 0，不儲存）
-- 2026-09-20：正射切回 NLSC `PHOTO2`，都發局圖層保留在 `basemaps.ts` 但不啟用；切換要同時改 attribution 相關四個檔案（TECH-SPEC 第 7 節）。都發局授權確認是獨立待辦：找窗口、擬確認信由人工寄出，回覆同意後再切回並改 attribution；E1.8 前要閉環
+- 2026-09-20：正射切回 NLSC `PHOTO2`，都發局圖層保留在 `basemaps.ts` 但不啟用；切換要同時改 attribution 相關四個檔案（TECH-SPEC 第 7 節）。都發局授權確認列為 E1.8 的項目，上線前要閉環
 
 ### E1.6 選點與表單
 - 準心選點：GPS flyTo、zoom 門檻 18、選點時自動開正射
@@ -92,7 +92,12 @@
 - `snapshot-backup`、`d1-export` 的本機排程（launchd 或 cron）啟用
 - Web Analytics beacon 上線
 - Turnstile 正式 widget 建好後，在 siteverify 回應加 `hostname` 比對（本機開發階段不比對）；決定 site key 注入方式並在 `npm run deploy` 帶入（見 TECH-SPEC 3.2）；真機確認 widget 挑戰 iframe 正常產生 token（自動化瀏覽器裡不會產生）
-- 完成條件：以上皆演練過並記在 `workdocs/`
+- 都發局正射授權確認（人工寄信）：
+  - 找出都發局圖磚服務的聯絡窗口。介接說明 PDF 的文字是 CJK 子集編碼，需要 PDF 文字擷取工具才讀得出窗口；條款原文見 `RESEARCH.md` 5.2
+  - 信中問一件事：公開網站把圖磚網址放在網頁中，由每位訪客的瀏覽器直接向都發局取圖、訪客為最終使用者，是否屬於介接說明第四點第三項的「對外流通發布予其他第三方使用」。一併問不允許時有無其他授權途徑、以及對公開網站的請求頻率期待
+  - 同意則把 `web/src/basemaps.ts` 的 `ACTIVE_ORTHO` 改回 `ORTHO_UDD`，並同步 attribution 的四個檔案（TECH-SPEC 第 7 節）；不同意或未回覆則維持 `PHOTO2`，此項即為結案
+  - 風險備註：圖磚由訪客瀏覽器直接取，違規時被終止服務的是訪客 IP，我方不會收到任何錯誤訊號，所以不能用「沒出事」當作可以用
+- 完成條件：以上皆演練過並記在 `workdocs/`；都發局授權確認已有回覆，或已明確決定維持 `PHOTO2`
 
 ---
 
