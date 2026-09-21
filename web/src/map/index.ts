@@ -11,7 +11,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import type {
   GeoJSONSource,
   LngLatLike,
-  MapLayerMouseEvent,
+  PointLike,
   StyleSpecification,
 } from 'maplibre-gl';
 import { AttributionControl, MapLibreMap, NavigationControl, setWorkerUrl } from 'maplibre-gl';
@@ -32,6 +32,7 @@ import {
   bucketForCauses,
   colorForCauses,
 } from './colors.ts';
+import { TAP_RADIUS_PX, pickHit } from './hit.ts';
 
 setWorkerUrl(workerUrl);
 
@@ -242,6 +243,10 @@ export function createMapController(container: HTMLElement): MapController {
     pending.clear();
   });
 
+  /**
+   * Tap targets, most specific first. A tap is resolved against all three at
+   * once so that overlapping layers cannot each claim the same tap.
+   */
   const pointerLayers = [LAYER_IDS.reports, LAYER_IDS.clusters, LAYER_IDS.trees];
   for (const layer of pointerLayers) {
     map.on('mouseenter', layer, () => {
@@ -255,44 +260,51 @@ export function createMapController(container: HTMLElement): MapController {
   const reportListeners = new Set<(id: string) => void>();
   const treeListeners = new Set<(id: string) => void>();
 
-  const idFromEvent = (event: MapLayerMouseEvent): string | null => {
-    const value = event.features?.[0]?.properties?.id;
-    return typeof value === 'string' ? value : null;
-  };
-
-  map.on('click', LAYER_IDS.reports, (event) => {
-    const id = idFromEvent(event);
-    if (id === null) {
-      return;
-    }
-    for (const listener of reportListeners) {
-      listener(id);
-    }
-  });
-
-  map.on('click', LAYER_IDS.trees, (event) => {
-    const id = idFromEvent(event);
-    if (id === null) {
-      return;
-    }
-    for (const listener of treeListeners) {
-      listener(id);
-    }
-  });
-
-  // Clicking a cluster opens it rather than selecting anything.
-  map.on('click', LAYER_IDS.clusters, (event) => {
-    const clusterId = event.features?.[0]?.properties?.cluster_id;
-    if (typeof clusterId !== 'number') {
-      return;
-    }
+  const expandCluster = (clusterId: number, center: LngLatLike): void => {
     const source = map.getSource(REPORTS_SOURCE) as GeoJSONSource | undefined;
     if (source === undefined) {
       return;
     }
     void source.getClusterExpansionZoom(clusterId).then((zoom) => {
-      map.easeTo({ center: event.lngLat, zoom });
+      map.easeTo({ center, zoom });
     });
+  };
+
+  // One handler for the whole map rather than one per layer: the query runs
+  // over a box the size of a fingertip, which routinely returns features from
+  // several layers, and only the most specific of them should answer the tap.
+  map.on('click', (event) => {
+    const { x, y } = event.point;
+    const box: [PointLike, PointLike] = [
+      [x - TAP_RADIUS_PX, y - TAP_RADIUS_PX],
+      [x + TAP_RADIUS_PX, y + TAP_RADIUS_PX],
+    ];
+    const found = map
+      .queryRenderedFeatures(box, { layers: [...pointerLayers] })
+      .map((feature) => ({ layerId: feature.layer.id, feature }));
+    const hit = pickHit(found, pointerLayers);
+    if (hit === null) {
+      return;
+    }
+
+    const properties = hit.feature.properties ?? {};
+
+    if (hit.layerId === LAYER_IDS.clusters) {
+      // A cluster says where to zoom rather than what to select.
+      if (typeof properties.cluster_id === 'number') {
+        expandCluster(properties.cluster_id, event.lngLat);
+      }
+      return;
+    }
+
+    const id = typeof properties.id === 'string' ? properties.id : null;
+    if (id === null) {
+      return;
+    }
+    const listeners = hit.layerId === LAYER_IDS.reports ? reportListeners : treeListeners;
+    for (const listener of listeners) {
+      listener(id);
+    }
   });
 
   const moveListeners = new Set<(view: MapView) => void>();
