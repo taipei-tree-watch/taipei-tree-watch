@@ -66,6 +66,11 @@ let crosshair: Crosshair | null = null;
 let reports: readonly ReportRecord[] = [];
 let trees: readonly ProtectedTree[] = [];
 const reportsById = new Map<string, ReportRecord>();
+/**
+ * Pending points drawn on the map, keyed by id. They are not in the snapshot
+ * index, so a tap on one would otherwise find nothing and open no card.
+ */
+const pendingById = new Map<string, ReportRecord>();
 const treesById = new Map<string, ProtectedTree>();
 
 /**
@@ -107,7 +112,14 @@ function refresh(state: FilterState): void {
   const extra = pendingReports
     .filter((entry) => !reportsById.has(entry.id))
     .map(toReportRecord);
+  pendingById.clear();
+  for (const entry of extra) {
+    pendingById.set(entry.id, entry);
+  }
   mapController?.setReports([...visible, ...extra]);
+  // The nearby notice is about what has been reported here, not about what
+  // the active filter happens to show, so it reads the whole set.
+  reportForm?.setReports([...reports, ...extra]);
   filterPanel?.setSummary(visible.length, reports.length, trees.length);
 }
 
@@ -257,6 +269,7 @@ async function start(): Promise<void> {
     storage,
   });
   reportForm.setTrees(trees);
+  reportForm.setReports(reports);
 
   reportSheet.onOpenChange((open) => {
     if (open) {
@@ -274,7 +287,7 @@ async function start(): Promise<void> {
   });
 
   mapController.onReportClick((id) => {
-    const report = reportsById.get(id);
+    const report = reportsById.get(id) ?? pendingById.get(id);
     if (report !== undefined) {
       detailCard.showReport(report);
     }
