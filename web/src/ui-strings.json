@@ -60,6 +60,11 @@
     "title": "回報這棵樹",
     "close": "關閉"
   },
+  "map": {
+    "locate": "目前位置",
+    "locating": "定位中……",
+    "locateFailed": "拿不到目前位置，地圖留在原地。"
+  },
   "status": {
     "loading": "正在載入地圖資料……",
     "snapshotFailed": "回報資料載入失敗，地圖上只會看到受保護樹木。",

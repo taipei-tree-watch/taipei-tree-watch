@@ -6,10 +6,10 @@
  * reporter had no document to go on. External links are rendered as their
  * hostname only, with nofollow so link spam has nothing to gain.
  */
-import { EVIDENCE_CODES_WITHOUT_CAUSES, causes, dispositions, evidence, sources } from '../../../shared/tags.ts';
 import type { ReportRecord } from '../data/snapshot.ts';
 import type { ProtectedTree } from '../data/trees.ts';
-import { formatTemplate, labelForCode, labelsForCodes, linkHostname } from '../format.ts';
+import { formatTemplate } from '../format.ts';
+import { reportRows } from './report-rows.ts';
 import strings from '../ui-strings.json';
 
 export interface DetailCard {
@@ -18,7 +18,11 @@ export interface DetailCard {
   hide(): void;
 }
 
-function row(label: string, value: Node | string): HTMLDivElement {
+/** A row of the protected tree card; a report's rows come from report-rows. */
+function textRow(label: string, value: string | null): HTMLDivElement | null {
+  if (value === null) {
+    return null;
+  }
   const line = document.createElement('div');
   line.className = 'card-row';
 
@@ -28,61 +32,10 @@ function row(label: string, value: Node | string): HTMLDivElement {
 
   const content = document.createElement('span');
   content.className = 'card-value';
-  content.append(value);
+  content.textContent = value;
 
   line.append(caption, content);
   return line;
-}
-
-function textRow(label: string, value: string | null): HTMLDivElement | null {
-  return value === null ? null : row(label, value);
-}
-
-/**
- * The link element: hostname as the visible text, nofollow and noopener on the
- * relationship, and a new tab so the map is not lost.
- */
-function linkRow(value: string | null): HTMLDivElement | null {
-  if (value === null) {
-    return null;
-  }
-  const hostname = linkHostname(value);
-  if (hostname === null) {
-    return null;
-  }
-  const anchor = document.createElement('a');
-  anchor.href = value;
-  anchor.textContent = hostname;
-  anchor.rel = 'nofollow noopener';
-  anchor.target = '_blank';
-  return row(strings.card.link, anchor);
-}
-
-/**
- * The cause sentence. It appears only when a cause was actually recorded and
- * the evidence is something written down: a sighting with no notice carries no
- * recorded cause, so the sentence would be claiming more than the data says.
- */
-function causeSentence(report: ReportRecord): HTMLParagraphElement | null {
-  if (report.causes.length === 0) {
-    return null;
-  }
-  if (
-    report.evidence !== null &&
-    (EVIDENCE_CODES_WITHOUT_CAUSES as readonly number[]).includes(report.evidence)
-  ) {
-    return null;
-  }
-  const labels = labelsForCodes(causes, report.causes);
-  if (labels.length === 0) {
-    return null;
-  }
-  const sentence = document.createElement('p');
-  sentence.className = 'card-notice';
-  sentence.textContent = formatTemplate(strings.card.noticeReason, {
-    causes: labels.join(strings.card.listSeparator),
-  });
-  return sentence;
 }
 
 export function createDetailCard(element: HTMLElement): DetailCard {
@@ -116,33 +69,7 @@ export function createDetailCard(element: HTMLElement): DetailCard {
 
   return {
     showReport(report) {
-      render(strings.card.reportTitle, [
-        causeSentence(report),
-        textRow(strings.card.species, report.species),
-        textRow(
-          strings.card.causes,
-          report.causes.length === 0
-            ? null
-            : labelsForCodes(causes, report.causes).join(strings.card.listSeparator),
-        ),
-        textRow(
-          strings.card.dispositions,
-          report.dispositions.length === 0
-            ? null
-            : labelsForCodes(dispositions, report.dispositions).join(strings.card.listSeparator),
-        ),
-        textRow(strings.card.evidence, labelForCode(evidence, report.evidence)),
-        textRow(strings.card.source, labelForCode(sources, report.source)),
-        textRow(strings.card.observedAt, report.observedAt),
-        textRow(strings.card.note, report.note),
-        textRow(
-          strings.card.protectedTree,
-          report.protectedTreeId === null
-            ? null
-            : formatTemplate(strings.card.protectedTreeValue, { id: report.protectedTreeId }),
-        ),
-        linkRow(report.link),
-      ]);
+      render(strings.card.reportTitle, reportRows(report));
     },
     showTree(tree) {
       render(strings.card.treeTitle, [

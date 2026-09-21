@@ -18,6 +18,8 @@ export interface FilterPanel {
   setSummary(shown: number, total: number, trees: number): void;
   setOpen(open: boolean): void;
   isOpen(): boolean;
+  /** Fires whoever opened or closed it, including its own close button. */
+  onOpenChange(listener: (open: boolean) => void): () => void;
 }
 
 interface Selection {
@@ -260,8 +262,18 @@ export function createFilterPanel(
 
   element.replaceChildren(header, summary, body);
 
+  const listeners = new Set<(open: boolean) => void>();
+  const setOpen = (open: boolean): void => {
+    element.hidden = !open;
+    for (const listener of listeners) {
+      listener(open);
+    }
+  };
+
+  // The panel's own close button goes through the same path as the top bar
+  // toggle, so the toggle cannot be left looking pressed over a shut panel.
   close.addEventListener('click', () => {
-    element.hidden = true;
+    setOpen(false);
   });
 
   return {
@@ -274,7 +286,11 @@ export function createFilterPanel(
       summary.replaceChildren(reportLine, treeLine);
     },
     setOpen(open) {
-      element.hidden = !open;
+      setOpen(open);
+    },
+    onOpenChange(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
     },
     isOpen() {
       return !element.hidden;

@@ -15,7 +15,7 @@
   --danger: #a8243b;
   --shadow: 0 0.5rem 1.5rem rgb(15 23 32 / 18%);
   --topbar-height: 3.25rem;
-  --panel-width: 21rem;
+  --panel-width: 27rem;
 
   color-scheme: light;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans TC', sans-serif;
@@ -162,6 +162,28 @@ body {
   font-size: 0.8125rem;
   padding: 0.2rem 0.625rem;
   cursor: pointer;
+}
+
+/* Sits above the zoom control, clear of the attribution line. */
+.map-locate {
+  position: fixed;
+  right: 0.625rem;
+  bottom: 7.5rem;
+  z-index: 2;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.8125rem;
+  padding: 0.4rem 0.75rem;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+
+.map-locate:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 /* Panels and sheets ------------------------------------------------------ */
@@ -418,6 +440,18 @@ body {
 }
 
 /* Report sheet ------------------------------------------------------------ */
+
+/* What is left after a report goes in: the confirmation and the report
+   itself, with the form put away. */
+.form-success-body {
+  margin: 0.75rem 0 1rem;
+}
+
+.form-success .form-result {
+  margin-top: 0;
+}
+
+
 
 /* While the point is being aimed the sheet stays short so the crosshair, at
    the centre of the screen, is never behind it. */

@@ -47,11 +47,13 @@ const filtersToggle = required<HTMLButtonElement>('#filters-toggle');
 const infoToggle = required<HTMLButtonElement>('#info-toggle');
 const orthoToggle = required<HTMLButtonElement>('#ortho-toggle');
 const reportButton = required<HTMLButtonElement>('#report-open');
+const locateMapButton = required<HTMLButtonElement>('#locate-map');
 
 filtersToggle.textContent = strings.topbar.filters;
 infoToggle.textContent = strings.topbar.info;
 orthoToggle.textContent = strings.topbar.ortho;
 reportButton.textContent = strings.topbar.report;
+locateMapButton.textContent = strings.map.locate;
 
 // A pinched phone browser would otherwise leave the bar off screen with no
 // way to scroll it back, which takes every control with it.
@@ -60,6 +62,9 @@ pinToVisualViewport(required<HTMLElement>('.topbar'));
 const statusBar = createStatusBar(required('#status-bar'));
 const detailCard = createDetailCard(required('#detail-card'));
 const infoPanel = createInfoPanel(required('#info-panel'));
+infoPanel.onOpenChange((open) => {
+  infoToggle.setAttribute('aria-expanded', String(open));
+});
 const reportSheet = createReportSheet(required('#report-sheet'));
 
 /** Set once the map module has arrived; the toggles are inert until then. */
@@ -201,6 +206,27 @@ function locate(): Promise<void> {
   });
 }
 
+/** The map's own locate control, available without opening the report sheet. */
+function runMapLocate(): void {
+  locateMapButton.disabled = true;
+  locateMapButton.textContent = strings.map.locating;
+  locate()
+    .then(() => {
+      statusBar.hide();
+    })
+    .catch(() => {
+      // A refusal is not a page level failure, but the button is too small
+      // to explain itself, so the bar carries the sentence and the retry.
+      statusBar.showError(strings.map.locateFailed, runMapLocate);
+    })
+    .finally(() => {
+      locateMapButton.disabled = false;
+      locateMapButton.textContent = strings.map.locate;
+    });
+}
+
+locateMapButton.addEventListener('click', runMapLocate);
+
 reportButton.addEventListener('click', () => {
   openOnly(null);
   detailCard.hide();
@@ -256,6 +282,9 @@ async function start(): Promise<void> {
   const controller = createMapController(required('#map'));
   mapController = controller;
   filterPanel = createFilterPanel(required('#filter-panel'), refresh);
+  filterPanel.onOpenChange((open) => {
+    filtersToggle.setAttribute('aria-expanded', String(open));
+  });
   crosshair = createCrosshair(document.body);
 
   reportForm = createReportForm(reportSheet.contentElement, {

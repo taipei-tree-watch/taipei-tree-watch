@@ -48,7 +48,9 @@ import {
 } from '../report/draft.ts';
 import type { FormField } from '../report/errors.ts';
 import type { PendingReport, StorageLike } from '../report/pending.ts';
+import { toReportRecord } from '../report/pending.ts';
 import { dismissSafety, isSafetyDismissed } from '../report/safety.ts';
+import { reportRows } from './report-rows.ts';
 import type { FetchLike } from '../report/submit.ts';
 import { submitReport } from '../report/submit.ts';
 import type { TurnstileWidget } from '../turnstile.ts';
@@ -223,8 +225,6 @@ export function createReportForm(
   let widgetPending = false;
   let submitting = false;
   let submitted = false;
-  /** The device is asked for its position once per page, not once per open. */
-  let locateAttempted = false;
   let apiErrors: ReadonlyMap<FormField, string> = new Map();
   let generalError: string | null = null;
   /**
@@ -497,14 +497,35 @@ export function createReportForm(
   resultLine.setAttribute('role', 'status');
   form.append(resultLine);
 
+  /**
+   * What replaces the form once a report is in.
+   *
+   * The confirmation used to be a line under a form several screens long,
+   * where it went unread. The form is put away instead and the report is
+   * shown back, in the same rows the map card uses, so the reporter can see
+   * that what arrived is what they meant.
+   */
+  const successPanel = document.createElement('section');
+  successPanel.className = 'form-success';
+  successPanel.hidden = true;
+
+  const successMessage = document.createElement('p');
+  successMessage.className = 'form-result';
+  successMessage.dataset.tone = 'ok';
+  successMessage.setAttribute('role', 'status');
+  successMessage.textContent = strings.form.success;
+
+  const successBody = document.createElement('div');
+  successBody.className = 'form-success-body';
+
   const againButton = document.createElement('button');
   againButton.type = 'button';
   againButton.className = 'form-secondary';
   againButton.textContent = strings.form.successAgain;
-  againButton.hidden = true;
-  form.append(againButton);
 
-  container.replaceChildren(picker, form);
+  successPanel.append(successMessage, successBody, againButton);
+
+  container.replaceChildren(picker, form, successPanel);
 
   /* Behaviour ------------------------------------------------------------- */
 
@@ -676,9 +697,7 @@ export function createReportForm(
     }
 
     if (generalError === null) {
-      if (!submitted) {
-        resultLine.hidden = true;
-      }
+      resultLine.hidden = true;
     } else {
       resultLine.hidden = false;
       resultLine.dataset.tone = 'error';
@@ -799,7 +818,6 @@ export function createReportForm(
   });
 
   function runLocate(): void {
-    locateAttempted = true;
     locateStatus.hidden = false;
     locateStatus.textContent = strings.form.locating;
     locateButton.disabled = true;
@@ -827,6 +845,22 @@ export function createReportForm(
     render();
   });
 
+  function showSuccess(entry: PendingReport): void {
+    successBody.replaceChildren(...reportRows(toReportRecord(entry)));
+    successPanel.hidden = false;
+    picker.hidden = true;
+    form.hidden = true;
+    // The sheet is the scrolling element, and the form it replaces was
+    // taller than the screen.
+    container.scrollTop = 0;
+  }
+
+  function hideSuccess(): void {
+    successPanel.hidden = true;
+    successBody.replaceChildren();
+    picker.hidden = false;
+  }
+
   function resetForm(): void {
     draft = emptyDraft();
     apiErrors = new Map();
@@ -842,7 +876,7 @@ export function createReportForm(
     linkDomain.hidden = true;
     noteStripped.hidden = true;
     resultLine.hidden = true;
-    againButton.hidden = true;
+    hideSuccess();
     for (const input of causeBlock.inputs) {
       input.checked = false;
     }
@@ -894,7 +928,7 @@ export function createReportForm(
     if (outcome.kind === 'created') {
       submitted = true;
       widget?.reset();
-      options.onPendingReport({
+      const entry: PendingReport = {
         id: outcome.id,
         lat: body.lat as number,
         lng: body.lng as number,
@@ -908,11 +942,9 @@ export function createReportForm(
         protectedTreeId: body.protected_tree_id as string | null,
         inventoryTreeId: body.inventory_tree_id as string | null,
         submittedAt: options.now().toISOString(),
-      });
-      resultLine.hidden = false;
-      resultLine.dataset.tone = 'ok';
-      resultLine.textContent = strings.form.success;
-      againButton.hidden = false;
+      };
+      options.onPendingReport(entry);
+      showSuccess(entry);
       render();
       return;
     }
@@ -967,9 +999,6 @@ export function createReportForm(
       observedInput.max = taipeiDate(options.now());
       setMode('picking');
       render();
-      if (!locateAttempted) {
-        runLocate();
-      }
     },
   };
 }

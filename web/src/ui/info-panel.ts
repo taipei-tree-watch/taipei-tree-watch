@@ -16,6 +16,8 @@ const YEAR_SLOT = '.js-protected-trees-year';
 export interface InfoPanel {
   setOpen(open: boolean): void;
   isOpen(): boolean;
+  /** Fires whoever opened or closed it, including its own close button. */
+  onOpenChange(listener: (open: boolean) => void): () => void;
   /** Fill the open data attribution year from the dataset's own fetch date. */
   setProtectedTreesFetchedAt(fetchedAt: string | null): void;
 }
@@ -60,13 +62,27 @@ export function createInfoPanel(element: HTMLElement): InfoPanel {
   );
 
   element.replaceChildren(header, body);
+  const listeners = new Set<(open: boolean) => void>();
+  const setOpen = (open: boolean): void => {
+    element.hidden = !open;
+    for (const listener of listeners) {
+      listener(open);
+    }
+  };
+
+  // The panel's own close button goes through the same path as the top bar
+  // toggle, so the toggle cannot be left looking pressed over a shut panel.
   close.addEventListener('click', () => {
-    element.hidden = true;
+    setOpen(false);
   });
 
   return {
     setOpen(open) {
-      element.hidden = !open;
+      setOpen(open);
+    },
+    onOpenChange(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
     },
     isOpen() {
       return !element.hidden;
