@@ -16,9 +16,12 @@ import { loadMapData } from './data/load.ts';
 import type { FilterState } from './filters.ts';
 import { applyFilters, emptyFilterState } from './filters.ts';
 import type { MapController } from './map/index.ts';
+import type { PermalinkTarget } from './permalink.ts';
+import { parsePermalink, permalinkSearch, permalinkUrl } from './permalink.ts';
 import { MIN_SUBMIT_ZOOM } from './report/draft.ts';
 import type { PendingReport, StorageLike } from './report/pending.ts';
 import { addPending, prunePending, readPending, toReportRecord } from './report/pending.ts';
+import { browserShareCapabilities, sharePermalink } from './share.ts';
 import strings from './ui-strings.json';
 import { createCrosshair } from './ui/crosshair.ts';
 import type { Crosshair } from './ui/crosshair.ts';
@@ -31,6 +34,9 @@ import type { ReportForm } from './ui/report-form.ts';
 import { createReportForm } from './ui/report-form.ts';
 import { createReportSheet } from './ui/report-sheet.ts';
 import { createStatusBar } from './ui/status-bar.ts';
+
+/** Close enough to read a single tree crown, which is what a permalink promises. */
+const PERMALINK_ZOOM = 17;
 
 function required<T extends HTMLElement>(selector: string): T {
   const element = document.querySelector<T>(selector);
@@ -60,7 +66,38 @@ locateMapButton.textContent = strings.map.locate;
 pinToVisualViewport(required<HTMLElement>('.topbar'));
 
 const statusBar = createStatusBar(required('#status-bar'));
-const detailCard = createDetailCard(required('#detail-card'));
+
+/**
+ * A report the permalink named, kept on the map for as long as its card is
+ * open even when the active filter excludes it. Following a link and finding
+ * an empty map would be the worse outcome, and this leaves the filter rules
+ * themselves untouched: the exception is applied where pending points are
+ * already added, after filtering rather than through it.
+ */
+let pinnedReportId: string | null = null;
+
+function addressFor(target: PermalinkTarget | null): void {
+  const search = permalinkSearch(target, window.location.search);
+  // replaceState rather than pushState: opening a few cards must not turn the
+  // back button into a queue the reader has to work through.
+  window.history.replaceState(
+    window.history.state,
+    '',
+    `${window.location.pathname}${search}${window.location.hash}`,
+  );
+}
+
+const detailCard = createDetailCard(required('#detail-card'), {
+  permalinkUrl: (target) => permalinkUrl(target, window.location.href),
+  share: (url, title) => sharePermalink(url, title, browserShareCapabilities(navigator)),
+  onTargetChange(target) {
+    addressFor(target);
+    if (target === null && pinnedReportId !== null) {
+      pinnedReportId = null;
+      refresh(filterPanel?.getState() ?? emptyFilterState());
+    }
+  },
+});
 const infoPanel = createInfoPanel(required('#info-panel'));
 infoPanel.onOpenChange((open) => {
   infoToggle.setAttribute('aria-expanded', String(open));
@@ -114,6 +151,22 @@ function openOnly(panel: 'filters' | 'info' | null): void {
   infoToggle.setAttribute('aria-expanded', String(panel === 'info'));
 }
 
+/**
+ * The permalinked report when the filter has dropped it, as a one element
+ * list to add back. Empty whenever no permalink is open or the filter is
+ * already showing it.
+ */
+function pinnedReport(visible: readonly ReportRecord[]): readonly ReportRecord[] {
+  if (pinnedReportId === null) {
+    return [];
+  }
+  const report = reportsById.get(pinnedReportId);
+  if (report === undefined || visible.includes(report)) {
+    return [];
+  }
+  return [report];
+}
+
 function refresh(state: FilterState): void {
   const visible = applyFilters(reports, state);
   // Pending points are added after filtering, never through it: someone who
@@ -126,7 +179,8 @@ function refresh(state: FilterState): void {
   for (const entry of extra) {
     pendingById.set(entry.id, entry);
   }
-  mapController?.setReports([...visible, ...extra]);
+  const pinned = pinnedReport(visible);
+  mapController?.setReports([...visible, ...extra, ...pinned]);
   // The nearby notice is about what has been reported here, not about what
   // the active filter happens to show, so it reads the whole set.
   reportForm?.setReports([...reports, ...extra]);
@@ -233,11 +287,73 @@ reportButton.addEventListener('click', () => {
   reportSheet.open();
 });
 
+/**
+ * The card a permalink asked for, opened once the data it needs has arrived.
+ *
+ * A target that cannot be found gets a notice rather than a redirect: the map
+ * stays on its default view and the reader can carry on. The notice is held
+ * back when the bar is already explaining a load failure, which is the more
+ * useful of the two messages.
+ */
+const initialTarget = parsePermalink(window.location.search);
+let initialTargetHandled = false;
+
+function openInitialTarget(quiet: boolean): void {
+  if (initialTarget === null || initialTargetHandled) {
+    return;
+  }
+
+  if (initialTarget.kind === 'report') {
+    if (!snapshotLoaded) {
+      return;
+    }
+    initialTargetHandled = true;
+    const report = reportsById.get(initialTarget.id) ?? pendingById.get(initialTarget.id);
+    if (report === undefined) {
+      if (quiet) {
+        statusBar.showNotice(strings.status.reportMissing);
+      }
+      return;
+    }
+    pinnedReportId = report.id;
+    refresh(filterPanel?.getState() ?? emptyFilterState());
+    focusOn(report.lat, report.lng);
+    detailCard.showReport(report);
+    return;
+  }
+
+  if (!treesLoaded) {
+    return;
+  }
+  initialTargetHandled = true;
+  const tree = treesById.get(initialTarget.id);
+  if (tree === undefined) {
+    if (quiet) {
+      statusBar.showNotice(strings.status.treeMissing);
+    }
+    return;
+  }
+  focusOn(tree.lat, tree.lng);
+  detailCard.showTree(tree);
+}
+
+function focusOn(lat: number, lng: number): void {
+  const controller = mapController;
+  if (controller === null) {
+    return;
+  }
+  controller.flyTo({ lat, lng }, Math.max(controller.getZoom(), PERMALINK_ZOOM));
+}
+
+let snapshotLoaded = false;
+let treesLoaded = false;
+
 async function load(): Promise<void> {
   statusBar.showLoading();
   const result = await loadMapData();
 
   if (result.snapshot !== null) {
+    snapshotLoaded = true;
     reports = result.snapshot.reports;
     reportsById.clear();
     for (const report of reports) {
@@ -248,6 +364,7 @@ async function load(): Promise<void> {
   }
 
   if (result.trees !== null) {
+    treesLoaded = true;
     trees = result.trees.trees;
     treesById.clear();
     for (const tree of trees) {
@@ -262,17 +379,21 @@ async function load(): Promise<void> {
 
   if (result.snapshotFailed && result.treesFailed) {
     statusBar.showError(strings.status.bothFailed, () => void load());
+    openInitialTarget(false);
     return;
   }
   if (result.snapshotFailed) {
     statusBar.showError(strings.status.snapshotFailed, () => void load());
+    openInitialTarget(false);
     return;
   }
   if (result.treesFailed) {
     statusBar.showError(strings.status.treesFailed, () => void load());
+    openInitialTarget(false);
     return;
   }
   statusBar.hide();
+  openInitialTarget(true);
 }
 
 async function start(): Promise<void> {

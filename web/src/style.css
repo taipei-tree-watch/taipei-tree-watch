@@ -152,6 +152,10 @@ body {
   border-left: 4px solid var(--danger);
 }
 
+.status-bar[data-tone='notice'] {
+  border-left: 4px solid var(--accent);
+}
+
 .status-bar-retry {
   flex: 0 0 auto;
   border: 1px solid var(--line);
@@ -399,6 +403,31 @@ body {
 
 .card-value a {
   color: var(--accent);
+}
+
+/*
+ * The permalink row. It is a column so the button keeps the full card width
+ * on a phone and the feedback lines wrap underneath rather than squeezing it.
+ */
+.card-share {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem 0.75rem;
+  border-top: 1px solid var(--line);
+}
+
+.card-share-feedback {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+}
+
+.card-share-url {
+  margin: 0;
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+  user-select: all;
 }
 
 /* Crosshair --------------------------------------------------------------- */
