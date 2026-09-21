@@ -65,7 +65,10 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  height: var(--topbar-height);
+  /* The inset is added to the bar rather than taken out of it. Inside a
+     border-box height it would eat the row the chips sit on, and on a phone
+     whose inset is as tall as the bar itself there would be nothing left. */
+  height: calc(var(--topbar-height) + env(safe-area-inset-top));
   padding: 0 0.75rem;
   padding-top: env(safe-area-inset-top);
   background: color-mix(in srgb, var(--surface) 92%, transparent);
@@ -73,14 +76,20 @@ body {
   border-bottom: 1px solid var(--line);
 }
 
+/* The chips keep their width and the name gives way, so the last chip stays
+   on screen on a narrow phone. */
 .brand {
   font-weight: 700;
   font-size: 1rem;
   white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .topbar-actions {
   display: flex;
+  flex: 0 0 auto;
   gap: 0.375rem;
   margin-left: auto;
   overflow-x: auto;
