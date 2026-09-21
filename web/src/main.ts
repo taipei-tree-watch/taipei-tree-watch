@@ -26,6 +26,7 @@ import { createDetailCard } from './ui/detail-card.ts';
 import type { FilterPanel } from './ui/filter-panel.ts';
 import { createFilterPanel } from './ui/filter-panel.ts';
 import { createInfoPanel } from './ui/info-panel.ts';
+import { pinToVisualViewport } from './ui/pinned-chrome.ts';
 import type { ReportForm } from './ui/report-form.ts';
 import { createReportForm } from './ui/report-form.ts';
 import { createReportSheet } from './ui/report-sheet.ts';
@@ -51,6 +52,10 @@ filtersToggle.textContent = strings.topbar.filters;
 infoToggle.textContent = strings.topbar.info;
 orthoToggle.textContent = strings.topbar.ortho;
 reportButton.textContent = strings.topbar.report;
+
+// A pinched phone browser would otherwise leave the bar off screen with no
+// way to scroll it back, which takes every control with it.
+pinToVisualViewport(required<HTMLElement>('.topbar'));
 
 const statusBar = createStatusBar(required('#status-bar'));
 const detailCard = createDetailCard(required('#detail-card'));

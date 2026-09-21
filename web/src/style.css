@@ -38,6 +38,9 @@ body {
   height: 100dvh;
   overflow: hidden;
   background: var(--surface-muted);
+  /* No double tap zoom: on a map every tap lands on the surface being
+     panned, and a stray second tap would zoom the page rather than the map. */
+  touch-action: manipulation;
 }
 
 /* An id selector, because MapLibre's own stylesheet arrives with the map chunk
