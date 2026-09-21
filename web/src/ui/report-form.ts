@@ -260,7 +260,7 @@ export function createReportForm(
   const locateButton = document.createElement('button');
   locateButton.type = 'button';
   locateButton.className = 'form-secondary';
-  locateButton.textContent = strings.form.locate;
+  locateButton.textContent = strings.map.locate;
 
   const modeButton = document.createElement('button');
   modeButton.type = 'button';
@@ -819,7 +819,7 @@ export function createReportForm(
 
   function runLocate(): void {
     locateStatus.hidden = false;
-    locateStatus.textContent = strings.form.locating;
+    locateStatus.textContent = strings.map.locating;
     locateButton.disabled = true;
     options
       .locate()
