@@ -41,14 +41,17 @@ function toSection(id: string, fragment: string, open = false): ContentSection {
 }
 
 /**
- * Display order. Safety comes first and starts expanded; the "no notice is
- * required" explanation follows it because SPEC section 8 asks for it to be
- * prominent rather than buried in the disclaimer.
+ * Display order. What the site is for comes first, because a reader who
+ * opens the panel is usually asking that before anything else. Safety
+ * follows it, still expanded, and is in any case repeated at the head of
+ * every report form. The "no notice is required" explanation comes next
+ * because SPEC section 8 asks for it to be prominent rather than buried in
+ * the disclaimer.
  */
 export const sections: readonly ContentSection[] = [
+  toSection('about', aboutHtml, true),
   toSection('safety', safetyHtml, true),
   toSection('no-notice', noNoticeHtml),
-  toSection('about', aboutHtml),
   toSection('brown-root-rot', brownRootRotHtml),
   toSection('disclaimer', disclaimerHtml),
   toSection('attribution', attributionHtml),
@@ -56,9 +59,9 @@ export const sections: readonly ContentSection[] = [
 
 /** Raw fragments keyed by section id, in the same order as `sections`. */
 export const fragments: Readonly<Record<string, string>> = {
+  about: aboutHtml,
   safety: safetyHtml,
   'no-notice': noNoticeHtml,
-  about: aboutHtml,
   'brown-root-rot': brownRootRotHtml,
   disclaimer: disclaimerHtml,
   attribution: attributionHtml,

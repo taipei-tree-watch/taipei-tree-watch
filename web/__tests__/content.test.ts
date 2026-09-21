@@ -24,20 +24,27 @@ const MAP_ATTRIBUTION =
   '\uFF5C\u56DE\u5831\u8CC7\u6599 CC BY 4.0';
 
 const SECTION_IDS = [
+  'about',
   'safety',
   'no-notice',
-  'about',
   'brown-root-rot',
   'disclaimer',
   'attribution',
 ] as const;
 
 describe('web/src/content fragments', () => {
-  it('exposes every section once, safety first and expanded', () => {
+  it('exposes every section once, in display order', () => {
     expect(sections.map((section) => section.id)).toEqual([...SECTION_IDS]);
     expect(Object.keys(fragments)).toEqual([...SECTION_IDS]);
-    expect(sections[0]?.open).toBe(true);
-    expect(sections.slice(1).some((section) => section.open)).toBe(false);
+  });
+
+  /** What the site is for, then the safety notice; the rest start folded. */
+  it('opens the first two sections and no others', () => {
+    expect(sections.slice(0, 2).map((section) => [section.id, section.open])).toEqual([
+      ['about', true],
+      ['safety', true],
+    ]);
+    expect(sections.slice(2).some((section) => section.open)).toBe(false);
   });
 
   it.each(SECTION_IDS)('%s is non-empty and starts with an h2 heading', (id) => {
