@@ -85,6 +85,14 @@ taipei-tree-watch/
 - 送出成功後顯示「已收到，約 15 分鐘後出現在地圖上」，並在本機 `localStorage` 暫存該點讓回報者立刻看到自己的點（僅本機、標示為待同步）。
 - 呈現措辭遵守 SPEC 第 8 節：「此處的公告記載原因為……」；連結顯示網域、`rel="nofollow noopener"`。
 
+**深淺色（2026-09-21 定案）**：只跟隨裝置的 `prefers-color-scheme`，沒有站內切換開關，也不記使用者偏好；`<head>` 宣告 `<meta name="color-scheme" content="light dark">`，讓表單控制項與日期選擇器的原生外觀一起跟著換。
+
+- **Token**：`web/src/style.css` 的 `:root` 定義全部顏色（surface、ink、line、accent、danger、shadow、準心光暈、`--bucket-*` 色票），`@media (prefers-color-scheme: dark)` 底下覆寫同一組名稱。樣式規則本身不寫任何顏色字面值，有一個測試掃 CSS 確保這條規矩沒被破壞，另一個測試用 WCAG 相對亮度算九組「文字／底色」的對比，兩種模式都必須到 4.5:1。
+- **地圖圖層**：MapLibre 的 style 讀不到 CSS 變數，所以色票同時存在 `web/src/map/colors.ts` 的 `MAP_PALETTES`（light 與 dark 兩份），深色版把點位提亮、把分隔用的光暈由白翻黑。`web/src/theme.ts` 用 `matchMedia('(prefers-color-scheme: dark)')` 讀取與監聽，切換時只呼叫 `setPaintProperty` 更新既有圖層，不重建地圖也不重送資料；點位顏色改用 `match ['get','bucket']` 運算式，所以換色不必重算 GeoJSON。篩選面板的色塊直接吃 `var(--bucket-*)`，一個測試比對 CSS 與 TypeScript 兩份色票不會走鐘。
+- **底圖**：NLSC EMAP 是白底深字的淺色地圖。深色模式在該 raster 圖層（只有它，不含航照與點位，也不對 canvas 下 CSS filter）套 `raster-brightness-min: 1`、`raster-brightness-max: 0.08`、`raster-saturation: -0.72`、`raster-contrast: -0.08`。min 高於 max 等於把亮度斜坡倒過來跑，紙面變近黑、字變亮；單純壓暗（`raster-brightness-max: 0.45`）會讓深色字留在灰紙上。實測 z16 臺北市中心圖磚（取最暗 2% 當字、上四分位當紙）：原圖 6.14:1，壓暗版 2.91:1，倒轉版 6.48:1。倒轉會讓綠地轉洋紅，所以抽掉七成飽和度，讓畫面上唯一鮮豔的東西是回報點。
+- **Turnstile**：widget 的 `theme` 用 `auto`，跟著同一個系統偏好走。
+- **MapLibre 自帶 chrome**：縮放鈕與 attribution 列在深色下改用頁面 token，選擇器前綴 `#map` 提高權重，因為 MapLibre 的樣式表跟著 map chunk 後到；只有控制項的圖示（背景圖）用 `filter: invert(1)`。
+
 ### 3.2 Worker `worker/`
 
 原生 `fetch` 與 `scheduled` handler，zod 驗證，不用 web framework。三條路徑：
