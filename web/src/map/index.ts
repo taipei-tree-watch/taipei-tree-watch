@@ -279,8 +279,15 @@ export function createMapController(container: HTMLElement): MapController {
       [x - TAP_RADIUS_PX, y - TAP_RADIUS_PX],
       [x + TAP_RADIUS_PX, y + TAP_RADIUS_PX],
     ];
+    // Querying a layer the style does not hold throws, and a tap can land
+    // before the style has finished loading, so the list is narrowed to the
+    // layers that exist at this moment.
+    const present = pointerLayers.filter((layer) => map.getLayer(layer) !== undefined);
+    if (present.length === 0) {
+      return;
+    }
     const found = map
-      .queryRenderedFeatures(box, { layers: [...pointerLayers] })
+      .queryRenderedFeatures(box, { layers: present })
       .map((feature) => ({ layerId: feature.layer.id, feature }));
     const hit = pickHit(found, pointerLayers);
     if (hit === null) {
