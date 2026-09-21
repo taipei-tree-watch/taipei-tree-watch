@@ -14,6 +14,13 @@ export interface LatLng {
 /** Radius a report may associate a protected tree from, per TECH-SPEC 3.1. */
 export const PROTECTED_TREE_RADIUS_M = 20;
 
+/**
+ * Radius within which an existing report is pointed out to someone filing a
+ * new one. The same tree reported by several people stays several reports,
+ * so this only informs; it never blocks or merges anything.
+ */
+export const NEARBY_REPORT_RADIUS_M = 20;
+
 /** IUGG mean Earth radius in metres. */
 const EARTH_RADIUS_M = 6_371_008.8;
 

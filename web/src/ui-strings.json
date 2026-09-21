@@ -86,6 +86,7 @@
     "nearbyConfirm": "是，關聯這棵樹",
     "nearbyClear": "取消關聯",
     "nearbyLinked": "已關聯受保護樹木 #{id}。",
+    "nearbyReport": "距離準心約 {distance} 公尺處已經有一筆回報。同一棵樹被多人回報沒有問題，不會合併。",
     "optional": "可留空",
     "safetyDismiss": "我知道了",
     "species": "樹種",

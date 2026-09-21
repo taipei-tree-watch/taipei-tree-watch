@@ -26,10 +26,15 @@ import {
   taipeiDate,
 } from '../../../shared/validation.ts';
 import { sections } from '../content/index.ts';
+import type { ReportRecord } from '../data/snapshot.ts';
 import type { ProtectedTree } from '../data/trees.ts';
 import { formatTemplate } from '../format.ts';
 import type { Nearby } from '../geo.ts';
-import { PROTECTED_TREE_RADIUS_M, nearestWithin } from '../geo.ts';
+import {
+  NEARBY_REPORT_RADIUS_M,
+  PROTECTED_TREE_RADIUS_M,
+  nearestWithin,
+} from '../geo.ts';
 import type { DraftIssue, PickedView, ReportDraft } from '../report/draft.ts';
 import {
   MIN_SUBMIT_ZOOM,
@@ -68,6 +73,8 @@ export interface ReportFormOptions {
 
 export interface ReportForm {
   setTrees(trees: readonly ProtectedTree[]): void;
+  /** Reports already on the map, used only for the nearby notice. */
+  setReports(reports: readonly ReportRecord[]): void;
   /** Called on every camera move while the sheet is open. */
   update(): void;
   /** Sheet opened or closed. */
@@ -210,6 +217,7 @@ export function createReportForm(
   let draft: ReportDraft = emptyDraft();
   let mode: PickerMode = 'picking';
   let trees: readonly ProtectedTree[] = [];
+  let knownReports: readonly ReportRecord[] = [];
   let nearby: Nearby<ProtectedTree> | null = null;
   let widget: TurnstileWidget | null = null;
   let widgetPending = false;
@@ -287,6 +295,15 @@ export function createReportForm(
   nearbyActions.append(nearbyConfirm, nearbyClear);
   nearbyBox.append(nearbyQuestion, nearbyDistance, nearbyActions);
 
+  /**
+   * Says that this spot has been reported before. It is a note, not a
+   * question: several reports of one tree are three reports, never merged,
+   * so there is nothing here for the reporter to confirm or undo.
+   */
+  const nearbyReport = document.createElement('p');
+  nearbyReport.className = 'form-notice';
+  nearbyReport.hidden = true;
+
   picker.append(
     pickerTitle,
     pickerHint,
@@ -296,6 +313,7 @@ export function createReportForm(
     pickerActions,
     locateStatus,
     nearbyBox,
+    nearbyReport,
   );
 
   /* Form ------------------------------------------------------------------ */
@@ -572,7 +590,20 @@ export function createReportForm(
     }
   }
 
+  function renderNearbyReport(view: PickedView): void {
+    const found = nearestWithin(knownReports, view, NEARBY_REPORT_RADIUS_M);
+    if (found === null) {
+      nearbyReport.hidden = true;
+      return;
+    }
+    nearbyReport.hidden = false;
+    nearbyReport.textContent = formatTemplate(strings.form.nearbyReport, {
+      distance: found.distanceM.toFixed(0),
+    });
+  }
+
   function renderNearby(view: PickedView): void {
+    renderNearbyReport(view);
     nearby = nearestWithin(trees, view, PROTECTED_TREE_RADIUS_M);
     const linked = draft.protectedTreeId !== '';
 
@@ -920,6 +951,10 @@ export function createReportForm(
   return {
     setTrees(next) {
       trees = next;
+      render();
+    },
+    setReports(next) {
+      knownReports = next;
       render();
     },
     update() {
