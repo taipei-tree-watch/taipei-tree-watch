@@ -10,7 +10,7 @@ import type { Tag } from '../../../shared/tags.ts';
 import type { FilterState } from '../filters.ts';
 import { NO_CAUSE_CODE, emptyFilterState } from '../filters.ts';
 import { formatTemplate } from '../format.ts';
-import { BUCKET_COLORS, bucketForCause } from '../map/colors.ts';
+import { bucketColorVar, bucketForCause } from '../map/colors.ts';
 import strings from '../ui-strings.json';
 
 export interface FilterPanel {
@@ -31,12 +31,16 @@ interface Selection {
   observedTo: string | null;
 }
 
-/** Swatch colour for a cause option, so the legend and the map agree. */
+/**
+ * Swatch colour for a cause option, so the legend and the map agree. A custom
+ * property rather than a resolved colour: the swatch then follows the colour
+ * scheme on its own, with no repaint from here.
+ */
 function swatchColor(code: number): string {
   if (code === NO_CAUSE_CODE) {
-    return BUCKET_COLORS.none;
+    return bucketColorVar('none');
   }
-  return BUCKET_COLORS[bucketForCause(code) ?? 'none'];
+  return bucketColorVar(bucketForCause(code) ?? 'none');
 }
 
 function createCheckbox(

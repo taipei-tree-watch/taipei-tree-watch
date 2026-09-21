@@ -21,6 +21,8 @@ export function turnstileSiteKey(): string {
 
 interface TurnstileRenderOptions {
   sitekey: string;
+  /** 'auto' follows the visitor's prefers-color-scheme, as the rest of the page does. */
+  theme?: 'light' | 'dark' | 'auto';
   callback?: (token: string) => void;
   'expired-callback'?: () => void;
   'error-callback'?: () => void;
@@ -91,6 +93,7 @@ export async function renderTurnstile(container: HTMLElement): Promise<Turnstile
 
   const widgetId = api.render(container, {
     sitekey: turnstileSiteKey(),
+    theme: 'auto',
     callback(value: string) {
       token = value;
     },

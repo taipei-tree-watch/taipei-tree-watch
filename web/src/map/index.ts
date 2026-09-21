@@ -9,6 +9,7 @@
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import type {
+  ExpressionSpecification,
   GeoJSONSource,
   LngLatLike,
   PointLike,
@@ -24,14 +25,9 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { ACTIVE_ORTHO, BASE_MAP, INITIAL_VIEW, MAP_ATTRIBUTION } from '../basemaps.ts';
 import type { ReportRecord } from '../data/snapshot.ts';
 import type { ProtectedTree } from '../data/trees.ts';
-import {
-  CLUSTER_ALERT_COLOR,
-  CLUSTER_COLOR,
-  PENDING_STROKE_COLOR,
-  PROTECTED_TREE_COLOR,
-  bucketForCauses,
-  colorForCauses,
-} from './colors.ts';
+import type { MapPalette } from './colors.ts';
+import { bucketForCauses, paletteFor } from './colors.ts';
+import type { ColorScheme } from '../theme.ts';
 import { TAP_RADIUS_PX, pickHit } from './hit.ts';
 
 setWorkerUrl(workerUrl);
@@ -64,6 +60,8 @@ export interface MapController {
   setReports(reports: readonly ReportRecord[]): void;
   setTrees(trees: readonly ProtectedTree[]): void;
   setOrthoVisible(visible: boolean): void;
+  /** Repaint the basemap and every point layer in the given colour scheme. */
+  setColorScheme(scheme: ColorScheme): void;
   isOrthoVisible(): boolean;
   flyTo(center: { lat: number; lng: number }, zoom?: number): void;
   resize(): void;
@@ -73,7 +71,64 @@ function emptyCollection(): FeatureCollection<Point> {
   return { type: 'FeatureCollection', features: [] };
 }
 
-function buildStyle(): StyleSpecification {
+/**
+ * Basemap paint per scheme. NLSC EMAP is a light map with dark labels, so in
+ * dark mode the raster is inverted by running its brightness ramp backwards
+ * (min above max): the paper turns near black and the labels turn light, which
+ * keeps them readable. Merely dimming the tiles would leave dark labels on a
+ * grey sheet at around 3.6:1. Inversion also turns the map's greens magenta,
+ * so saturation is pulled most of the way out and contrast is softened, which
+ * leaves the report points as the only saturated thing on screen. The paint
+ * sits on the basemap layer alone: the orthophoto and the points are untouched.
+ */
+interface BasemapPaint {
+  readonly 'raster-brightness-min': number;
+  readonly 'raster-brightness-max': number;
+  readonly 'raster-saturation': number;
+  readonly 'raster-contrast': number;
+}
+
+const BASEMAP_PAINT: Readonly<Record<ColorScheme, BasemapPaint>> = {
+  light: {
+    'raster-brightness-min': 0,
+    'raster-brightness-max': 1,
+    'raster-saturation': 0,
+    'raster-contrast': 0,
+  },
+  dark: {
+    'raster-brightness-min': 1,
+    'raster-brightness-max': 0.08,
+    'raster-saturation': -0.72,
+    'raster-contrast': -0.08,
+  },
+};
+
+/** Point fill by cause bucket, so a scheme change is a paint update only. */
+function bucketColorExpression(palette: MapPalette): ExpressionSpecification {
+  return [
+    'match',
+    ['get', 'bucket'],
+    'brown-root-rot',
+    palette.buckets['brown-root-rot'],
+    'other-disease',
+    palette.buckets['other-disease'],
+    'construction',
+    palette.buckets.construction,
+    palette.buckets.none,
+  ];
+}
+
+/** Stroke that separates a point from the map, darker for a pending point. */
+function strokeColorExpression(palette: MapPalette): ExpressionSpecification {
+  return ['case', ['get', 'pending'], palette.pendingStroke, palette.halo];
+}
+
+function clusterColorExpression(palette: MapPalette): ExpressionSpecification {
+  return ['case', ['>', ['get', 'alert'], 0], palette.clusterAlert, palette.cluster];
+}
+
+function buildStyle(scheme: ColorScheme): StyleSpecification {
+  const palette = paletteFor(scheme);
   return {
     version: 8,
     sources: {
@@ -106,7 +161,12 @@ function buildStyle(): StyleSpecification {
       },
     },
     layers: [
-      { id: LAYER_IDS.basemap, type: 'raster', source: BASE_MAP.id },
+      {
+        id: LAYER_IDS.basemap,
+        type: 'raster',
+        source: BASE_MAP.id,
+        paint: { ...BASEMAP_PAINT[scheme] },
+      },
       {
         id: LAYER_IDS.ortho,
         type: 'raster',
@@ -118,7 +178,7 @@ function buildStyle(): StyleSpecification {
         type: 'circle',
         source: TREES_SOURCE,
         paint: {
-          'circle-color': PROTECTED_TREE_COLOR,
+          'circle-color': palette.protectedTree,
           'circle-opacity': 0.8,
           'circle-radius': [
             'interpolate',
@@ -139,15 +199,10 @@ function buildStyle(): StyleSpecification {
         source: REPORTS_SOURCE,
         filter: ['has', 'point_count'],
         paint: {
-          'circle-color': [
-            'case',
-            ['>', ['get', 'alert'], 0],
-            CLUSTER_ALERT_COLOR,
-            CLUSTER_COLOR,
-          ],
+          'circle-color': clusterColorExpression(palette),
           'circle-opacity': 0.82,
           'circle-stroke-width': 2,
-          'circle-stroke-color': '#ffffff',
+          'circle-stroke-color': palette.halo,
           'circle-radius': ['step', ['get', 'point_count'], 13, 10, 18, 50, 24, 200, 30],
         },
       },
@@ -157,11 +212,11 @@ function buildStyle(): StyleSpecification {
         source: REPORTS_SOURCE,
         filter: ['!', ['has', 'point_count']],
         paint: {
-          'circle-color': ['get', 'color'],
+          'circle-color': bucketColorExpression(palette),
           // A locally pending report is drawn with a dark ring so the reporter
           // can tell their own unsynced point from one that is in the snapshot.
           'circle-stroke-width': ['case', ['get', 'pending'], 3, 1.5],
-          'circle-stroke-color': ['case', ['get', 'pending'], PENDING_STROKE_COLOR, '#ffffff'],
+          'circle-stroke-color': strokeColorExpression(palette),
           'circle-radius': [
             'interpolate',
             ['linear'],
@@ -185,7 +240,6 @@ function reportFeature(report: ReportRecord): Feature<Point> {
     properties: {
       id: report.id,
       bucket,
-      color: colorForCauses(report.causes),
       pending: report.pending === true,
     },
   };
@@ -199,10 +253,13 @@ function treeFeature(tree: ProtectedTree): Feature<Point> {
   };
 }
 
-export function createMapController(container: HTMLElement): MapController {
+export function createMapController(
+  container: HTMLElement,
+  scheme: ColorScheme = 'light',
+): MapController {
   const map = new MapLibreMap({
     container,
-    style: buildStyle(),
+    style: buildStyle(scheme),
     center: [INITIAL_VIEW.center[0], INITIAL_VIEW.center[1]] as LngLatLike,
     zoom: INITIAL_VIEW.zoom,
     minZoom: INITIAL_VIEW.minZoom,
@@ -358,6 +415,26 @@ export function createMapController(container: HTMLElement): MapController {
     setOrthoVisible(visible) {
       const apply = (): void => {
         map.setLayoutProperty(LAYER_IDS.ortho, 'visibility', visible ? 'visible' : 'none');
+      };
+      if (loaded) {
+        apply();
+      } else {
+        map.once('load', apply);
+      }
+    },
+    setColorScheme(next) {
+      const apply = (): void => {
+        const palette = paletteFor(next);
+        const basemap = BASEMAP_PAINT[next];
+        map.setPaintProperty(LAYER_IDS.basemap, 'raster-brightness-min', basemap['raster-brightness-min']);
+        map.setPaintProperty(LAYER_IDS.basemap, 'raster-brightness-max', basemap['raster-brightness-max']);
+        map.setPaintProperty(LAYER_IDS.basemap, 'raster-saturation', basemap['raster-saturation']);
+        map.setPaintProperty(LAYER_IDS.basemap, 'raster-contrast', basemap['raster-contrast']);
+        map.setPaintProperty(LAYER_IDS.trees, 'circle-color', palette.protectedTree);
+        map.setPaintProperty(LAYER_IDS.clusters, 'circle-color', clusterColorExpression(palette));
+        map.setPaintProperty(LAYER_IDS.clusters, 'circle-stroke-color', palette.halo);
+        map.setPaintProperty(LAYER_IDS.reports, 'circle-color', bucketColorExpression(palette));
+        map.setPaintProperty(LAYER_IDS.reports, 'circle-stroke-color', strokeColorExpression(palette));
       };
       if (loaded) {
         apply();

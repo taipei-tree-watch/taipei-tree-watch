@@ -23,6 +23,7 @@ import type { PendingReport, StorageLike } from './report/pending.ts';
 import { addPending, prunePending, readPending, toReportRecord } from './report/pending.ts';
 import { browserShareCapabilities, sharePermalink } from './share.ts';
 import strings from './ui-strings.json';
+import { watchDeviceColorScheme } from './theme.ts';
 import { createCrosshair } from './ui/crosshair.ts';
 import type { Crosshair } from './ui/crosshair.ts';
 import { createDetailCard } from './ui/detail-card.ts';
@@ -400,7 +401,13 @@ async function start(): Promise<void> {
   statusBar.showLoading();
 
   const { createMapController } = await import('./map/index.ts');
-  const controller = createMapController(required('#map'));
+  // CSS follows the device scheme through a media query; the map style cannot,
+  // so the controller is told the scheme and then told again when it flips.
+  const schemeWatcher = watchDeviceColorScheme(window);
+  const controller = createMapController(required('#map'), schemeWatcher.current());
+  schemeWatcher.subscribe((scheme) => {
+    controller.setColorScheme(scheme);
+  });
   mapController = controller;
   filterPanel = createFilterPanel(required('#filter-panel'), refresh);
   filterPanel.onOpenChange((open) => {

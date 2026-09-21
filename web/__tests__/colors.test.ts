@@ -3,10 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { causes } from '../../shared/tags.ts';
 import {
   ALL_CAUSE_CODES,
-  BUCKET_COLORS,
+  MAP_PALETTES,
+  bucketColorVar,
   bucketForCause,
   bucketForCauses,
   colorForCauses,
+  paletteFor,
 } from '../src/map/colors.ts';
 
 describe('cause colours', () => {
@@ -17,10 +19,20 @@ describe('cause colours', () => {
     expect(ALL_CAUSE_CODES).toEqual(causes.map((cause) => cause.code));
   });
 
-  it('gives every bucket a distinct colour', () => {
-    const values = Object.values(BUCKET_COLORS);
+  it.each(['light', 'dark'] as const)('gives every bucket a distinct colour in %s', (scheme) => {
+    const values = Object.values(paletteFor(scheme).buckets);
 
     expect(new Set(values).size).toBe(values.length);
+  });
+
+  it('paints the two schemes from different colours throughout', () => {
+    const shared = Object.entries(MAP_PALETTES.light.buckets).filter(
+      ([bucket, color]) => MAP_PALETTES.dark.buckets[bucket as never] === color,
+    );
+
+    expect(shared).toEqual([]);
+    expect(MAP_PALETTES.dark.halo).not.toBe(MAP_PALETTES.light.halo);
+    expect(MAP_PALETTES.dark.pendingStroke).not.toBe(MAP_PALETTES.light.pendingStroke);
   });
 
   it('splits construction causes from the tree condition causes', () => {
@@ -33,7 +45,8 @@ describe('cause colours', () => {
   it('lets brown root rot win over any other cause on the same report', () => {
     expect(bucketForCauses([21, 1])).toBe('brown-root-rot');
     expect(bucketForCauses([1])).toBe('brown-root-rot');
-    expect(colorForCauses([3, 1, 20])).toBe(BUCKET_COLORS['brown-root-rot']);
+    expect(colorForCauses([3, 1, 20], 'light')).toBe(MAP_PALETTES.light.buckets['brown-root-rot']);
+    expect(colorForCauses([3, 1, 20], 'dark')).toBe(MAP_PALETTES.dark.buckets['brown-root-rot']);
   });
 
   it('ranks other disease above construction', () => {
@@ -43,6 +56,11 @@ describe('cause colours', () => {
   it('uses the neutral colour for a report with no or unknown causes', () => {
     expect(bucketForCauses([])).toBe('none');
     expect(bucketForCauses([9999])).toBe('none');
-    expect(colorForCauses([])).toBe(BUCKET_COLORS.none);
+    expect(colorForCauses([], 'light')).toBe(MAP_PALETTES.light.buckets.none);
+  });
+
+  it('names a custom property for each bucket, which the swatches use', () => {
+    expect(bucketColorVar('brown-root-rot')).toBe('var(--bucket-brown-root-rot)');
+    expect(bucketColorVar('none')).toBe('var(--bucket-none)');
   });
 });

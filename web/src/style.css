@@ -4,6 +4,13 @@
  * From 768px the panels become a fixed left column instead.
  */
 
+/*
+ * Every colour in the page is a token here, and the dark block below redefines
+ * the same names. Nothing else in the stylesheet carries a literal colour, so
+ * a scheme is one list of values rather than a parallel set of rules. The
+ * --bucket-* tokens mirror the map palette in src/map/colors.ts, where the
+ * same values are handed to MapLibre; a test compares the two lists.
+ */
 :root {
   --surface: #ffffff;
   --surface-muted: #f4f5f7;
@@ -14,10 +21,16 @@
   --accent-ink: #ffffff;
   --danger: #a8243b;
   --shadow: 0 0.5rem 1.5rem rgb(15 23 32 / 18%);
+  --crosshair-halo: rgb(255 255 255 / 85%);
+  --swatch-edge: rgb(0 0 0 / 15%);
+  --bucket-brown-root-rot: #d7263d;
+  --bucket-other-disease: #e8871e;
+  --bucket-construction: #3d7ea6;
+  --bucket-none: #6b7280;
   --topbar-height: 3.25rem;
   --panel-width: 27rem;
 
-  color-scheme: light;
+  color-scheme: light dark;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans TC', sans-serif;
   line-height: 1.6;
   color: var(--ink);
@@ -303,7 +316,7 @@ body {
   width: 0.625rem;
   height: 0.625rem;
   border-radius: 999px;
-  border: 1px solid rgb(0 0 0 / 15%);
+  border: 1px solid var(--swatch-edge);
 }
 
 .filter-dates {
@@ -458,14 +471,14 @@ body {
   width: 2.75rem;
   height: 2.75rem;
   border: 2px solid var(--danger);
-  box-shadow: 0 0 0 2px rgb(255 255 255 / 85%), inset 0 0 0 2px rgb(255 255 255 / 85%);
+  box-shadow: 0 0 0 2px var(--crosshair-halo), inset 0 0 0 2px var(--crosshair-halo);
 }
 
 .crosshair-dot {
   width: 0.4rem;
   height: 0.4rem;
   background: var(--danger);
-  box-shadow: 0 0 0 2px rgb(255 255 255 / 85%);
+  box-shadow: 0 0 0 2px var(--crosshair-halo);
 }
 
 /* Report sheet ------------------------------------------------------------ */
@@ -799,6 +812,60 @@ body {
 .maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib-inner {
   font-size: 0.6875rem;
   line-height: 1.4;
+}
+
+/*
+ * Dark scheme. The device decides: there is no in-page toggle, so the only
+ * input is prefers-color-scheme. Surfaces are lifted off pure black so the
+ * shadow still separates a panel from the map, and the accent and danger hues
+ * are brightened to clear 4.5:1 on both surface tokens.
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #161b22;
+    --surface-muted: #1f262e;
+    --ink: #e6edf3;
+    --ink-muted: #aab6c2;
+    --line: #303a45;
+    --accent: #5fb98a;
+    --accent-ink: #0d1117;
+    --danger: #ff6b81;
+    --shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 55%);
+    --crosshair-halo: rgb(13 17 23 / 85%);
+    --swatch-edge: rgb(255 255 255 / 25%);
+    --bucket-brown-root-rot: #ff5d6c;
+    --bucket-other-disease: #ffa94d;
+    --bucket-construction: #5fb3e6;
+    --bucket-none: #9aa5b4;
+  }
+
+  /*
+   * MapLibre ships its own light chrome. The controls are re-skinned with the
+   * page tokens, and only the control glyphs, which are background images, are
+   * inverted. The map canvas itself is never filtered: the basemap is darkened
+   * through its own raster paint properties so the points and the orthophoto
+   * keep their colours.
+   */
+  /* Selected through #map, as the map container is elsewhere: MapLibre's own
+     stylesheet arrives with the map chunk and would otherwise win on load
+     order at equal specificity. */
+  #map .maplibregl-ctrl-group,
+  #map .maplibregl-ctrl-attrib {
+    background: var(--surface);
+    color: var(--ink);
+  }
+
+  #map .maplibregl-ctrl-attrib a {
+    color: var(--ink);
+  }
+
+  #map .maplibregl-ctrl-group button + button {
+    border-top-color: var(--line);
+  }
+
+  #map .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+    filter: invert(1);
+  }
 }
 
 /* Desktop ---------------------------------------------------------------- */
