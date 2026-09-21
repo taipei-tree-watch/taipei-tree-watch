@@ -49,6 +49,9 @@
     "dbhValue": "{value} 公尺",
     "address": "地址",
     "manager": "管理單位",
+    "copyLink": "複製連結",
+    "copied": "已複製連結",
+    "copyManual": "無法自動複製，請手動複製這個網址。",
     "unknownValue": "未填寫",
     "listSeparator": "、"
   },
@@ -70,7 +73,10 @@
     "snapshotFailed": "回報資料載入失敗，地圖上只會看到受保護樹木。",
     "treesFailed": "受保護樹木圖層載入失敗。",
     "bothFailed": "地圖資料載入失敗。",
-    "retry": "重新載入"
+    "retry": "重新載入",
+    "dismiss": "關閉",
+    "reportMissing": "找不到這筆回報，可能尚未同步或已移除。",
+    "treeMissing": "找不到這棵受保護樹木，可能已解列或資料已更新。"
   },
   "form": {
     "positionTitle": "先對準這棵樹",
