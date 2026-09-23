@@ -599,6 +599,9 @@ async function start(): Promise<void> {
     editLinkUrl: (link) => editLinkUrl(link, window.location.href),
     share: shareUrl,
     confirm: (message) => window.confirm(message),
+    // Matches the desktop breakpoint in style.css, where the sheet is a side
+    // column and has room for the instructions.
+    guideOpen: window.matchMedia('(min-width: 768px)').matches,
   });
   reportForm.setTrees(trees);
   reportForm.setReports(reports);

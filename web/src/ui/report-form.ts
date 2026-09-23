@@ -95,6 +95,8 @@ export interface ReportFormOptions {
   /** window.confirm in the page; a test answers for the reader. */
   readonly confirm: (message: string) => boolean;
   readonly feedbackMs?: number;
+  /** Whether the aiming instructions start unfolded; defaults to true. */
+  readonly guideOpen?: boolean;
 }
 
 export interface ReportForm {
@@ -324,7 +326,16 @@ export function createReportForm(
   const picker = document.createElement('div');
   picker.className = 'form-picker';
 
-  const pickerTitle = document.createElement('h3');
+  /**
+   * The instructions fold away behind the title. On a phone they start folded
+   * so the sheet stays short and the map around the crosshair stays large;
+   * the gate line below still says when the view is not good enough.
+   */
+  const pickerGuide = document.createElement('details');
+  pickerGuide.className = 'form-picker-guide';
+  pickerGuide.open = options.guideOpen ?? true;
+
+  const pickerTitle = document.createElement('summary');
   pickerTitle.textContent = strings.form.positionTitle;
 
   const pickerHint = document.createElement('p');
@@ -336,6 +347,8 @@ export function createReportForm(
 
   const zoomLine = document.createElement('p');
   zoomLine.className = 'form-hint';
+
+  pickerGuide.append(pickerTitle, pickerHint, zoomLine);
 
   const gateLine = document.createElement('p');
   gateLine.className = 'form-gate';
@@ -426,10 +439,8 @@ export function createReportForm(
   );
 
   picker.append(
-    pickerTitle,
-    pickerHint,
+    pickerGuide,
     coordLine,
-    zoomLine,
     gateLine,
     pickerActions,
     locateStatus,
