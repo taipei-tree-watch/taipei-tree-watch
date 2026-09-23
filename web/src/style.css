@@ -622,15 +622,8 @@ body {
   border-radius: 0.375rem;
   font-size: 0.8125rem;
   background: var(--surface-muted);
-}
-
-.form-gate[data-tone='blocked'] {
   border-left: 3px solid var(--danger);
   color: var(--danger);
-}
-
-.form-gate[data-tone='ok'] {
-  border-left: 3px solid var(--accent);
 }
 
 .form-picker-actions {

@@ -911,14 +911,13 @@ export function createReportForm(
     });
 
     const block = submitBlock(view, options.bbox);
+    // Only a problem is worth a line; a usable point needs no confirmation.
+    gateLine.hidden = block === null;
     if (block === 'zoom') {
       gateLine.textContent = strings.form.blockedZoom;
     } else if (block === 'bbox') {
       gateLine.textContent = strings.form.blockedBbox;
-    } else {
-      gateLine.textContent = strings.form.positionReady;
     }
-    gateLine.dataset.tone = block === null ? 'ok' : 'blocked';
     // The point locks on the way to the fields, so a view that could never be
     // submitted is not allowed to become the locked one.
     modeButton.disabled = mode === 'picking' && block !== null;

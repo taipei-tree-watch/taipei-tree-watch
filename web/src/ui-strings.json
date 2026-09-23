@@ -92,7 +92,6 @@
     "zoomLevel": "目前縮放 {zoom}，需要 {min} 以上",
     "blockedZoom": "請再拉近。放大到看得出單棵樹冠再開始填寫。",
     "blockedBbox": "這個位置超出收件範圍。本站只收臺北市與市界附近的回報。",
-    "positionReady": "位置可以送出。",
     "locateFailed": "拿不到目前位置，地圖留在原地。請自行拖動準心對準。",
     "toForm": "開始填寫",
     "toPicking": "重新定位",

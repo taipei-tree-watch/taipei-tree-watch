@@ -163,3 +163,28 @@ describe('linkTree', () => {
     expect(species).toContain('banyan');
   });
 });
+
+describe('gate line', () => {
+  function gate(container: HTMLElement): HTMLElement {
+    return container.querySelector('.form-gate') as HTMLElement;
+  }
+
+  it('explains a view that cannot be used', () => {
+    const container = document.createElement('div');
+    createReportForm(container, options()).setActive(true);
+
+    expect(gate(container).hidden).toBe(false);
+    expect(gate(container).textContent).toBe(strings.form.blockedZoom);
+  });
+
+  it('stays out of the way when the point is usable', () => {
+    const container = document.createElement('div');
+    const form = createReportForm(
+      container,
+      options({ getView: () => ({ lat: 25.04, lng: 121.54, zoom: 19 }) }),
+    );
+    form.setActive(true);
+
+    expect(gate(container).hidden).toBe(true);
+  });
+});
