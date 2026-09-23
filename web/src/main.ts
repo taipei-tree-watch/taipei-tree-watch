@@ -426,6 +426,9 @@ async function start(): Promise<void> {
     onModeChange() {
       controller.resize();
     },
+    onDismiss() {
+      reportSheet.close();
+    },
     fetchImpl: (input, init) => fetch(input, init),
     now: () => new Date(),
     storage,

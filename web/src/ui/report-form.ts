@@ -4,8 +4,8 @@
  * Two modes share one point. In `picking` the sheet collapses to a bar so the
  * crosshair stays visible while the map is dragged; in `form` the fields are
  * shown. The point is always the map centre, read live, so moving the map at
- * any moment updates the coordinates, the submit gate and the nearby
- * protected tree question.
+ * any moment updates the coordinates, the submit gate, the nearby
+ * protected tree question and the nearby report notice.
  *
  * Every rule enforced here is also enforced by the Worker. This layer exists
  * to show the reporter what is wrong before a request is made, never to
@@ -50,6 +50,8 @@ import type { FormField } from '../report/errors.ts';
 import type { PendingReport, StorageLike } from '../report/pending.ts';
 import { toReportRecord } from '../report/pending.ts';
 import { dismissSafety, isSafetyDismissed } from '../report/safety.ts';
+import type { SameTreeCheck } from '../report/same-tree.ts';
+import { prefillFromReport, sameTreeStage } from '../report/same-tree.ts';
 import { reportRows } from './report-rows.ts';
 import type { FetchLike } from '../report/submit.ts';
 import { submitReport } from '../report/submit.ts';
@@ -67,6 +69,8 @@ export interface ReportFormOptions {
   readonly locate: () => Promise<void>;
   readonly onPendingReport: (report: PendingReport) => void;
   readonly onModeChange: (mode: PickerMode) => void;
+  /** The reporter found their tree already reported as it is: close the sheet. */
+  readonly onDismiss: () => void;
   readonly fetchImpl: FetchLike;
   readonly now: () => Date;
   /** Holds the safety notice acknowledgement, one entry per browser. */
@@ -75,7 +79,7 @@ export interface ReportFormOptions {
 
 export interface ReportForm {
   setTrees(trees: readonly ProtectedTree[]): void;
-  /** Reports already on the map, used only for the nearby notice. */
+  /** Reports already on the map, used only for the nearby report check. */
   setReports(reports: readonly ReportRecord[]): void;
   /** Called on every camera move while the sheet is open. */
   update(): void;
@@ -221,6 +225,10 @@ export function createReportForm(
   let trees: readonly ProtectedTree[] = [];
   let knownReports: readonly ReportRecord[] = [];
   let nearby: Nearby<ProtectedTree> | null = null;
+  let nearbyReportFound: Nearby<ReportRecord> | null = null;
+  let sameTree: SameTreeCheck | null = null;
+  /** The report whose rows are in the box, so a camera move does not rebuild them. */
+  let shownReportId: string | null = null;
   let widget: TurnstileWidget | null = null;
   let widgetPending = false;
   let submitting = false;
@@ -296,13 +304,51 @@ export function createReportForm(
   nearbyBox.append(nearbyQuestion, nearbyDistance, nearbyActions);
 
   /**
-   * Says that this spot has been reported before. It is a note, not a
-   * question: several reports of one tree are three reports, never merged,
-   * so there is nothing here for the reporter to confirm or undo.
+   * Shows the report already filed near the crosshair and asks whether it is
+   * the same tree. Several reports of one tree stay separate reports, so a
+   * yes only decides whether this reporter has anything new to add.
    */
-  const nearbyReport = document.createElement('p');
-  nearbyReport.className = 'form-notice';
+  const nearbyReport = document.createElement('div');
+  nearbyReport.className = 'form-nearby';
   nearbyReport.hidden = true;
+  const nearbyReportTitle = document.createElement('p');
+  nearbyReportTitle.className = 'form-nearby-question';
+  const nearbyReportDistance = document.createElement('p');
+  nearbyReportDistance.className = 'form-hint';
+  const nearbyReportRows = document.createElement('div');
+  nearbyReportRows.className = 'form-nearby-rows';
+  const nearbyReportQuestion = document.createElement('p');
+  nearbyReportQuestion.className = 'form-nearby-question';
+
+  function secondaryButton(label: string): HTMLButtonElement {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'form-secondary';
+    button.textContent = label;
+    return button;
+  }
+
+  const sameButton = secondaryButton(strings.form.nearbyReportSame);
+  const differentButton = secondaryButton(strings.form.nearbyReportDifferent);
+  const updateButton = secondaryButton(strings.form.nearbyReportUpdate);
+  const unchangedButton = secondaryButton(strings.form.nearbyReportUnchanged);
+  const recheckButton = secondaryButton(strings.form.nearbyReportRecheck);
+  const nearbyReportActions = document.createElement('div');
+  nearbyReportActions.className = 'form-picker-actions';
+  nearbyReportActions.append(
+    sameButton,
+    differentButton,
+    updateButton,
+    unchangedButton,
+    recheckButton,
+  );
+  nearbyReport.append(
+    nearbyReportTitle,
+    nearbyReportDistance,
+    nearbyReportRows,
+    nearbyReportQuestion,
+    nearbyReportActions,
+  );
 
   picker.append(
     pickerTitle,
@@ -612,15 +658,44 @@ export function createReportForm(
   }
 
   function renderNearbyReport(view: PickedView): void {
-    const found = nearestWithin(knownReports, view, NEARBY_REPORT_RADIUS_M);
-    if (found === null) {
+    nearbyReportFound = nearestWithin(knownReports, view, NEARBY_REPORT_RADIUS_M);
+    const found = nearbyReportFound;
+    const stage = sameTreeStage(found?.item.id ?? null, sameTree);
+    if (found === null || stage === 'none') {
       nearbyReport.hidden = true;
+      shownReportId = null;
       return;
     }
     nearbyReport.hidden = false;
-    nearbyReport.textContent = formatTemplate(strings.form.nearbyReport, {
-      distance: found.distanceM.toFixed(0),
-    });
+
+    const distance = found.distanceM.toFixed(0);
+    const settled = stage === 'different' || stage === 'update';
+    if (stage === 'different') {
+      nearbyReportTitle.textContent = strings.form.nearbyReportDifferentNote;
+    } else if (stage === 'update') {
+      nearbyReportTitle.textContent = strings.form.nearbyReportUpdateNote;
+    } else {
+      nearbyReportTitle.textContent = strings.form.nearbyReportTitle;
+    }
+    nearbyReportDistance.hidden = settled;
+    nearbyReportDistance.textContent = formatTemplate(strings.form.nearbyReport, { distance });
+
+    // Once answered the rows fold away; the question is what they were for.
+    nearbyReportRows.hidden = settled;
+    if (!settled && shownReportId !== found.item.id) {
+      nearbyReportRows.replaceChildren(...reportRows(found.item));
+      shownReportId = found.item.id;
+    }
+
+    nearbyReportQuestion.hidden = settled;
+    nearbyReportQuestion.textContent =
+      stage === 'same' ? strings.form.nearbyReportChanged : strings.form.nearbyReportAsk;
+
+    sameButton.hidden = stage !== 'ask';
+    differentButton.hidden = stage !== 'ask';
+    updateButton.hidden = stage !== 'same';
+    unchangedButton.hidden = stage !== 'same';
+    recheckButton.hidden = !settled && stage !== 'same';
   }
 
   function renderNearby(view: PickedView): void {
@@ -806,6 +881,47 @@ export function createReportForm(
     render();
   });
 
+  function answerSameTree(answer: SameTreeCheck['answer']): void {
+    if (nearbyReportFound === null) {
+      return;
+    }
+    sameTree = { reportId: nearbyReportFound.item.id, answer };
+  }
+
+  sameButton.addEventListener('click', () => {
+    answerSameTree('same');
+    render();
+  });
+
+  differentButton.addEventListener('click', () => {
+    answerSameTree('different');
+    render();
+  });
+
+  recheckButton.addEventListener('click', () => {
+    sameTree = null;
+    render();
+  });
+
+  updateButton.addEventListener('click', () => {
+    if (nearbyReportFound === null) {
+      return;
+    }
+    answerSameTree('update');
+    draft = prefillFromReport(draft, nearbyReportFound.item);
+    speciesInput.value = draft.species;
+    protectedInput.value = draft.protectedTreeId;
+    inventoryInput.value = draft.inventoryTreeId;
+    setMode('form');
+    render();
+  });
+
+  // Nothing is being reported, so nothing typed or carried over is kept.
+  unchangedButton.addEventListener('click', () => {
+    resetForm();
+    options.onDismiss();
+  });
+
   nearbyClear.addEventListener('click', () => {
     draft = { ...draft, protectedTreeId: '' };
     protectedInput.value = '';
@@ -863,6 +979,7 @@ export function createReportForm(
 
   function resetForm(): void {
     draft = emptyDraft();
+    sameTree = null;
     apiErrors = new Map();
     generalError = null;
     turnstileMessage = null;
@@ -997,6 +1114,7 @@ export function createReportForm(
         return;
       }
       observedInput.max = taipeiDate(options.now());
+      sameTree = null;
       setMode('picking');
       render();
     },

@@ -568,6 +568,15 @@ body {
   font-weight: 600;
 }
 
+.form-nearby-rows {
+  margin: 0.5rem 0;
+}
+
+.form-nearby .form-nearby-question + .form-nearby-question,
+.form-nearby-rows + .form-nearby-question {
+  margin-top: 0.5rem;
+}
+
 /* Report form ------------------------------------------------------------- */
 
 .form-fields {
