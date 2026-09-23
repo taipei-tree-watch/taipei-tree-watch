@@ -85,7 +85,7 @@
     "editFailed": "讀不到要修改的回報，請再試一次。"
   },
   "form": {
-    "positionTitle": "先對準這棵樹",
+    "guideToggle": "說明",
     "positionHint": "拖動地圖，讓畫面中央的準心對準那棵樹。準心的位置就是回報的位置。",
     "coords": "緯度 {lat}，經度 {lng}",
     "zoomLevel": "目前縮放 {zoom}，需要 {min} 以上",
@@ -93,7 +93,7 @@
     "blockedBbox": "這個位置超出收件範圍。本站只收臺北市與市界附近的回報。",
     "positionReady": "位置可以送出。",
     "locateFailed": "拿不到目前位置，地圖留在原地。請自行拖動準心對準。",
-    "toForm": "填寫回報內容",
+    "toForm": "開始填寫",
     "toPicking": "重新選點",
     "nearbyQuestion": "這是受保護樹木 #{id} {species} 嗎？",
     "nearbyDistance": "距離準心約 {distance} 公尺。",

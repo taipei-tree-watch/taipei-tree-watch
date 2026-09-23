@@ -10,6 +10,8 @@ import strings from '../ui-strings.json';
 export interface ReportSheet {
   /** Container the report form is mounted into. */
   readonly contentElement: HTMLElement;
+  /** Header space between the title and the close button, for extra controls. */
+  readonly headerSlot: HTMLElement;
   open(): void;
   close(): void;
   isOpen(): boolean;
@@ -25,6 +27,10 @@ export function createReportSheet(element: HTMLElement): ReportSheet {
   const title = document.createElement('h2');
   title.textContent = strings.sheet.title;
   header.append(title);
+
+  const slot = document.createElement('div');
+  slot.className = 'panel-header-slot';
+  header.append(slot);
 
   const close = document.createElement('button');
   close.type = 'button';
@@ -53,6 +59,7 @@ export function createReportSheet(element: HTMLElement): ReportSheet {
 
   return {
     contentElement: content,
+    headerSlot: slot,
     open() {
       setOpen(true);
     },

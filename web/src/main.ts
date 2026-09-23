@@ -75,14 +75,14 @@ const filtersToggle = required<HTMLButtonElement>('#filters-toggle');
 const infoToggle = required<HTMLButtonElement>('#info-toggle');
 const mineToggle = required<HTMLButtonElement>('#mine-toggle');
 const orthoToggle = required<HTMLButtonElement>('#ortho-toggle');
-const reportButton = required<HTMLButtonElement>('#report-open');
+const reportToggle = required<HTMLButtonElement>('#report-toggle');
 const locateMapButton = required<HTMLButtonElement>('#locate-map');
 
 filtersToggle.textContent = strings.topbar.filters;
 infoToggle.textContent = strings.topbar.info;
 mineToggle.textContent = strings.topbar.mine;
 orthoToggle.textContent = strings.topbar.ortho;
-reportButton.textContent = strings.topbar.report;
+reportToggle.textContent = strings.topbar.report;
 locateMapButton.textContent = strings.map.locate;
 
 // A pinched phone browser would otherwise leave the bar off screen with no
@@ -151,6 +151,9 @@ const minePanel = createMyReportsPanel(required('#mine-panel'), {
 });
 minePanel.onOpenChange((open) => {
   mineToggle.setAttribute('aria-expanded', String(open));
+});
+reportSheet.onOpenChange((open) => {
+  reportToggle.setAttribute('aria-expanded', String(open));
 });
 
 /** Set once the map module has arrived; the toggles are inert until then. */
@@ -288,7 +291,7 @@ mineToggle.addEventListener('click', () => {
   openOnly(minePanel.isOpen() ? null : 'mine');
 });
 
-/** Keep the layer and the chip in step, whoever changed it. */
+/** Keep the layer and the chip in step. */
 function setOrtho(visible: boolean): void {
   mapController?.setOrthoVisible(visible);
   orthoToggle.setAttribute('aria-pressed', String(visible));
@@ -297,37 +300,6 @@ function setOrtho(visible: boolean): void {
 orthoToggle.addEventListener('click', () => {
   setOrtho(orthoToggle.getAttribute('aria-pressed') !== 'true');
 });
-
-/**
- * Orthophoto state from before picking mode turned it on.
- *
- * Read from the chip rather than from the layer: the layer cannot be queried
- * until the style has loaded, and picking can start before that. Null means
- * picking is not active, so re-entering does not overwrite the saved value.
- */
-let orthoBeforePicking: boolean | null = null;
-
-function orthoChipPressed(): boolean {
-  return orthoToggle.getAttribute('aria-pressed') === 'true';
-}
-
-function enterPicking(): void {
-  if (mapController === null) {
-    return;
-  }
-  crosshair?.setVisible(true);
-  orthoBeforePicking ??= orthoChipPressed();
-  setOrtho(true);
-}
-
-function exitPicking(): void {
-  crosshair?.setVisible(false);
-  if (orthoBeforePicking === null) {
-    return;
-  }
-  setOrtho(orthoBeforePicking);
-  orthoBeforePicking = null;
-}
 
 /** GPS only ever moves the camera; the crosshair decides the coordinates. */
 function locate(): Promise<void> {
@@ -374,7 +346,11 @@ function runMapLocate(): void {
 
 locateMapButton.addEventListener('click', runMapLocate);
 
-reportButton.addEventListener('click', () => {
+reportToggle.addEventListener('click', () => {
+  if (reportSheet.isOpen()) {
+    reportSheet.close();
+    return;
+  }
   openOnly(null);
   detailCard.hide();
   reportForm?.startCreate();
@@ -603,15 +579,12 @@ async function start(): Promise<void> {
     // column and has room for the instructions.
     guideOpen: window.matchMedia('(min-width: 768px)').matches,
   });
+  reportSheet.headerSlot.append(reportForm.guideToggle);
   reportForm.setTrees(trees);
   reportForm.setReports(reports);
 
   reportSheet.onOpenChange((open) => {
-    if (open) {
-      enterPicking();
-    } else {
-      exitPicking();
-    }
+    crosshair?.setVisible(open);
     reportForm?.setActive(open);
   });
 

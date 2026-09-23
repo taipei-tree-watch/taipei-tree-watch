@@ -237,6 +237,21 @@ body {
   font-size: 1rem;
 }
 
+/* Extra header controls sit at the right edge, next to the close button. */
+.panel-header-slot {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.panel-header-slot:empty {
+  display: none;
+}
+
+.panel-header-slot + .panel-close {
+  margin-left: 0;
+}
+
 .panel-close {
   margin-left: auto;
   width: 2rem;
@@ -576,14 +591,12 @@ body {
   }
 }
 
-.form-picker-guide summary {
-  cursor: pointer;
-  font-size: 0.9375rem;
-  font-weight: 700;
+.form-picker-guide {
+  margin-bottom: 0.25rem;
 }
 
-.form-picker-guide[open] {
-  margin-bottom: 0.25rem;
+.form-picker-guide .form-hint:first-child {
+  margin-top: 0;
 }
 
 .form-coords {

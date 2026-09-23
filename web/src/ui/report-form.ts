@@ -55,6 +55,7 @@ import {
 import type { EditableReport } from '../report/edit.ts';
 import { saveReport, withdrawReport } from '../report/edit.ts';
 import type { FormField } from '../report/errors.ts';
+import { readGuideOpen, writeGuideOpen } from '../report/guide.ts';
 import type { PendingReport, StorageLike } from '../report/pending.ts';
 import { toReportRecord } from '../report/pending.ts';
 import { dismissSafety, isSafetyDismissed } from '../report/safety.ts';
@@ -82,7 +83,7 @@ export interface ReportFormOptions {
   readonly onDismiss: () => void;
   readonly fetchImpl: FetchLike;
   readonly now: () => Date;
-  /** Holds the safety notice acknowledgement, one entry per browser. */
+  /** Holds the safety acknowledgement and the instructions state, per browser. */
   readonly storage: StorageLike;
   /** Keep an edit link in this browser, with what the list shows for it. */
   readonly onEditLink: (link: EditLink, report: PendingReport) => void;
@@ -95,11 +96,16 @@ export interface ReportFormOptions {
   /** window.confirm in the page; a test answers for the reader. */
   readonly confirm: (message: string) => boolean;
   readonly feedbackMs?: number;
-  /** Whether the aiming instructions start unfolded; defaults to true. */
+  /**
+   * Whether the aiming instructions start unfolded when this browser has no
+   * remembered choice; defaults to true.
+   */
   readonly guideOpen?: boolean;
 }
 
 export interface ReportForm {
+  /** Folds the aiming instructions; the caller places it in the sheet header. */
+  readonly guideToggle: HTMLElement;
   setTrees(trees: readonly ProtectedTree[]): void;
   /** Reports already on the map, used only for the nearby report check. */
   setReports(reports: readonly ReportRecord[]): void;
@@ -327,16 +333,33 @@ export function createReportForm(
   picker.className = 'form-picker';
 
   /**
-   * The instructions fold away behind the title. On a phone they start folded
-   * so the sheet stays short and the map around the crosshair stays large;
-   * the gate line below still says when the view is not good enough.
+   * The instructions fold away behind a toggle that the caller mounts in the
+   * sheet header. Folded, the sheet stays short and the map around the
+   * crosshair stays large; the gate line below still says when the view is
+   * not good enough. The last choice is remembered per browser.
    */
-  const pickerGuide = document.createElement('details');
+  const pickerGuide = document.createElement('div');
   pickerGuide.className = 'form-picker-guide';
-  pickerGuide.open = options.guideOpen ?? true;
+  pickerGuide.id = 'form-picker-guide';
 
-  const pickerTitle = document.createElement('summary');
-  pickerTitle.textContent = strings.form.positionTitle;
+  const guideToggle = document.createElement('button');
+  guideToggle.type = 'button';
+  guideToggle.className = 'chip';
+  guideToggle.textContent = strings.form.guideToggle;
+  guideToggle.setAttribute('aria-controls', pickerGuide.id);
+
+  function setGuideOpen(open: boolean): void {
+    pickerGuide.hidden = !open;
+    guideToggle.setAttribute('aria-expanded', String(open));
+  }
+
+  setGuideOpen(readGuideOpen(options.storage) ?? options.guideOpen ?? true);
+
+  guideToggle.addEventListener('click', () => {
+    const open = guideToggle.getAttribute('aria-expanded') !== 'true';
+    setGuideOpen(open);
+    writeGuideOpen(options.storage, open);
+  });
 
   const pickerHint = document.createElement('p');
   pickerHint.className = 'form-hint';
@@ -348,7 +371,7 @@ export function createReportForm(
   const zoomLine = document.createElement('p');
   zoomLine.className = 'form-hint';
 
-  pickerGuide.append(pickerTitle, pickerHint, zoomLine);
+  pickerGuide.append(pickerHint, zoomLine);
 
   const gateLine = document.createElement('p');
   gateLine.className = 'form-gate';
@@ -1148,6 +1171,7 @@ export function createReportForm(
     editLinkBox.hidden = shownEditLink === null;
     successPanel.hidden = false;
     picker.hidden = true;
+    guideToggle.hidden = true;
     form.hidden = true;
     // The sheet is the scrolling element, and the form it replaces was
     // taller than the screen.
@@ -1161,6 +1185,7 @@ export function createReportForm(
     editLinkBox.hidden = true;
     clearEditLinkFeedback();
     picker.hidden = false;
+    guideToggle.hidden = false;
   }
 
   function setEditing(next: EditLink | null): void {
@@ -1379,6 +1404,7 @@ export function createReportForm(
   render();
 
   return {
+    guideToggle,
     setTrees(next) {
       trees = next;
       render();

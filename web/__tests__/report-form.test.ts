@@ -34,9 +34,9 @@ function options(overrides: Partial<ReportFormOptions> = {}): ReportFormOptions 
   };
 }
 
-function guide(container: HTMLElement): HTMLDetailsElement {
-  const element = container.querySelector('details.form-picker-guide');
-  if (!(element instanceof HTMLDetailsElement)) {
+function guide(container: HTMLElement): HTMLElement {
+  const element = container.querySelector<HTMLElement>('.form-picker-guide');
+  if (element === null) {
     throw new Error('aiming guide is missing');
   }
   return element;
@@ -45,18 +45,19 @@ function guide(container: HTMLElement): HTMLDetailsElement {
 describe('aiming guide', () => {
   it('is unfolded by default', () => {
     const container = document.createElement('div');
-    createReportForm(container, options());
+    const form = createReportForm(container, options());
 
-    expect(guide(container).open).toBe(true);
+    expect(guide(container).hidden).toBe(false);
+    expect(form.guideToggle.getAttribute('aria-expanded')).toBe('true');
   });
 
-  it('starts folded when asked, keeping the title visible', () => {
+  it('starts folded when asked and nothing is remembered', () => {
     const container = document.createElement('div');
-    createReportForm(container, options({ guideOpen: false }));
+    const form = createReportForm(container, options({ guideOpen: false }));
 
-    const element = guide(container);
-    expect(element.open).toBe(false);
-    expect(element.querySelector('summary')?.textContent).toBe(strings.form.positionTitle);
+    expect(guide(container).hidden).toBe(true);
+    expect(form.guideToggle.getAttribute('aria-expanded')).toBe('false');
+    expect(form.guideToggle.textContent).toBe(strings.form.guideToggle);
   });
 
   it('holds the instructions and the zoom level', () => {
@@ -67,5 +68,20 @@ describe('aiming guide', () => {
     const text = guide(container).textContent ?? '';
     expect(text).toContain(strings.form.positionHint);
     expect(text).toContain('12.0');
+  });
+
+  it('remembers the last choice over the screen size default', () => {
+    const shared = options({ guideOpen: false });
+    const first = createReportForm(document.createElement('div'), shared);
+    (first.guideToggle as HTMLButtonElement).click();
+
+    const container = document.createElement('div');
+    const second = createReportForm(container, shared);
+    expect(guide(container).hidden).toBe(false);
+
+    (second.guideToggle as HTMLButtonElement).click();
+    const third = document.createElement('div');
+    createReportForm(third, { ...shared, guideOpen: true });
+    expect(guide(third).hidden).toBe(true);
   });
 });
