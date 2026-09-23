@@ -188,3 +188,36 @@ describe('gate line', () => {
     expect(gate(container).hidden).toBe(true);
   });
 });
+
+describe('editing an existing report', () => {
+  it('locks on the stored point even while the map is still elsewhere', () => {
+    const container = document.createElement('div');
+    const form = createReportForm(
+      container,
+      options({ getView: () => ({ lat: 25.1, lng: 121.6, zoom: 12 }) }),
+    );
+    form.setActive(true);
+    form.startEdit(
+      { id: '01JBZ8QF7KJ9M3N4P5R6S7T8V9', token: 'token' },
+      {
+        id: '01JBZ8QF7KJ9M3N4P5R6S7T8V9',
+        lat: 25.0232,
+        lng: 121.5056,
+        species: null,
+        causes: [],
+        dispositions: [],
+        evidence: 1,
+        note: null,
+        link: null,
+        observed_at: null,
+        protected_tree_id: null,
+        inventory_tree_id: null,
+      },
+    );
+    form.update();
+
+    expect(coords(container)).toContain('25.02320');
+    expect(coords(container)).toContain('121.50560');
+    expect(container.querySelector<HTMLElement>('.form-gate')?.hidden).toBe(true);
+  });
+});
