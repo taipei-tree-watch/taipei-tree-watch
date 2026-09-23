@@ -2,10 +2,11 @@
  * The report form inside the bottom sheet, and the crosshair picker it sits on.
  *
  * Two modes share one point. In `picking` the sheet collapses to a bar so the
- * crosshair stays visible while the map is dragged; in `form` the fields are
- * shown. The point is always the map centre, read live, so moving the map at
- * any moment updates the coordinates, the submit gate, the nearby
- * protected tree question and the nearby report notice.
+ * crosshair stays visible while the map is dragged, and the point is the map
+ * centre, read live, so every move updates the coordinates, the submit gate,
+ * the nearby protected tree question and the nearby report check. Moving on
+ * to `form` locks the point where it is and shows the fields; going back to
+ * `picking` releases it.
  *
  * The same form edits an existing report when an edit link is opened: the
  * fields are filled from the Worker's copy, the point starts on the stored
@@ -302,6 +303,12 @@ export function createReportForm(
 ): ReportForm {
   let draft: ReportDraft = emptyDraft();
   let mode: PickerMode = 'picking';
+  /**
+   * The point taken when the reporter moved on to the fields. From then on the
+   * form reads this rather than the live map centre, so nothing that moves
+   * the map can move the report; only going back to aiming releases it.
+   */
+  let lockedView: PickedView | null = null;
   let trees: readonly ProtectedTree[] = [];
   let knownReports: readonly ReportRecord[] = [];
   let nearby: Nearby<ProtectedTree> | null = null;
@@ -772,8 +779,15 @@ export function createReportForm(
     return messages;
   }
 
+  function currentView(): PickedView {
+    return lockedView ?? options.getView();
+  }
+
   function setMode(next: PickerMode): void {
     mode = next;
+    // A point already locked (an edit's stored location) survives re-entry.
+    lockedView = next === 'form' ? (lockedView ?? options.getView()) : null;
+    locateButton.hidden = next === 'form';
     form.hidden = next !== 'form';
     modeButton.textContent = next === 'form' ? strings.form.toPicking : strings.form.toForm;
     container.dataset.mode = next;
@@ -880,7 +894,7 @@ export function createReportForm(
   }
 
   function render(): void {
-    const view = options.getView();
+    const view = currentView();
 
     coordLine.textContent = formatTemplate(strings.form.coords, {
       lat: view.lat.toFixed(COORD_DIGITS),
@@ -900,6 +914,9 @@ export function createReportForm(
       gateLine.textContent = strings.form.positionReady;
     }
     gateLine.dataset.tone = block === null ? 'ok' : 'blocked';
+    // The point locks on the way to the fields, so a view that could never be
+    // submitted is not allowed to become the locked one.
+    modeButton.disabled = mode === 'picking' && block !== null;
 
     renderNearby(view);
     syncCauseInputs();
@@ -1270,7 +1287,7 @@ export function createReportForm(
     applyNoteStrip();
     renderNoteCounter();
 
-    const view = options.getView();
+    const view = currentView();
     if (submitBlock(view, options.bbox) !== null) {
       render();
       return;
@@ -1432,6 +1449,13 @@ export function createReportForm(
       draft = draftFromReport(report);
       fillControls();
       observedInput.max = taipeiDate(options.now());
+      // The map may still be flying to the stored point, so the lock takes
+      // the point itself rather than wherever the camera is right now.
+      lockedView = {
+        lat: report.lat,
+        lng: report.lng,
+        zoom: Math.max(options.getView().zoom, MIN_SUBMIT_ZOOM),
+      };
       setMode('form');
       render();
     },

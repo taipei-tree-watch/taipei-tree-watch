@@ -346,6 +346,16 @@ function runMapLocate(): void {
 
 locateMapButton.addEventListener('click', runMapLocate);
 
+/**
+ * While the report fields are open the aimed point is locked, so the map and
+ * the button that flies it elsewhere are put out of reach until the reporter
+ * goes back to aiming or closes the sheet.
+ */
+function setMapFrozen(frozen: boolean): void {
+  mapController?.setInteractive(!frozen);
+  locateMapButton.hidden = frozen;
+}
+
 reportToggle.addEventListener('click', () => {
   if (reportSheet.isOpen()) {
     reportSheet.close();
@@ -553,7 +563,8 @@ async function start(): Promise<void> {
       pendingReports = addPending(storage, entry, new Date());
       refresh(filterPanel?.getState() ?? emptyFilterState());
     },
-    onModeChange() {
+    onModeChange(mode) {
+      setMapFrozen(mode === 'form');
       controller.resize();
     },
     onDismiss() {
@@ -585,6 +596,9 @@ async function start(): Promise<void> {
 
   reportSheet.onOpenChange((open) => {
     crosshair?.setVisible(open);
+    if (!open) {
+      setMapFrozen(false);
+    }
     reportForm?.setActive(open);
   });
 

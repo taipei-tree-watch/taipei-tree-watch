@@ -7,6 +7,12 @@ import type { ReportFormOptions } from '../src/ui/report-form.ts';
 import { createReportForm } from '../src/ui/report-form.ts';
 import strings from '../src/ui-strings.json';
 
+// The fields load the Turnstile widget; a widget that never settles keeps the
+// real script out of the test document.
+vi.mock('../src/turnstile.ts', () => ({
+  renderTurnstile: () => new Promise(() => undefined),
+}));
+
 function options(overrides: Partial<ReportFormOptions> = {}): ReportFormOptions {
   const values = new Map<string, string>();
   return {
@@ -83,5 +89,51 @@ describe('aiming guide', () => {
     const third = document.createElement('div');
     createReportForm(third, { ...shared, guideOpen: true });
     expect(guide(third).hidden).toBe(true);
+  });
+});
+
+function button(container: HTMLElement, label: string): HTMLButtonElement {
+  const found = [...container.querySelectorAll('button')].find(
+    (element) => element.textContent === label,
+  );
+  if (found === undefined) {
+    throw new Error(`no button labelled ${label}`);
+  }
+  return found;
+}
+
+function coords(container: HTMLElement): string {
+  return container.querySelector('.form-coords')?.textContent ?? '';
+}
+
+describe('locked point', () => {
+  it('will not start the fields from a view that cannot be submitted', () => {
+    const container = document.createElement('div');
+    const form = createReportForm(container, options());
+    form.setActive(true);
+
+    expect(button(container, strings.form.toForm).disabled).toBe(true);
+  });
+
+  it('keeps the point taken when the fields opened until aiming resumes', () => {
+    let view = { lat: 25.04, lng: 121.54, zoom: 19 };
+    const container = document.createElement('div');
+    const onModeChange = vi.fn();
+    const form = createReportForm(container, options({ getView: () => view, onModeChange }));
+    form.setActive(true);
+
+    const toggle = button(container, strings.form.toForm);
+    expect(toggle.disabled).toBe(false);
+    toggle.click();
+    expect(onModeChange).toHaveBeenLastCalledWith('form');
+    const locked = coords(container);
+
+    view = { lat: 25.05, lng: 121.55, zoom: 19 };
+    form.update();
+    expect(coords(container)).toBe(locked);
+
+    button(container, strings.form.toPicking).click();
+    expect(onModeChange).toHaveBeenLastCalledWith('picking');
+    expect(coords(container)).toContain('25.05000');
   });
 });

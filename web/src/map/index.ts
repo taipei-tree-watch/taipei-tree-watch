@@ -64,6 +64,11 @@ export interface MapController {
   setColorScheme(scheme: ColorScheme): void;
   isOrthoVisible(): boolean;
   flyTo(center: { lat: number; lng: number }, zoom?: number): void;
+  /**
+   * Freeze or release the camera. Frozen, no gesture, zoom button or tap on a
+   * point moves the map, so the point under the crosshair stays put.
+   */
+  setInteractive(enabled: boolean): void;
   resize(): void;
 }
 
@@ -330,7 +335,12 @@ export function createMapController(
   // One handler for the whole map rather than one per layer: the query runs
   // over a box the size of a fingertip, which routinely returns features from
   // several layers, and only the most specific of them should answer the tap.
+  let interactive = true;
+
   map.on('click', (event) => {
+    if (!interactive) {
+      return;
+    }
     const { x, y } = event.point;
     const box: [PointLike, PointLike] = [
       [x - TAP_RADIUS_PX, y - TAP_RADIUS_PX],
@@ -447,6 +457,27 @@ export function createMapController(
     },
     flyTo(center, zoom) {
       map.flyTo({ center: [center.lng, center.lat], ...(zoom === undefined ? {} : { zoom }) });
+    },
+    setInteractive(enabled) {
+      interactive = enabled;
+      const handlers = [
+        map.dragPan,
+        map.scrollZoom,
+        map.boxZoom,
+        map.dragRotate,
+        map.keyboard,
+        map.doubleClickZoom,
+        map.touchZoomRotate,
+        map.touchPitch,
+      ];
+      for (const handler of handlers) {
+        if (enabled) {
+          handler.enable();
+        } else {
+          handler.disable();
+        }
+      }
+      map.getContainer().toggleAttribute('data-frozen', !enabled);
     },
     resize() {
       map.resize();

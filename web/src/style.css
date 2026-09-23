@@ -589,6 +589,14 @@ body {
   .sheet-content[data-mode='picking'] .form-nearby {
     padding-block: 0.5rem;
   }
+
+  /* Once the point is locked the map has nothing left to offer, so the
+     fields take the whole screen below the top bar. */
+  .sheet:has(> .sheet-content[data-mode='form']) {
+    top: calc(var(--topbar-height) + env(safe-area-inset-top));
+    max-height: none;
+    border-radius: 0;
+  }
 }
 
 .form-picker-guide {
