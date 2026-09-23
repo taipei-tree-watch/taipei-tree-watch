@@ -29,6 +29,8 @@ export interface DetailCardOptions {
   /** True when this browser holds the report's edit link. */
   readonly canEdit: (id: string) => boolean;
   readonly onEdit: (id: string) => void;
+  /** Start a report about the protected tree whose card is open. */
+  readonly onReportTree: (tree: ProtectedTree) => void;
   readonly feedbackMs?: number;
 }
 
@@ -108,11 +110,19 @@ export function createDetailCard(element: HTMLElement, options: DetailCardOption
   editButton.textContent = strings.card.edit;
   editButton.hidden = true;
 
-  share.append(shareButton, editButton, feedback, manualUrl);
+  // Only a protected tree card offers this: a report is already a report.
+  const reportTreeButton = document.createElement('button');
+  reportTreeButton.type = 'button';
+  reportTreeButton.className = 'form-submit';
+  reportTreeButton.textContent = strings.card.reportTree;
+  reportTreeButton.hidden = true;
+
+  share.append(reportTreeButton, shareButton, editButton, feedback, manualUrl);
 
   element.replaceChildren(header, body, share);
 
   let target: PermalinkTarget | null = null;
+  let openTree: ProtectedTree | null = null;
   let feedbackTimer: ReturnType<typeof setTimeout> | null = null;
 
   const clearFeedback = (): void => {
@@ -168,6 +178,12 @@ export function createDetailCard(element: HTMLElement, options: DetailCardOption
     }
   });
 
+  reportTreeButton.addEventListener('click', () => {
+    if (openTree !== null) {
+      options.onReportTree(openTree);
+    }
+  });
+
   const render = (
     heading: string,
     next: PermalinkTarget,
@@ -185,9 +201,13 @@ export function createDetailCard(element: HTMLElement, options: DetailCardOption
 
   return {
     showReport(report) {
+      openTree = null;
+      reportTreeButton.hidden = true;
       render(strings.card.reportTitle, { kind: 'report', id: report.id }, reportRows(report));
     },
     showTree(tree) {
+      openTree = tree;
+      reportTreeButton.hidden = false;
       render(strings.card.treeTitle, { kind: 'tree', id: tree.id }, [
         textRow(strings.card.treeId, tree.id),
         textRow(strings.card.species, tree.species),

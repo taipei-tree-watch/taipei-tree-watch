@@ -137,3 +137,29 @@ describe('locked point', () => {
     expect(coords(container)).toContain('25.05000');
   });
 });
+
+describe('linkTree', () => {
+  it('links the tree and borrows its species when none is typed', () => {
+    const container = document.createElement('div');
+    const form = createReportForm(container, options());
+    form.setActive(true);
+    form.linkTree({
+      id: '768',
+      species: 'banyan',
+      lat: 25.04,
+      lng: 121.54,
+      dbhM: null,
+      address: null,
+      manager: null,
+      siteType: null,
+      district: null,
+    });
+
+    const text = container.querySelector('.form-nearby')?.textContent ?? '';
+    expect(text).toContain('768');
+    const species = [...container.querySelectorAll<HTMLInputElement>('input[type="text"]')].map(
+      (input) => input.value,
+    );
+    expect(species).toContain('banyan');
+  });
+});

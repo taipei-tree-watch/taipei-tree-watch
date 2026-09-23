@@ -72,6 +72,7 @@ function harness(outcome: ShareOutcome, overrides: Partial<DetailCardOptions> = 
     },
     canEdit: () => false,
     onEdit: () => undefined,
+    onReportTree: vi.fn(),
     ...overrides,
   });
 
@@ -79,7 +80,7 @@ function harness(outcome: ShareOutcome, overrides: Partial<DetailCardOptions> = 
     element,
     targets,
     shared,
-    button: element.querySelector('.card-share button') as HTMLButtonElement,
+    button: element.querySelector('.card-share .form-secondary') as HTMLButtonElement,
     feedback: element.querySelector('.card-share-feedback') as HTMLElement,
     manual: element.querySelector('.card-share-url') as HTMLElement,
   };
@@ -182,7 +183,7 @@ describe('detail card permalink', () => {
 
 describe('edit button', () => {
   function editButton(element: HTMLElement): HTMLButtonElement {
-    const buttons = element.querySelectorAll<HTMLButtonElement>('.card-share button');
+    const buttons = element.querySelectorAll<HTMLButtonElement>('.card-share .form-secondary');
     return buttons[1] as HTMLButtonElement;
   }
 
@@ -211,5 +212,35 @@ describe('edit button', () => {
     const { card, element } = harness('copied', { canEdit: () => true });
     card.showTree(TREE);
     expect(editButton(element).hidden).toBe(true);
+  });
+});
+
+describe('report from a protected tree card', () => {
+  function reportButton(element: HTMLElement): HTMLButtonElement {
+    return element.querySelector('.card-share .form-submit') as HTMLButtonElement;
+  }
+
+  it('offers the button on a tree card and hands over that tree', () => {
+    const onReportTree = vi.fn();
+    const { card, element } = harness('copied', { onReportTree });
+    card.showTree(TREE);
+
+    const button = reportButton(element);
+    expect(button.hidden).toBe(false);
+    expect(button.textContent).toBe(strings.card.reportTree);
+    button.click();
+    expect(onReportTree).toHaveBeenCalledWith(TREE);
+  });
+
+  it('leaves the button off a report card', () => {
+    const onReportTree = vi.fn();
+    const { card, element } = harness('copied', { onReportTree });
+    card.showTree(TREE);
+    card.showReport(REPORT);
+
+    const button = reportButton(element);
+    expect(button.hidden).toBe(true);
+    button.click();
+    expect(onReportTree).not.toHaveBeenCalled();
   });
 });

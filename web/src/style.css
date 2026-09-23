@@ -607,11 +607,13 @@ body {
   margin-top: 0;
 }
 
+/* Kept for the record rather than for reading: few reporters care about the
+   digits, so they sit in the same small muted type as the hints. */
 .form-coords {
   margin: 0.5rem 0 0.125rem;
   font-variant-numeric: tabular-nums;
-  font-size: 0.9375rem;
-  font-weight: 600;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
 }
 
 .form-gate {

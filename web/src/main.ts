@@ -131,6 +131,7 @@ const detailCard = createDetailCard(required('#detail-card'), {
       refresh(filterPanel?.getState() ?? emptyFilterState());
     }
   },
+  onReportTree: reportOnTree,
 });
 const infoPanel = createInfoPanel(required('#info-panel'));
 infoPanel.onOpenChange((open) => {
@@ -345,6 +346,24 @@ function runMapLocate(): void {
 }
 
 locateMapButton.addEventListener('click', runMapLocate);
+
+/**
+ * A report started from a protected tree card: the sheet opens with the tree
+ * already linked and the map flies to it close enough to submit. The point is
+ * still aimed by hand, since the registered coordinates can be metres off.
+ */
+function reportOnTree(tree: ProtectedTree): void {
+  const controller = mapController;
+  if (controller === null || reportForm === null) {
+    return;
+  }
+  openOnly(null);
+  detailCard.hide();
+  reportForm.startCreate();
+  reportSheet.open();
+  reportForm.linkTree(tree);
+  controller.flyTo(tree, Math.max(controller.getZoom(), MIN_SUBMIT_ZOOM));
+}
 
 /**
  * While the report fields are open the aimed point is locked, so the map and

@@ -115,6 +115,11 @@ export interface ReportForm {
   /** Sheet opened or closed. */
   setActive(active: boolean): void;
   /**
+   * Link the report to this protected tree, as the nearby confirm button does,
+   * whether or not the crosshair is on it yet.
+   */
+  linkTree(tree: ProtectedTree): void;
+  /**
    * Fill the form from a report the link opened. The caller has already moved
    * the map so the crosshair sits on the stored point.
    */
@@ -1042,17 +1047,21 @@ export function createReportForm(
     render();
   });
 
-  nearbyConfirm.addEventListener('click', () => {
-    if (nearby === null) {
-      return;
-    }
-    draft = { ...draft, protectedTreeId: nearby.item.id };
-    protectedInput.value = nearby.item.id;
-    if (draft.species === '' && nearby.item.species !== null) {
-      draft = { ...draft, species: nearby.item.species };
-      speciesInput.value = nearby.item.species;
+  /** Link a protected tree and borrow its species when none is typed yet. */
+  function linkTree(tree: ProtectedTree): void {
+    draft = { ...draft, protectedTreeId: tree.id };
+    protectedInput.value = tree.id;
+    if (draft.species === '' && tree.species !== null) {
+      draft = { ...draft, species: tree.species };
+      speciesInput.value = tree.species;
     }
     render();
+  }
+
+  nearbyConfirm.addEventListener('click', () => {
+    if (nearby !== null) {
+      linkTree(nearby.item);
+    }
   });
 
   function answerSameTree(answer: SameTreeCheck['answer']): void {
@@ -1470,5 +1479,6 @@ export function createReportForm(
     isEditing() {
       return editing !== null;
     },
+    linkTree,
   };
 }
