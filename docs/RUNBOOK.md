@@ -18,7 +18,7 @@ CLOUDFLARE_ACCOUNT_ID=$(lpass show --username taipei-tree-watch/cloudflare-api) 
 
 ## 1. 軟刪除一筆回報
 
-系統沒有管理介面，隱藏一筆回報是直接改資料庫的 `status` 欄位：0 是顯示、1 是隱藏。列不會被刪掉，只是下一次 cron 重建快照時不會被選進去。
+系統沒有管理介面，隱藏一筆回報是直接改資料庫的 `status` 欄位：0 是顯示、1 是隱藏。列不會被刪掉，只是下一次 cron 重建快照時不會被選進去。`status = 2` 是回報者用編輯連結自己撤回的，同樣不進快照；除非回報者要求，不要把它改回 0。隱藏（1）之後，那筆的編輯連結也跟著失效。
 
 ### 步驟
 
@@ -238,4 +238,34 @@ npx wrangler tail --format json > tail.jsonl
 輸出是一串 JSON 物件，每個物件是一次呼叫，`cpuTime` 與 `wallTime` 的單位是毫秒，`event.scheduledTime` 存在就代表那是 cron 而不是 HTTP 請求。cron 的那一筆會帶一行 `snapshot: key=… rows=… chars=… build_ms=… store_ms=…` 的日誌。
 
 `tail` 只有在連線期間才收得到事件，離線期間的記錄要去 dashboard 的 Workers Logs 看。
+
+## 5. 編輯連結上線與補發
+
+### 5.1 上線（一次性）
+
+先套 migration，再部署。順序反過來的話，新版 Worker 寫入 `edit_token_hash` 時欄位還不存在，所有新回報都會失敗：
+
+```bash
+npx wrangler d1 migrations apply taipei-tree-watch --remote
+```
+
+```bash
+npm run deploy
+```
+
+部署後從線上送一筆測試回報，確認成功畫面有編輯連結，換一個瀏覽器打開它能看到修改表單，再用它撤回這筆測試回報。
+
+### 5.2 補發給舊回報
+
+migration 之前建立的回報沒有編輯密鑰。補發只處理 `status = 0` 且 `source = 1`（使用者回報）而 `edit_token_hash` 為 NULL 的列，官方紀錄與已隱藏的不發：
+
+```bash
+npm run issue:edit-links -- --remote
+```
+
+腳本先把連結寫進 `workdocs/edit-links_remote_<時間>.md`，再把雜湊寫進 D1，所以 D1 寫入失敗時留下的是一批無效連結，不會有「有效但沒人拿到」的連結。重跑只會補新出現的無密鑰列，已有密鑰的不會被覆蓋。
+
+輸出檔最後一段是一段 JavaScript。用要存連結的瀏覽器打開線上網站，把它貼進開發者工具的 console 執行，頁面重新整理後頂列會出現「我的回報」。它會和瀏覽器裡原本的清單合併，不會蓋掉。
+
+輸出檔裡的每一條都是可用的憑證。存進瀏覽器（或密碼管理工具）之後就刪掉，不要 commit、不要貼到任何地方。
 

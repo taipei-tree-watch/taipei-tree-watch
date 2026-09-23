@@ -14,6 +14,7 @@
   瀏覽器 ───────►│  Worker  taipei-tree-watch                                                     │
   (MapLibre)     │   ├─ Static Assets   /            前端 build 產物（HTML/JS/CSS、trees.json）  │
                  │   ├─ POST /api/reports            驗證 Turnstile + 欄位 → 寫 D1              │
+                 │   ├─ GET/PUT/DELETE /api/reports/<id>  憑編輯連結讀、改、撤回一筆回報        │
                  │   ├─ GET  /api/snapshot           從 KV 取快照，附 Cache-Control              │
                  │   └─ scheduled  */15 * * * *      D1 全表 dump → 快照 → KV                    │
                  │                                                                                │
@@ -36,7 +37,7 @@
 
 三條原則：
 
-1. **讀寫分離**（SPEC 第 4 節）：使用者讀取永遠只碰 KV 快照與邊緣快取，不碰 D1。
+1. **讀寫分離**（SPEC 第 4 節）：使用者讀取永遠只碰 KV 快照與邊緣快取，不碰 D1。唯一的例外是持有編輯連結的人打開修改表單時讀自己那一筆（`GET /api/reports/<id>`，主鍵查詢一列）。
 2. **伺服器端驗證是唯一防線**：前端的同等檢查只是 UX。
 3. **管線產出進 git**：所有從外部抓來、轉換過的資料以 JSON 進 repo，錯了可以 diff。
 
@@ -82,7 +83,8 @@ taipei-tree-watch/
 - 篩選：病因、處置、證據來源、資料來源、發現日期範圍，全部在前端對快照做。
 - 選點流程（SPEC 第 6 節）：GPS 只用來 flyTo，地圖中心固定準心，zoom 未達 18 時送出鈕停用，正射圖層在此步驟預設開啟。準心 20 公尺內有受保護樹木時，sheet 顯示「這是受保護樹木 #編號 樹種 嗎？」讓使用者一鍵關聯。準心 20 公尺內已有回報時，同一處以同樣的提示框列出最近那筆回報的內容（與地圖卡片同一套欄位），問「是同一棵樹嗎？」。答「不是」就照常回報；答「是」再問樹況有沒有變：「有新狀況」會帶入那筆的樹種與兩種樹木編號（只填空著的欄位，病因、處置、證據、說明、連結、日期不帶）並切到填表，「跟這筆一樣」清空表單並關閉 sheet。答案只對那一筆有效，準心移到另一筆或重開 sheet 就重問。同一棵樹的多筆回報仍各自獨立、不會合併，新回報也不記錄它跟前一筆的關係。
 - 表單欄位對應 SPEC 第 3 節：只有位置必填。證據來源預設「無公告，僅目擊」；選了它或「高風險掛牌」時病因區塊收合並顯示「無憑據請留空」。說明欄 300 字，前端即時剝 URL 並提示「連結請填在下方欄位」。連結欄即時比對白名單並顯示網域。
-- 送出成功後顯示「已收到，約 15 分鐘後出現在地圖上」，並在本機 `localStorage` 暫存該點讓回報者立刻看到自己的點（僅本機、標示為待同步）。
+- 送出成功後顯示「已收到，約 15 分鐘後出現在地圖上」，並在本機 `localStorage` 暫存該點讓回報者立刻看到自己的點（僅本機、標示為待同步）。同一個畫面給出編輯連結與「複製編輯連結」鈕，並寫明拿到連結的人都能修改或撤回、連結存在哪裡（第 3.2 節「編輯連結」）。
+- 修改與撤回也寫進同一份本機暫存：修改後的版本取代快照裡的同一筆，撤回的那筆不畫；快照的 `generated_at` 晚於或等於 Worker 回的 `updated_at` 時才退場，因為快照早就有那個 id，光看 id 分不出新舊。
 - 呈現措辭遵守 SPEC 第 8 節：「此處的公告記載原因為……」；連結顯示網域、`rel="nofollow noopener"`。
 
 **深淺色（2026-09-21 定案）**：只跟隨裝置的 `prefers-color-scheme`，沒有站內切換開關，也不記使用者偏好；`<head>` 宣告 `<meta name="color-scheme" content="light dark">`，讓表單控制項與日期選擇器的原生外觀一起跟著換。
@@ -95,12 +97,15 @@ taipei-tree-watch/
 
 ### 3.2 Worker `worker/`
 
-原生 `fetch` 與 `scheduled` handler，zod 驗證，不用 web framework。三條路徑：
+原生 `fetch` 與 `scheduled` handler，zod 驗證，不用 web framework。路徑如下：
 
 | 路徑 | 職責 |
 |---|---|
-| `POST /api/reports` | Turnstile 驗證 → zod 解析 → 第 6 節的伺服器端檢查 → 產生 ULID → INSERT D1 → 201 |
+| `POST /api/reports` | Turnstile 驗證 → zod 解析 → 第 6 節的伺服器端檢查 → 產生 ULID 與編輯密鑰 → INSERT D1 → 201 `{id, edit_token}` |
 | `GET /api/snapshot` | `KV.get('snapshot:latest')` → 回傳，`Cache-Control: public, max-age=300, stale-while-revalidate=900`，`ETag` 為快照的 `generated_at` |
+| `GET /api/reports/<id>` | 憑 `Authorization: Bearer <編輯密鑰>` 讀該筆目前的欄位，給修改表單預填；`Cache-Control: no-store` |
+| `PUT /api/reports/<id>` | 同一份 body 與同一套檢查（第 6 節），只是最後是 UPDATE；保留 `reporter_hash`、`created_at`、`source`，寫 `updated_at` → 200 `{id, updated_at}` |
+| `DELETE /api/reports/<id>` | 撤回：`status = 2`、寫 `updated_at` → 200 `{id, updated_at}`；不過 Turnstile |
 | `scheduled` | `SELECT … WHERE status = 0` → 依 `shared/snapshot.ts` 組陣列 → `KV.put('snapshot:latest')` 與 `KV.put('snapshot:<ts>')` → 更新 `snapshot:index`（保留最近 48 份，超出的刪除） |
 
 其他請求交給 Static Assets。沒有 admin route，軟刪除走 wrangler（第 10 節）。
@@ -113,9 +118,20 @@ site key 注入方式（2026-09-20 定案）：以 `wrangler.toml` 的 `[vars]` 
 
 `TURNSTILE_SITE_KEY` 與搭配的 secret 都是正式 widget 的金鑰（2026-09-20 設定），secret 用 `wrangler secret put` 管入，不進 repo。
 
+#### 編輯連結
+
+格式是 permalink 加一個參數：`/?report=<ULID>&edit=<密鑰>`。密鑰是 32 bytes 亂數的 base64url（43 字元），只在 `POST /api/reports` 的 201 回應裡出現一次；D1 只存 `sha256(密鑰)` 的 hex（`edit_token_hash`），備份或匯出外流也拿不到可用的連結，弄丟了也讀不回來。密鑰與 ULID 無關，所以 permalink 推導不出編輯連結。
+
+- 三條 `/api/reports/<id>` 路徑的授權條件都是 `id = ? AND edit_token_hash = sha256(密鑰) AND status = 0`，直接寫在 SELECT 或 UPDATE 的 WHERE 裡。缺密鑰、密鑰錯、id 不存在、官方紀錄（`edit_token_hash` 為 NULL）、已撤回或已被站方隱藏，一律回同一個 404，不透露「這筆存在但密鑰錯」。被站方軟刪除的回報不能靠編輯連結改回來。
+- 密鑰放 `Authorization` 標頭而不是查詢字串，不進存取日誌與快取鍵。`PUT` 在叫 Turnstile 之前先檢查密鑰的形狀，形狀不對的請求不花 siteverify 與 D1。
+- `PUT` 要 Turnstile，理由同 `POST`：否則拿到一條連結就能用程式反覆換 `link` 欄位。`DELETE` 不要：撤回只會讓點消失，機器人沒有好處。
+- 前端讀到網址裡的 `edit` 就存進 localStorage 的 `ttw:edit-links`，並立刻用 `replaceState` 把 `edit` 從網址列拿掉；`permalinkSearch` 一律刪掉 `edit`，所以卡片的「複製連結」不會帶出密鑰。接著 `GET` 該筆、把地圖移到它的位置、以修改模式打開表單。
+- 「我的回報」是頂列的 chip，清單為空時隱藏。每一筆有「在地圖上看」「修改」「複製編輯連結」。卡片上若是這個瀏覽器持有連結的回報，多一個「修改這筆回報」。`GET` 回 404 的連結自動從清單移除，因為它不會再變回有效。
+- 在 `0002_edit_token.sql` 之前建立的回報沒有密鑰，可以用 `npm run issue:edit-links -- --remote` 補發（只補 `status = 0` 且 `source = 1` 的列，已有的不動），產出的連結寫到 `workdocs/`，附一段貼進瀏覽器 console 就能匯入「我的回報」的片段。步驟見 `RUNBOOK.md` 第 5 節。
+
 #### permalink
 
-單一回報與單一受保護樹木各有固定網址：`/?report=<ULID>`（ULID 是快照里的 `id`）與 `/?tree=<樹木編號>`（文化局編號，與卡片上顯示的一致）。用查詢字串而不是路徑，Static Assets 就能原樣回應這兩個網址，Worker 不必多一條 route；不用 hash 是因為 hash 不會送到伺服器，分享出去的連結在伺服器眼中會失去指向。兩個參數同時出現時以 `report` 為準，其餘查詢參數一律保留。解析與組網址的純函式在 `web/src/permalink.ts`。
+單一回報與單一受保護樹木各有固定網址：`/?report=<ULID>`（ULID 是快照里的 `id`）與 `/?tree=<樹木編號>`（文化局編號，與卡片上顯示的一致）。用查詢字串而不是路徑，Static Assets 就能原樣回應這兩個網址，Worker 不必多一條 route；不用 hash 是因為 hash 不會送到伺服器，分享出去的連結在伺服器眼中會失去指向。兩個參數同時出現時以 `report` 為準，其餘查詢參數一律保留，只有編輯連結的 `edit` 例外，組 permalink 時一律拿掉。解析與組網址的純函式在 `web/src/permalink.ts`。
 
 - 開卡片時用 `history.replaceState` 換網址，關卡片時把參數拿掉。不用 `pushState`，否則連續點幾個點會讓返回鍵要按很多次。
 - 帶著 permalink 進站時，等快照（回報）或 `trees.json`（受保護樹木）載入完才定位：flyTo 到該點、縮放拉到 17 以上並開卡片。找不到時顯示一則可關閉的提示，地圖維持預設視野；狀態列已經在說明載入失敗時不蓋掉那則訊息。
@@ -142,13 +158,17 @@ CREATE TABLE reports (
   protected_tree_id TEXT,                             -- 文化局樹木編號
   inventory_tree_id TEXT,                             -- 公園處樹籤編號
   external_ref      TEXT,                             -- 官方紀錄的來源識別（會議 id + 項次），匯入去重用
-  status            INTEGER NOT NULL DEFAULT 0,       -- 0 顯示、1 隱藏（軟刪除）
+  status            INTEGER NOT NULL DEFAULT 0,       -- 0 顯示、1 隱藏（站方軟刪除）、2 回報者撤回
   reporter_hash     TEXT,                             -- sha256(REPORTER_SALT + ip)，官方紀錄為 NULL
-  created_at        TEXT NOT NULL                     -- ISO 8601 UTC
+  created_at        TEXT NOT NULL,                    -- ISO 8601 UTC
+  edit_token_hash   TEXT,                             -- sha256(編輯密鑰) hex；NULL = 不能編輯（官方紀錄、補發前的舊列）
+  updated_at        TEXT                              -- 最後一次修改或撤回，ISO 8601 UTC；沒改過為 NULL
 );
 CREATE INDEX idx_reports_status ON reports(status);
 CREATE UNIQUE INDEX idx_reports_external_ref ON reports(external_ref) WHERE external_ref IS NOT NULL;
 ```
+
+`edit_token_hash` 與 `updated_at` 由 `0002_edit_token.sql` 以 `ALTER TABLE` 加上，所以實際欄位順序在 `created_at` 之後。
 
 受保護樹木不進 D1（決策：它只讀、不與回報 join 出任何查詢）。
 
@@ -207,8 +227,8 @@ Python 3.12 以上，uv 管理，在本機執行（排程用本機 launchd 或 c
 
 1. 前端完成選點與表單，取得 Turnstile token，`POST /api/reports`。
 2. Worker 依第 6 節檢查；任一失敗回 4xx 與欄位級錯誤訊息。
-3. 通過則寫入 D1，回 `201 {id}`。
-4. 前端把該點暫存 `localStorage` 立即顯示，並告知約 15 分鐘後正式出現。
+3. 通過則產生編輯密鑰，連同其雜湊寫入 D1，回 `201 {id, edit_token}`。
+4. 前端把該點暫存 `localStorage` 立即顯示、把編輯連結存進「我的回報」，並告知約 15 分鐘後正式出現。
 5. 下一次 cron 把它納入快照，邊緣快取在 5 分鐘內過期後所有人看到。
 
 ### 4.2 官方解列紀錄（M2）
@@ -259,13 +279,13 @@ export const causes = [
   "rows": [["01J…",25.03412,121.54321,"榕",[1],[3],1,1,"…","https://www.threads.net/…","2026-09-10","1525",null,"2026-09-18T07:02:11Z"], …] }
 ```
 
-不含 `reporter_hash` 與 `status`；只含 `status = 0` 的列。
+不含 `reporter_hash`、`status`、`edit_token_hash`、`updated_at`；只含 `status = 0` 的列。
 
 ---
 
-## 6. 伺服器端驗證（`POST /api/reports`）
+## 6. 伺服器端驗證（`POST /api/reports`，`PUT /api/reports/<id>` 同）
 
-全部在 Worker 執行，順序如下，任一失敗即停：
+全部在 Worker 執行，順序如下，任一失敗即停。`PUT` 在第 1 條之前先看編輯密鑰的形狀（不對就 404），第 12 條不做（保留原本的 `reporter_hash`），最後以 UPDATE 的 WHERE 決定密鑰是否打得開這一筆：
 
 1. `Content-Type` 為 JSON、body 小於 16 KB、可解析為 JSON（Turnstile token 在 body 裡，所以解析失敗算在這一條）。
 2. Turnstile token 向 Cloudflare 驗證成功，且 `remoteip` 一致。
@@ -326,7 +346,8 @@ D1 免費層無自動備份；若之後需要更長的完整備份再評估綁�
 
 ## 10. 維運
 
-- **軟刪除**：`wrangler d1 execute taipei-tree-watch --remote --command "UPDATE reports SET status = 1 WHERE id = '…'"`，最多 15 分鐘後從快照消失；要立即生效再手動觸發 cron（`wrangler triggers` 或 dashboard）。
+- **軟刪除**：`wrangler d1 execute taipei-tree-watch --remote --command "UPDATE reports SET status = 1 WHERE id = '…'"`，最多 15 分鐘後從快照消失；要立即生效再手動觸發 cron（`wrangler triggers` 或 dashboard）。`status = 2` 是回報者自己撤回的，除非回報者要求，不要改回 0。
+- **補發編輯連結**：`npm run issue:edit-links -- --remote`，見 `RUNBOOK.md` 第 5 節。輸出檔是可用的憑證，存完就刪。
 - **回滾快照**：從 `snapshot:index` 挑版本，`wrangler kv key get` 再 `put` 回 `snapshot:latest`；或從 `data/snapshots/<date>.json` 復原。回滾只撐到下一次 cron，cron 會用資料庫現況蓋回去。
 - 兩者的完整步驟與 2026-09-20 的演練紀錄在 `RUNBOOK.md`。實測 cron 寫完 KV 後，公開端點還要約 30 到 80 秒才讀得到新版（KV 全球傳播），另外 `/api/snapshot` 的 `max-age=300` 會讓沒帶查詢字串的讀取再晚最多五分鐘。
 - **觀測**：Workers Logs（dashboard）與 `wrangler tail`；Web Analytics 看流量。不接第三方錯誤追蹤。

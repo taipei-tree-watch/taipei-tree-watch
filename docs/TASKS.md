@@ -110,6 +110,14 @@
   - 待辦：Web Analytics beacon token 尚未建立，`web/index.html` 還沒加 beacon；真機 widget 挑戰 iframe 仍待人工確認；launchd plist 待在部署機器上安裝
   - 都發局授權確認仍為人工作業，未動
 
+### E1.9 編輯連結與我的回報
+- `POST /api/reports` 回編輯密鑰，D1 只存雜湊；`GET`／`PUT`／`DELETE /api/reports/<id>` 憑密鑰讀、改（同一套檢查加 Turnstile）、撤回（`status = 2`）
+- 前端：送出成功畫面給編輯連結與複製鈕；讀到 `edit` 參數即存進 localStorage 並從網址列拿掉；修改模式重用回報表單，可改位置，另有撤回鈕；頂列「我的回報」清單；卡片的「修改這筆回報」
+- 本機暫存延伸到修改與撤回，以快照 `generated_at` 對 `updated_at` 判斷退場
+- 補發工具 `scripts/issue-edit-links.ts`，給 migration 之前的回報發連結
+- 完成條件：遠端套用 `0002_edit_token.sql` 並部署；舊回報補發連結、存進站方瀏覽器；真機完成一次「送出 → 另一個瀏覽器打開編輯連結 → 修改 → 撤回」
+- 狀態（2026-09-23）：本機端到端完成（送出、清空 localStorage 後打開編輯連結、修改、快照後退場、撤回、失效連結提示；補發工具對本機 30 筆假資料實跑並重跑確認不重發）。遠端 migration、部署、正式補發待做
+
 ---
 
 ## M2 官方解列紀錄管線
