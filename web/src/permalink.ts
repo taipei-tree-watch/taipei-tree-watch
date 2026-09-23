@@ -7,12 +7,19 @@
  * A hash would be invisible to any server-side reader, which a shared link
  * should not be.
  *
+ * An edit link is the report permalink plus `edit=<token>`. The token is
+ * random and unrelated to the id, so a permalink never leads to it. Every
+ * address this module builds for sharing drops `edit`, which keeps a share
+ * button pressed while an edit link is open from handing the token on.
+ *
  * Nothing here touches the DOM or history, so the rules stay testable and the
  * page only has to hand over `location.search` or `location.href`.
  */
+import { isEditToken } from '../../shared/validation.ts';
 
 export const REPORT_PARAM = 'report';
 export const TREE_PARAM = 'tree';
+export const EDIT_PARAM = 'edit';
 
 export type PermalinkTarget =
   | { readonly kind: 'report'; readonly id: string }
@@ -68,13 +75,14 @@ export function parsePermalink(search: string): PermalinkTarget | null {
 
 /**
  * The query string for a target, keeping every other parameter that was
- * already there. A null target removes the permalink parameters and leaves
- * the rest alone.
+ * already there except an edit token. A null target removes the permalink
+ * parameters and leaves the rest alone.
  */
 export function permalinkSearch(target: PermalinkTarget | null, search: string): string {
   const params = new URLSearchParams(search);
   params.delete(REPORT_PARAM);
   params.delete(TREE_PARAM);
+  params.delete(EDIT_PARAM);
   if (target !== null) {
     params.set(target.kind === 'report' ? REPORT_PARAM : TREE_PARAM, target.id);
   }
@@ -87,4 +95,42 @@ export function permalinkUrl(target: PermalinkTarget, href: string): string {
   const url = new URL(href);
   url.search = permalinkSearch(target, url.search);
   return url.toString();
+}
+
+export interface EditLink {
+  readonly id: string;
+  readonly token: string;
+}
+
+/**
+ * The report and token an edit link carries, or null unless both are there
+ * and well formed. A token without a report id, or beside a tree, is ignored.
+ */
+export function parseEditLink(search: string): EditLink | null {
+  const params = new URLSearchParams(search);
+  const rawId = params.get(REPORT_PARAM);
+  const token = params.get(EDIT_PARAM)?.trim() ?? '';
+  if (rawId === null || !isEditToken(token)) {
+    return null;
+  }
+  const id = reportId(rawId);
+  return id === null ? null : { id, token };
+}
+
+/** The absolute edit link for a report, on the site the reader is on. */
+export function editLinkUrl(link: EditLink, href: string): string {
+  const url = new URL(href);
+  const params = new URLSearchParams(permalinkSearch({ kind: 'report', id: link.id }, url.search));
+  params.set(EDIT_PARAM, link.token);
+  url.search = `?${params.toString()}`;
+  url.hash = '';
+  return url.toString();
+}
+
+/** The current query string with the edit token taken out and nothing else changed. */
+export function withoutEditToken(search: string): string {
+  const params = new URLSearchParams(search);
+  params.delete(EDIT_PARAM);
+  const query = params.toString();
+  return query === '' ? '' : `?${query}`;
 }

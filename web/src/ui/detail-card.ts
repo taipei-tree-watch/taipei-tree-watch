@@ -26,6 +26,9 @@ export interface DetailCardOptions {
    * into the address bar, so every way of opening a card updates the URL.
    */
   readonly onTargetChange: (target: PermalinkTarget | null) => void;
+  /** True when this browser holds the report's edit link. */
+  readonly canEdit: (id: string) => boolean;
+  readonly onEdit: (id: string) => void;
   readonly feedbackMs?: number;
 }
 
@@ -97,7 +100,15 @@ export function createDetailCard(element: HTMLElement, options: DetailCardOption
   manualUrl.className = 'card-share-url';
   manualUrl.hidden = true;
 
-  share.append(shareButton, feedback, manualUrl);
+  // Only for a report whose edit link this browser holds. The card is what
+  // a reporter taps on the map, so the way back into the form starts here.
+  const editButton = document.createElement('button');
+  editButton.type = 'button';
+  editButton.className = 'form-secondary';
+  editButton.textContent = strings.card.edit;
+  editButton.hidden = true;
+
+  share.append(shareButton, editButton, feedback, manualUrl);
 
   element.replaceChildren(header, body, share);
 
@@ -151,6 +162,12 @@ export function createDetailCard(element: HTMLElement, options: DetailCardOption
     void shareCurrent();
   });
 
+  editButton.addEventListener('click', () => {
+    if (target?.kind === 'report') {
+      options.onEdit(target.id);
+    }
+  });
+
   const render = (
     heading: string,
     next: PermalinkTarget,
@@ -160,6 +177,7 @@ export function createDetailCard(element: HTMLElement, options: DetailCardOption
     body.replaceChildren(...parts.filter((part): part is Node => part !== null));
     clearFeedback();
     target = next;
+    editButton.hidden = !(next.kind === 'report' && options.canEdit(next.id));
     element.hidden = false;
     element.scrollTop = 0;
     options.onTargetChange(next);

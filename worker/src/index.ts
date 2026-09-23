@@ -5,6 +5,12 @@
  * static assets binding. `scheduled` runs on the cron trigger in wrangler.toml
  * and rebuilds the KV snapshot.
  */
+import { isReportId } from '../../shared/validation.ts';
+import {
+  handleReadReport,
+  handleUpdateReport,
+  handleWithdrawReport,
+} from './routes/report-edit.ts';
 import { handleCreateReport } from './routes/reports.ts';
 import { runSnapshotCron } from './snapshot/cron.ts';
 import { handleSnapshotRequest } from './snapshot/route.ts';
@@ -43,6 +49,27 @@ export default {
 
     if (request.method === 'POST' && url.pathname === '/api/reports') {
       return handleCreateReport(request, env);
+    }
+
+    const reportPath = /^\/api\/reports\/([^/]+)$/.exec(url.pathname);
+    if (reportPath !== null) {
+      const id = reportPath[1] ?? '';
+      if (!isReportId(id)) {
+        return Response.json(
+          { errors: [{ field: 'id', message: 'Unknown report' }] },
+          { status: 404 },
+        );
+      }
+      if (request.method === 'GET') {
+        return handleReadReport(request, env, id);
+      }
+      if (request.method === 'PUT') {
+        return handleUpdateReport(request, env, id);
+      }
+      if (request.method === 'DELETE') {
+        return handleWithdrawReport(request, env, id);
+      }
+      return new Response(null, { status: 405, headers: { allow: 'GET, PUT, DELETE' } });
     }
 
     if (request.method === 'GET' && url.pathname === '/api/snapshot') {

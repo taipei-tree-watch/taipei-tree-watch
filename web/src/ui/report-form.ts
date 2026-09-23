@@ -7,6 +7,11 @@
  * any moment updates the coordinates, the submit gate, the nearby
  * protected tree question and the nearby report notice.
  *
+ * The same form edits an existing report when an edit link is opened: the
+ * fields are filled from the Worker's copy, the point starts on the stored
+ * location, submitting sends a PUT, and a withdraw button appears. A new
+ * report's confirmation hands over its edit link.
+ *
  * Every rule enforced here is also enforced by the Worker. This layer exists
  * to show the reporter what is wrong before a request is made, never to
  * decide what is accepted.
@@ -35,6 +40,7 @@ import {
   PROTECTED_TREE_RADIUS_M,
   nearestWithin,
 } from '../geo.ts';
+import type { EditLink } from '../permalink.ts';
 import type { DraftIssue, PickedView, ReportDraft } from '../report/draft.ts';
 import {
   MIN_SUBMIT_ZOOM,
@@ -46,6 +52,8 @@ import {
   submitBlock,
   withEvidence,
 } from '../report/draft.ts';
+import type { EditableReport } from '../report/edit.ts';
+import { saveReport, withdrawReport } from '../report/edit.ts';
 import type { FormField } from '../report/errors.ts';
 import type { PendingReport, StorageLike } from '../report/pending.ts';
 import { toReportRecord } from '../report/pending.ts';
@@ -55,6 +63,7 @@ import { prefillFromReport, sameTreeStage } from '../report/same-tree.ts';
 import { reportRows } from './report-rows.ts';
 import type { FetchLike } from '../report/submit.ts';
 import { submitReport } from '../report/submit.ts';
+import type { ShareOutcome } from '../share.ts';
 import type { TurnstileWidget } from '../turnstile.ts';
 import { renderTurnstile } from '../turnstile.ts';
 import strings from '../ui-strings.json';
@@ -75,6 +84,17 @@ export interface ReportFormOptions {
   readonly now: () => Date;
   /** Holds the safety notice acknowledgement, one entry per browser. */
   readonly storage: StorageLike;
+  /** Keep an edit link in this browser, with what the list shows for it. */
+  readonly onEditLink: (link: EditLink, report: PendingReport) => void;
+  /** The Worker no longer honours this report's link, or it was withdrawn. */
+  readonly onEditLinkGone: (id: string) => void;
+  /** Editing started or ended, so the sheet can retitle itself. */
+  readonly onEditingChange: (editing: boolean) => void;
+  readonly editLinkUrl: (link: EditLink) => string;
+  readonly share: (url: string, title: string) => Promise<ShareOutcome>;
+  /** window.confirm in the page; a test answers for the reader. */
+  readonly confirm: (message: string) => boolean;
+  readonly feedbackMs?: number;
 }
 
 export interface ReportForm {
@@ -85,6 +105,58 @@ export interface ReportForm {
   update(): void;
   /** Sheet opened or closed. */
   setActive(active: boolean): void;
+  /**
+   * Fill the form from a report the link opened. The caller has already moved
+   * the map so the crosshair sits on the stored point.
+   */
+  startEdit(link: EditLink, report: EditableReport): void;
+  /** Leave edit mode, if in it, for a blank new report. */
+  startCreate(): void;
+  isEditing(): boolean;
+}
+
+/** How long a copied confirmation stays beside the edit link. */
+export const EDIT_LINK_FEEDBACK_MS = 4000;
+
+/** The form's draft for a report read back from the Worker. */
+export function draftFromReport(report: EditableReport): ReportDraft {
+  return {
+    species: report.species ?? '',
+    causes: [...report.causes],
+    dispositions: [...report.dispositions],
+    evidence: report.evidence,
+    note: report.note ?? '',
+    link: report.link ?? '',
+    observedAt: report.observed_at ?? '',
+    protectedTreeId: report.protected_tree_id ?? '',
+    inventoryTreeId: report.inventory_tree_id ?? '',
+  };
+}
+
+/** What this browser records locally after a request the Worker accepted. */
+export function pendingFromBody(
+  id: string,
+  body: Record<string, unknown>,
+  submittedAt: string,
+  change: { readonly updatedAt: string; readonly withdrawn: boolean } | null,
+): PendingReport {
+  return {
+    id,
+    lat: body.lat as number,
+    lng: body.lng as number,
+    species: body.species as string | null,
+    causes: body.causes as number[],
+    dispositions: body.dispositions as number[],
+    evidence: body.evidence as number,
+    note: body.note as string | null,
+    link: body.link as string | null,
+    observedAt: body.observed_at as string | null,
+    protectedTreeId: body.protected_tree_id as string | null,
+    inventoryTreeId: body.inventory_tree_id as string | null,
+    submittedAt,
+    updatedAt: change?.updatedAt ?? null,
+    withdrawn: change?.withdrawn ?? false,
+  };
 }
 
 /** Coordinates are shown at the precision they are stored at. */
@@ -233,6 +305,9 @@ export function createReportForm(
   let widgetPending = false;
   let submitting = false;
   let submitted = false;
+  /** The link being edited; null while writing a new report. */
+  let editing: EditLink | null = null;
+  let withdrawing = false;
   let apiErrors: ReadonlyMap<FormField, string> = new Map();
   let generalError: string | null = null;
   /**
@@ -543,6 +618,14 @@ export function createReportForm(
   resultLine.setAttribute('role', 'status');
   form.append(resultLine);
 
+  // Only in edit mode. Kept apart from the submit button and styled as a
+  // warning, because it cannot be undone from the link.
+  const withdrawButton = document.createElement('button');
+  withdrawButton.type = 'button';
+  withdrawButton.className = 'form-secondary form-withdraw';
+  withdrawButton.hidden = true;
+  form.append(withdrawButton);
+
   /**
    * What replaces the form once a report is in.
    *
@@ -569,7 +652,33 @@ export function createReportForm(
   againButton.className = 'form-secondary';
   againButton.textContent = strings.form.successAgain;
 
-  successPanel.append(successMessage, successBody, againButton);
+  /**
+   * The edit link of a report just created. This is the only moment the
+   * token exists anywhere but in this browser's storage, so it is shown with
+   * what it grants and where it is kept.
+   */
+  const editLinkBox = document.createElement('section');
+  editLinkBox.className = 'form-edit-link';
+  editLinkBox.hidden = true;
+
+  const editLinkTitle = document.createElement('h3');
+  editLinkTitle.textContent = strings.form.editLinkTitle;
+  const editLinkHint = document.createElement('p');
+  editLinkHint.className = 'form-hint';
+  editLinkHint.textContent = strings.form.editLinkHint;
+  const editLinkCopy = document.createElement('button');
+  editLinkCopy.type = 'button';
+  editLinkCopy.className = 'form-secondary';
+  editLinkCopy.textContent = strings.form.editLinkCopy;
+  const editLinkFeedback = document.createElement('p');
+  editLinkFeedback.className = 'card-share-feedback';
+  editLinkFeedback.hidden = true;
+  const editLinkUrl = document.createElement('p');
+  editLinkUrl.className = 'card-share-url';
+  editLinkUrl.hidden = true;
+  editLinkBox.append(editLinkTitle, editLinkHint, editLinkCopy, editLinkFeedback, editLinkUrl);
+
+  successPanel.append(successMessage, successBody, editLinkBox, againButton);
 
   container.replaceChildren(picker, form, successPanel);
 
@@ -658,7 +767,11 @@ export function createReportForm(
   }
 
   function renderNearbyReport(view: PickedView): void {
-    nearbyReportFound = nearestWithin(knownReports, view, NEARBY_REPORT_RADIUS_M);
+    // The report being edited sits under the crosshair; it is not a
+    // neighbour to compare against.
+    const others =
+      editing === null ? knownReports : knownReports.filter((report) => report.id !== editing?.id);
+    nearbyReportFound = nearestWithin(others, view, NEARBY_REPORT_RADIUS_M);
     const found = nearbyReportFound;
     const stage = sameTreeStage(found?.item.id ?? null, sameTree);
     if (found === null || stage === 'none') {
@@ -779,8 +892,18 @@ export function createReportForm(
       resultLine.textContent = generalError;
     }
 
-    submitButton.disabled = block !== null || issues.size > 0 || submitting || submitted;
-    submitButton.textContent = submitting ? strings.form.submitting : strings.form.submit;
+    const busy = submitting || withdrawing;
+    submitButton.disabled = block !== null || issues.size > 0 || busy || submitted;
+    if (editing === null) {
+      submitButton.textContent = submitting ? strings.form.submitting : strings.form.submit;
+    } else {
+      submitButton.textContent = submitting
+        ? strings.form.submittingEdit
+        : strings.form.submitEdit;
+    }
+    withdrawButton.hidden = editing === null;
+    withdrawButton.disabled = busy || submitted;
+    withdrawButton.textContent = withdrawing ? strings.form.withdrawing : strings.form.withdraw;
   }
 
   /* Field wiring ---------------------------------------------------------- */
@@ -961,8 +1084,57 @@ export function createReportForm(
     render();
   });
 
-  function showSuccess(entry: PendingReport): void {
-    successBody.replaceChildren(...reportRows(toReportRecord(entry)));
+  let shownEditLink: string | null = null;
+  let editLinkTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function clearEditLinkFeedback(): void {
+    if (editLinkTimer !== null) {
+      clearTimeout(editLinkTimer);
+      editLinkTimer = null;
+    }
+    editLinkFeedback.hidden = true;
+    editLinkUrl.hidden = true;
+    editLinkUrl.textContent = '';
+  }
+
+  editLinkCopy.addEventListener('click', () => {
+    const url = shownEditLink;
+    if (url === null) {
+      return;
+    }
+    clearEditLinkFeedback();
+    void options.share(url, strings.app.title).then((outcome) => {
+      if (outcome === 'copied') {
+        editLinkFeedback.hidden = false;
+        editLinkFeedback.textContent = strings.form.editLinkCopied;
+        editLinkTimer = setTimeout(
+          clearEditLinkFeedback,
+          options.feedbackMs ?? EDIT_LINK_FEEDBACK_MS,
+        );
+      } else if (outcome === 'manual') {
+        editLinkFeedback.hidden = false;
+        editLinkFeedback.textContent = strings.form.editLinkManual;
+        editLinkUrl.hidden = false;
+        editLinkUrl.textContent = url;
+      }
+    });
+  });
+
+  type SuccessKind = 'created' | 'edited' | 'withdrawn';
+
+  function showSuccess(entry: PendingReport, kind: SuccessKind, link: EditLink | null): void {
+    successMessage.textContent =
+      kind === 'created'
+        ? strings.form.success
+        : kind === 'edited'
+          ? strings.form.editSuccess
+          : strings.form.withdrawn;
+    successBody.replaceChildren(
+      ...(kind === 'withdrawn' ? [] : reportRows(toReportRecord(entry))),
+    );
+    clearEditLinkFeedback();
+    shownEditLink = kind === 'created' && link !== null ? options.editLinkUrl(link) : null;
+    editLinkBox.hidden = shownEditLink === null;
     successPanel.hidden = false;
     picker.hidden = true;
     form.hidden = true;
@@ -974,10 +1146,52 @@ export function createReportForm(
   function hideSuccess(): void {
     successPanel.hidden = true;
     successBody.replaceChildren();
+    shownEditLink = null;
+    editLinkBox.hidden = true;
+    clearEditLinkFeedback();
     picker.hidden = false;
   }
 
+  function setEditing(next: EditLink | null): void {
+    const changed = (editing === null) !== (next === null);
+    editing = next;
+    if (changed) {
+      options.onEditingChange(next !== null);
+    }
+  }
+
+  /** Put a draft's values into every control, as if the reader had typed them. */
+  function fillControls(): void {
+    speciesInput.value = draft.species;
+    noteInput.value = draft.note;
+    linkInput.value = draft.link;
+    observedInput.value = draft.observedAt;
+    protectedInput.value = draft.protectedTreeId;
+    inventoryInput.value = draft.inventoryTreeId;
+    for (const input of causeBlock.inputs) {
+      input.checked = draft.causes.includes(Number(input.value));
+    }
+    for (const input of dispositionBlock.inputs) {
+      input.checked = draft.dispositions.includes(Number(input.value));
+    }
+    for (const input of evidenceInputs) {
+      input.checked = Number(input.value) === draft.evidence;
+    }
+    const feedback = linkFeedback(draft.link);
+    linkDomain.hidden = feedback.kind !== 'accepted';
+    if (feedback.kind === 'accepted') {
+      linkDomain.dataset.tone = 'ok';
+      linkDomain.textContent = formatTemplate(strings.form.linkDomainOk, {
+        domain: feedback.domain,
+      });
+    }
+    noteStripped.hidden = true;
+    renderNoteCounter();
+  }
+
   function resetForm(): void {
+    setEditing(null);
+    withdrawing = false;
     draft = emptyDraft();
     sameTree = null;
     apiErrors = new Map();
@@ -1039,29 +1253,43 @@ export function createReportForm(
     render();
 
     const body = buildRequestBody(draft, view, token);
-    const outcome = await submitReport(body, options.fetchImpl);
+    const target = editing;
+    const outcome =
+      target === null
+        ? await submitReport(body, options.fetchImpl)
+        : await saveReport(target, body, options.fetchImpl);
     submitting = false;
 
     if (outcome.kind === 'created') {
       submitted = true;
       widget?.reset();
-      const entry: PendingReport = {
-        id: outcome.id,
-        lat: body.lat as number,
-        lng: body.lng as number,
-        species: body.species as string | null,
-        causes: body.causes as number[],
-        dispositions: body.dispositions as number[],
-        evidence: body.evidence as number,
-        note: body.note as string | null,
-        link: body.link as string | null,
-        observedAt: body.observed_at as string | null,
-        protectedTreeId: body.protected_tree_id as string | null,
-        inventoryTreeId: body.inventory_tree_id as string | null,
-        submittedAt: options.now().toISOString(),
-      };
+      const entry = pendingFromBody(outcome.id, body, options.now().toISOString(), null);
+      const link = { id: outcome.id, token: outcome.editToken };
       options.onPendingReport(entry);
-      showSuccess(entry);
+      options.onEditLink(link, entry);
+      showSuccess(entry, 'created', link);
+      render();
+      return;
+    }
+
+    if (outcome.kind === 'saved' && target !== null) {
+      submitted = true;
+      widget?.reset();
+      const entry = pendingFromBody(target.id, body, options.now().toISOString(), {
+        updatedAt: outcome.updatedAt,
+        withdrawn: false,
+      });
+      options.onPendingReport(entry);
+      options.onEditLink(target, entry);
+      showSuccess(entry, 'edited', null);
+      render();
+      return;
+    }
+
+    if (outcome.kind === 'missing' && target !== null) {
+      options.onEditLinkGone(target.id);
+      generalError = strings.form.errors.missing;
+      widget?.reset();
       render();
       return;
     }
@@ -1090,6 +1318,48 @@ export function createReportForm(
     render();
   }
 
+  async function withdraw(): Promise<void> {
+    const target = editing;
+    if (target === null || withdrawing || submitting || submitted) {
+      return;
+    }
+    if (!options.confirm(strings.form.withdrawConfirm)) {
+      return;
+    }
+    withdrawing = true;
+    generalError = null;
+    render();
+
+    const outcome = await withdrawReport(target, options.fetchImpl);
+    withdrawing = false;
+
+    if (outcome.kind === 'withdrawn') {
+      submitted = true;
+      const body = buildRequestBody(draft, options.getView(), '');
+      const entry = pendingFromBody(target.id, body, options.now().toISOString(), {
+        updatedAt: outcome.updatedAt,
+        withdrawn: true,
+      });
+      options.onPendingReport(entry);
+      options.onEditLinkGone(target.id);
+      showSuccess(entry, 'withdrawn', null);
+      render();
+      return;
+    }
+
+    if (outcome.kind === 'missing') {
+      options.onEditLinkGone(target.id);
+      generalError = strings.form.errors.missing;
+    } else {
+      generalError = strings.form.errors.withdraw;
+    }
+    render();
+  }
+
+  withdrawButton.addEventListener('click', () => {
+    void withdraw();
+  });
+
   /* Initial state --------------------------------------------------------- */
 
   observedInput.max = taipeiDate(options.now());
@@ -1115,8 +1385,29 @@ export function createReportForm(
       }
       observedInput.max = taipeiDate(options.now());
       sameTree = null;
+      // An edit starts on its fields; the reader moves the point on purpose.
+      setMode(editing === null ? 'picking' : 'form');
+      render();
+    },
+    startEdit(link, report) {
+      resetForm();
+      setEditing(link);
+      draft = draftFromReport(report);
+      fillControls();
+      observedInput.max = taipeiDate(options.now());
+      setMode('form');
+      render();
+    },
+    startCreate() {
+      if (editing === null) {
+        return;
+      }
+      resetForm();
       setMode('picking');
       render();
+    },
+    isEditing() {
+      return editing !== null;
     },
   };
 }

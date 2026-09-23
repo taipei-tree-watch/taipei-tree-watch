@@ -13,6 +13,8 @@ export interface ReportSheet {
   open(): void;
   close(): void;
   isOpen(): boolean;
+  /** Heading for a new report, or for editing an existing one. */
+  setEditing(editing: boolean): void;
   onOpenChange(listener: (open: boolean) => void): () => void;
 }
 
@@ -59,6 +61,9 @@ export function createReportSheet(element: HTMLElement): ReportSheet {
     },
     isOpen() {
       return !element.hidden;
+    },
+    setEditing(editing) {
+      title.textContent = editing ? strings.sheet.editTitle : strings.sheet.title;
     },
     onOpenChange(listener) {
       listeners.add(listener);

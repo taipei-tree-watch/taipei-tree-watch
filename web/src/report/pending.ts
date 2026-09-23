@@ -1,10 +1,17 @@
 /**
- * Reports this browser has submitted but has not yet seen in a snapshot.
+ * Reports this browser has submitted, edited or withdrawn but has not yet
+ * seen reflected in a snapshot.
  *
  * The snapshot is rebuilt on a cron, so a reporter would otherwise watch
- * their own point fail to appear for a quarter of an hour. Entries are held
- * in localStorage, drawn on the map with a pending style, and dropped as soon
- * as a snapshot carries the same id.
+ * their own point fail to appear, keep its old contents, or linger after a
+ * withdrawal for a quarter of an hour. Entries are held in localStorage and
+ * take the place of the snapshot's row with the same id: a new or edited
+ * report is drawn with a pending style, a withdrawn one is not drawn at all.
+ *
+ * A new report is retired once a snapshot carries its id. An edit or a
+ * withdrawal is retired once a snapshot was generated at or after the moment
+ * the Worker stored it: the snapshot already holds the old row, so its id
+ * alone proves nothing.
  *
  * Storage is best effort: a private window can refuse it, and a refusal must
  * not break submitting. Every access is guarded and a failure degrades to an
@@ -40,8 +47,15 @@ export interface PendingReport {
   readonly observedAt: string | null;
   readonly protectedTreeId: string | null;
   readonly inventoryTreeId: string | null;
-  /** When this browser sent the report, as an ISO timestamp. */
+  /** When this browser sent the report or the change, as an ISO timestamp. */
   readonly submittedAt: string;
+  /**
+   * The Worker's `updated_at` for an edit or a withdrawal; null for a report
+   * that was only created. Server time, so it compares with `generated_at`.
+   */
+  readonly updatedAt: string | null;
+  /** The reporter withdrew it: hide the snapshot row until it drops out. */
+  readonly withdrawn: boolean;
 }
 
 /** The slice of the Storage interface this module uses. */
@@ -95,6 +109,8 @@ function parseEntry(value: unknown): PendingReport | null {
     protectedTreeId: textOrNull(value.protectedTreeId),
     inventoryTreeId: textOrNull(value.inventoryTreeId),
     submittedAt,
+    updatedAt: textOrNull(value.updatedAt),
+    withdrawn: value.withdrawn === true,
   };
 }
 
@@ -154,19 +170,34 @@ export function addPending(
   return next;
 }
 
+/** What a loaded snapshot says about the entries it may retire. */
+export interface SnapshotState {
+  readonly ids: ReadonlySet<string>;
+  readonly generatedAt: string | null;
+}
+
+/** True when the snapshot already shows what the entry records. */
+export function isReflected(entry: PendingReport, snapshot: SnapshotState): boolean {
+  if (entry.updatedAt === null) {
+    return snapshot.ids.has(entry.id);
+  }
+  // Both are ISO 8601 UTC strings from the Worker, so text order is time order.
+  return snapshot.generatedAt !== null && snapshot.generatedAt >= entry.updatedAt;
+}
+
 /**
- * Drop entries the snapshot now carries.
+ * Drop entries the snapshot now reflects.
  *
- * Only call this with the ids of a snapshot that actually loaded: pruning
- * against an empty set after a failed fetch would clear every pending point.
+ * Only call this with a snapshot that actually loaded: pruning against an
+ * empty set after a failed fetch would clear every pending point.
  */
 export function prunePending(
   storage: StorageLike,
-  snapshotIds: ReadonlySet<string>,
+  snapshot: SnapshotState,
   now: Date,
 ): PendingReport[] {
   const current = readPending(storage, now);
-  const next = current.filter((entry) => !snapshotIds.has(entry.id));
+  const next = current.filter((entry) => !isReflected(entry, snapshot));
   if (next.length !== current.length) {
     write(storage, next);
   }

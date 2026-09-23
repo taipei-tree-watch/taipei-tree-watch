@@ -70,6 +70,8 @@ function harness(outcome: ShareOutcome, overrides: Partial<DetailCardOptions> = 
     onTargetChange: (target) => {
       targets.push(target);
     },
+    canEdit: () => false,
+    onEdit: () => undefined,
     ...overrides,
   });
 
@@ -175,5 +177,39 @@ describe('detail card permalink', () => {
     card.showReport(REPORT);
     button.click();
     expect(shared).toHaveLength(1);
+  });
+});
+
+describe('edit button', () => {
+  function editButton(element: HTMLElement): HTMLButtonElement {
+    const buttons = element.querySelectorAll<HTMLButtonElement>('.card-share button');
+    return buttons[1] as HTMLButtonElement;
+  }
+
+  it('is hidden for a report this browser holds no edit link for', () => {
+    const { card, element } = harness('copied');
+    card.showReport(REPORT);
+    expect(editButton(element).hidden).toBe(true);
+  });
+
+  it('opens the edit for a report whose link is held', () => {
+    const edited: string[] = [];
+    const { card, element } = harness('copied', {
+      canEdit: (id) => id === REPORT.id,
+      onEdit: (id) => {
+        edited.push(id);
+      },
+    });
+    card.showReport(REPORT);
+
+    expect(editButton(element).hidden).toBe(false);
+    editButton(element).click();
+    expect(edited).toEqual([REPORT.id]);
+  });
+
+  it('is hidden on a protected tree card', () => {
+    const { card, element } = harness('copied', { canEdit: () => true });
+    card.showTree(TREE);
+    expect(editButton(element).hidden).toBe(true);
   });
 });

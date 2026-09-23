@@ -147,3 +147,27 @@ export function isInventoryTreeId(value: string): boolean {
 export function normalizeInventoryTreeId(value: string): string {
   return value.toUpperCase();
 }
+
+/**
+ * Report ids are ULIDs: 26 characters of Crockford base32, upper case, as the
+ * Worker generates them.
+ */
+const REPORT_ID = /^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{26}$/;
+
+export function isReportId(value: string): boolean {
+  return REPORT_ID.test(value);
+}
+
+/** Random bytes behind an edit token; 256 bits leave nothing to guess. */
+export const EDIT_TOKEN_BYTES = 32;
+
+/** 32 bytes as unpadded base64url is exactly 43 characters. */
+const EDIT_TOKEN = /^[A-Za-z0-9_-]{43}$/;
+
+/**
+ * Shape check for the secret half of an edit link. It says nothing about
+ * whether the token opens any report; only the Worker can tell that.
+ */
+export function isEditToken(value: string): boolean {
+  return EDIT_TOKEN.test(value);
+}

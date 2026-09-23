@@ -8,7 +8,8 @@
     "filters": "篩選",
     "info": "說明",
     "ortho": "航照",
-    "report": "回報"
+    "report": "回報",
+    "mine": "我的回報"
   },
   "attribution": {
     "map": "底圖與航照 © 內政部國土測繪中心｜受保護樹木 © 臺北市政府文化局（政府資料開放授權條款－第1版）｜回報資料 CC BY 4.0"
@@ -53,7 +54,8 @@
     "copied": "已複製連結",
     "copyManual": "無法自動複製，請手動複製這個網址。",
     "unknownValue": "未填寫",
-    "listSeparator": "、"
+    "listSeparator": "、",
+    "edit": "修改這筆回報"
   },
   "info": {
     "title": "說明與免責",
@@ -61,7 +63,8 @@
   },
   "sheet": {
     "title": "回報這棵樹",
-    "close": "關閉"
+    "close": "關閉",
+    "editTitle": "修改回報"
   },
   "map": {
     "locate": "目前位置",
@@ -76,7 +79,10 @@
     "retry": "重新載入",
     "dismiss": "關閉",
     "reportMissing": "找不到這筆回報，可能尚未同步或已移除。",
-    "treeMissing": "找不到這棵受保護樹木，可能已解列或資料已更新。"
+    "treeMissing": "找不到這棵受保護樹木，可能已解列或資料已更新。",
+    "editLoading": "正在讀取要修改的回報……",
+    "editMissing": "這個編輯連結已經失效：回報可能已撤回或被移除，已從「我的回報」拿掉。",
+    "editFailed": "讀不到要修改的回報，請再試一次。"
   },
   "form": {
     "positionTitle": "先對準這棵樹",
@@ -150,7 +156,9 @@
       "general": "有欄位沒有通過伺服器檢查，請檢查後再送出。",
       "network": "送出失敗，填的內容都還在，請再試一次。",
       "turnstileLoad": "人機驗證元件載不起來，請重新整理頁面再試。",
-      "turnstileMissing": "請先完成人機驗證再送出。"
+      "turnstileMissing": "請先完成人機驗證再送出。",
+      "missing": "這個編輯連結已經失效，回報可能已撤回或被移除。",
+      "withdraw": "撤回失敗，請再試一次。"
     },
     "issues": {
       "speciesLength": "樹種最多 50 字。",
@@ -159,6 +167,32 @@
       "observedRange": "發現日期必須是真實日期，而且不能晚於今天。",
       "protectedTreeId": "樹木編號只能是數字。",
       "inventoryTreeId": "樹籤編號是兩碼英文字母加十碼數字。"
-    }
+    },
+    "submitEdit": "儲存修改",
+    "submittingEdit": "正在儲存……",
+    "editSuccess": "已儲存修改，約 15 分鐘後其他人會看到新的內容。",
+    "withdraw": "撤回這筆回報",
+    "withdrawConfirm": "確定要撤回這筆回報嗎？撤回後會從地圖上消失，編輯連結也會失效。",
+    "withdrawing": "正在撤回……",
+    "withdrawn": "已撤回，約 15 分鐘後從地圖上消失。",
+    "editLinkTitle": "編輯連結",
+    "editLinkHint": "拿到這個連結的人都可以修改或撤回這筆回報，請只交給信任的人。連結已存進這個瀏覽器的「我的回報」，換瀏覽器、無痕視窗或清除網站資料就看不到，需要的話請另外保存。",
+    "editLinkCopy": "複製編輯連結",
+    "editLinkCopied": "已複製編輯連結",
+    "editLinkManual": "無法自動複製，請手動複製這個網址。"
+  },
+  "mine": {
+    "title": "我的回報",
+    "close": "關閉我的回報",
+    "intro": "這裡列出在這個瀏覽器送出過、或打開過編輯連結的回報。清單只存在這個瀏覽器裡，換瀏覽器、無痕視窗或清除網站資料就看不到。",
+    "empty": "這個瀏覽器還沒有存任何編輯連結。",
+    "unknownSpecies": "未填樹種",
+    "savedAt": "存入 {date}",
+    "show": "在地圖上看",
+    "edit": "修改",
+    "copy": "複製編輯連結",
+    "copied": "已複製編輯連結",
+    "copyManual": "無法自動複製，請手動複製這個網址。",
+    "notFound": "地圖上還找不到這筆回報，可能尚未同步。"
   }
 }

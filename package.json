@@ -21,7 +21,8 @@
     "check:pipelines": "uv sync --directory pipelines && uv run --directory pipelines ruff check . && uv run --directory pipelines pytest",
     "deploy": "npm run check && npm run build && wrangler deploy",
     "backup:snapshot": "tsx scripts/snapshot-backup.ts",
-    "backup:d1": "bash scripts/d1-export.sh"
+    "backup:d1": "bash scripts/d1-export.sh",
+    "issue:edit-links": "tsx scripts/issue-edit-links.ts"
   },
   "dependencies": {
     "maplibre-gl": "^6.10.0",

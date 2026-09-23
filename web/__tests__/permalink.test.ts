@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { parsePermalink, permalinkSearch, permalinkUrl } from '../src/permalink.ts';
+import {
+  editLinkUrl,
+  parseEditLink,
+  parsePermalink,
+  permalinkSearch,
+  permalinkUrl,
+  withoutEditToken,
+} from '../src/permalink.ts';
 
 const ULID = '01JBZ8QF7KJ9M3N4P5R6S7T8V9';
 const OTHER_ULID = '01JBZ8QF7KJ9M3N4P5R6S7T8W0';
@@ -85,5 +92,41 @@ describe('permalinkUrl', () => {
   it('keeps the path it was given', () => {
     const url = permalinkUrl({ kind: 'tree', id: '768' }, 'https://example.test/map');
     expect(url).toBe('https://example.test/map?tree=768');
+  });
+});
+
+const TOKEN = 'abcDEF0123456789_-abcDEF0123456789_-abcDEF0';
+
+describe('edit links', () => {
+  it('reads the report and token of an edit link', () => {
+    expect(parseEditLink(`?report=${ULID}&edit=${TOKEN}`)).toEqual({ id: ULID, token: TOKEN });
+  });
+
+  it('ignores a token without a report, beside a tree, or of the wrong shape', () => {
+    expect(parseEditLink(`?edit=${TOKEN}`)).toBeNull();
+    expect(parseEditLink(`?tree=768&edit=${TOKEN}`)).toBeNull();
+    expect(parseEditLink(`?report=${ULID}&edit=short`)).toBeNull();
+    expect(parseEditLink(`?report=${ULID}`)).toBeNull();
+  });
+
+  it('builds an edit link that parses back and keeps the page origin', () => {
+    const url = editLinkUrl({ id: ULID, token: TOKEN }, 'https://example.test/?tree=768#x');
+
+    expect(url).toBe(`https://example.test/?report=${ULID}&edit=${TOKEN}`);
+    expect(parseEditLink(new URL(url).search)).toEqual({ id: ULID, token: TOKEN });
+  });
+
+  it('never carries the token into a permalink', () => {
+    const page = `https://example.test/?report=${ULID}&edit=${TOKEN}`;
+
+    expect(permalinkUrl({ kind: 'report', id: OTHER_ULID }, page)).not.toContain(TOKEN);
+    expect(permalinkSearch(null, `?report=${ULID}&edit=${TOKEN}&ortho=1`)).toBe('?ortho=1');
+  });
+
+  it('takes only the token out of the address bar', () => {
+    expect(withoutEditToken(`?report=${ULID}&edit=${TOKEN}&ortho=1`)).toBe(
+      `?report=${ULID}&ortho=1`,
+    );
+    expect(withoutEditToken(`?edit=${TOKEN}`)).toBe('');
   });
 });

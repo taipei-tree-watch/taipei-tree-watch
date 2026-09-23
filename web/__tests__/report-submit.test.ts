@@ -33,13 +33,22 @@ describe('submitReport', () => {
     expect(init?.body).toBe(JSON.stringify(BODY));
   });
 
-  it('returns the new id on 201', async () => {
-    const outcome = await submitReport(BODY, respondWith(201, { id: '01JABC' }));
-    expect(outcome).toEqual({ kind: 'created', id: '01JABC' });
+  it('returns the new id and edit token on 201', async () => {
+    const outcome = await submitReport(
+      BODY,
+      respondWith(201, { id: '01JABC', edit_token: 'secret' }),
+    );
+    expect(outcome).toEqual({ kind: 'created', id: '01JABC', editToken: 'secret' });
   });
 
   it('treats a 201 without an id as a failure worth retrying', async () => {
     expect(await submitReport(BODY, respondWith(201, {}))).toEqual({ kind: 'network' });
+  });
+
+  it('treats a 201 without an edit token as a failure worth retrying', async () => {
+    expect(await submitReport(BODY, respondWith(201, { id: '01JABC' }))).toEqual({
+      kind: 'network',
+    });
   });
 
   it('reports a failed challenge on 403', async () => {

@@ -12,7 +12,7 @@ import { mapApiErrors } from './errors.ts';
 export const REPORTS_URL = '/api/reports';
 
 export type SubmitOutcome =
-  | { readonly kind: 'created'; readonly id: string }
+  | { readonly kind: 'created'; readonly id: string; readonly editToken: string }
   | { readonly kind: 'rejected'; readonly errors: MappedErrors }
   /** The challenge was not accepted; the widget has to be solved again. */
   | { readonly kind: 'turnstile' }
@@ -21,7 +21,7 @@ export type SubmitOutcome =
 
 export type FetchLike = (input: string, init: RequestInit) => Promise<Response>;
 
-async function readJson(response: Response): Promise<unknown> {
+export async function readJson(response: Response): Promise<unknown> {
   try {
     return await response.json();
   } catch {
@@ -47,15 +47,15 @@ export async function submitReport(
 
   if (response.status === 201) {
     const payload = await readJson(response);
-    const id =
-      typeof payload === 'object' && payload !== null
-        ? (payload as Record<string, unknown>).id
-        : undefined;
-    if (typeof id !== 'string' || id === '') {
-      console.error('report accepted without an id');
+    const fields =
+      typeof payload === 'object' && payload !== null ? (payload as Record<string, unknown>) : {};
+    const id = fields.id;
+    const editToken = fields.edit_token;
+    if (typeof id !== 'string' || id === '' || typeof editToken !== 'string' || editToken === '') {
+      console.error('report accepted without an id or edit token');
       return { kind: 'network' };
     }
-    return { kind: 'created', id };
+    return { kind: 'created', id, editToken };
   }
 
   if (response.status === 403) {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { USER_REPORT_SOURCE_CODE } from '../../shared/tags.ts';
-import type { PendingReport, StorageLike } from '../src/report/pending.ts';
+import type { PendingReport, SnapshotState, StorageLike } from '../src/report/pending.ts';
 import {
   PENDING_MAX_AGE_MS,
   PENDING_STORAGE_KEY,
@@ -43,8 +43,14 @@ function entry(overrides: Partial<PendingReport> = {}): PendingReport {
     protectedTreeId: null,
     inventoryTreeId: null,
     submittedAt: NOW.toISOString(),
+    updatedAt: null,
+    withdrawn: false,
     ...overrides,
   };
+}
+
+function snapshot(ids: string[], generatedAt: string | null = null): SnapshotState {
+  return { ids: new Set(ids), generatedAt };
 }
 
 describe('readPending', () => {
@@ -151,7 +157,7 @@ describe('prunePending', () => {
     addPending(storage, entry({ id: 'synced' }), NOW);
     addPending(storage, entry({ id: 'waiting' }), NOW);
 
-    const left = prunePending(storage, new Set(['synced']), NOW);
+    const left = prunePending(storage, snapshot(['synced']), NOW);
     expect(left.map((item) => item.id)).toEqual(['waiting']);
     expect(readPending(storage, NOW).map((item) => item.id)).toEqual(['waiting']);
   });
@@ -159,15 +165,56 @@ describe('prunePending', () => {
   it('keeps everything when the snapshot carries none of them', () => {
     const storage = fakeStorage();
     addPending(storage, entry({ id: 'waiting' }), NOW);
-    expect(prunePending(storage, new Set(['other']), NOW).map((item) => item.id)).toEqual([
+    expect(prunePending(storage, snapshot(['other']), NOW).map((item) => item.id)).toEqual([
       'waiting',
     ]);
+  });
+
+  it('keeps an edit the snapshot predates even though it carries the id', () => {
+    const storage = fakeStorage();
+    addPending(storage, entry({ id: 'edited', updatedAt: '2026-09-23T10:05:00.000Z' }), NOW);
+
+    const left = prunePending(storage, snapshot(['edited'], '2026-09-23T10:00:00.000Z'), NOW);
+
+    expect(left.map((item) => item.id)).toEqual(['edited']);
+  });
+
+  it('retires an edit once a snapshot was generated at or after it', () => {
+    const storage = fakeStorage();
+    addPending(storage, entry({ id: 'edited', updatedAt: '2026-09-23T10:05:00.000Z' }), NOW);
+
+    expect(prunePending(storage, snapshot(['edited'], '2026-09-23T10:15:00.000Z'), NOW)).toEqual(
+      [],
+    );
+  });
+
+  it('keeps a withdrawal until a later snapshot, then retires it', () => {
+    const storage = fakeStorage();
+    const withdrawal = entry({
+      id: 'gone',
+      updatedAt: '2026-09-23T10:05:00.000Z',
+      withdrawn: true,
+    });
+    addPending(storage, withdrawal, NOW);
+
+    expect(prunePending(storage, snapshot(['gone'], null), NOW)).toHaveLength(1);
+    expect(prunePending(storage, snapshot([], '2026-09-23T10:15:00.000Z'), NOW)).toEqual([]);
+  });
+
+  it('reads back the edit fields it stored', () => {
+    const storage = fakeStorage();
+    addPending(storage, entry({ updatedAt: '2026-09-23T10:05:00.000Z', withdrawn: true }), NOW);
+
+    expect(readPending(storage, NOW)[0]).toMatchObject({
+      updatedAt: '2026-09-23T10:05:00.000Z',
+      withdrawn: true,
+    });
   });
 
   it('clears the store when every entry has arrived', () => {
     const storage = fakeStorage();
     addPending(storage, entry({ id: 'synced' }), NOW);
-    expect(prunePending(storage, new Set(['synced']), NOW)).toEqual([]);
+    expect(prunePending(storage, snapshot(['synced']), NOW)).toEqual([]);
     expect(storage.raw()).toBe('[]');
   });
 });
