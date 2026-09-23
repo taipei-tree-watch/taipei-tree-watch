@@ -37,7 +37,7 @@ export const dispositions = [
   { code: 3, slug: 'roots-only', label: '僅剩根部' },
   { code: 4, slug: 'removed-with-roots', label: '連根移除' },
   { code: 5, slug: 'transplanted', label: '已移植' },
-  { code: 6, slug: 'pit-filled-concrete', label: '樹穴水泥填平' },
+  { code: 6, slug: 'pit-filled-concrete', label: '樹穴填平' },
   { code: 7, slug: 'retained-in-place', label: '原地保留' },
 ] as const satisfies readonly Tag[];
 

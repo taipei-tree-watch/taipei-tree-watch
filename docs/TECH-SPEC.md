@@ -249,7 +249,7 @@ export const causes = [
 ] as const;
 ```
 
-處置（僅修枝葉、僅剩主幹、僅剩根部、連根移除、已移植、樹穴水泥填平、原地保留）、證據來源（六項）、資料來源（四項）同格式。`domains.ts` 是白名單陣列，第一版收 14 個網域：`threads.net`、`threads.com`、`instagram.com`、`facebook.com`、`fb.com`、`x.com`、`twitter.com`、`imgur.com`、`flickr.com`、`youtube.com`、`youtu.be`、`plurk.com`、`dcard.tw`、`ptt.cc`；比對規則見第 6 節第 9 條。`snapshot.ts` 定義快照欄位順序與 `schema` 版本。build script 把三者輸出成 `shared/generated/*.json` 並 commit，Python 只讀 JSON。
+處置（僅修枝葉、僅剩主幹、僅剩根部、連根移除、已移植、樹穴填平、原地保留）、證據來源（六項）、資料來源（四項）同格式。`domains.ts` 是白名單陣列，第一版收 14 個網域：`threads.net`、`threads.com`、`instagram.com`、`facebook.com`、`fb.com`、`x.com`、`twitter.com`、`imgur.com`、`flickr.com`、`youtube.com`、`youtu.be`、`plurk.com`、`dcard.tw`、`ptt.cc`；比對規則見第 6 節第 9 條。`snapshot.ts` 定義快照欄位順序與 `schema` 版本。build script 把三者輸出成 `shared/generated/*.json` 並 commit，Python 只讀 JSON。
 
 快照格式：
 
