@@ -155,8 +155,9 @@ describe('linkTree', () => {
       district: null,
     });
 
-    const text = container.querySelector('.form-nearby')?.textContent ?? '';
-    expect(text).toContain('768');
+    const hint = container.querySelector<HTMLElement>('.form-nearby-hint');
+    expect(hint?.hidden).toBe(false);
+    expect(hint?.textContent).toContain('768');
     const species = [...container.querySelectorAll<HTMLInputElement>('input[type="text"]')].map(
       (input) => input.value,
     );
@@ -219,5 +220,60 @@ describe('editing an existing report', () => {
     expect(coords(container)).toContain('25.02320');
     expect(coords(container)).toContain('121.50560');
     expect(container.querySelector<HTMLElement>('.form-gate')?.hidden).toBe(true);
+  });
+});
+
+describe('nearby while aiming', () => {
+  const TREE = {
+    id: '2190',
+    species: 'banyan',
+    lat: 25.04,
+    lng: 121.54,
+    dbhM: null,
+    address: null,
+    manager: null,
+    siteType: null,
+    district: null,
+  };
+
+  function boxes(container: HTMLElement): HTMLElement[] {
+    return [...container.querySelectorAll<HTMLElement>('.form-nearby')];
+  }
+
+  it('names a nearby tree in one line and keeps the box shut', () => {
+    const container = document.createElement('div');
+    const form = createReportForm(
+      container,
+      options({ getView: () => ({ lat: 25.04, lng: 121.54, zoom: 19 }) }),
+    );
+    form.setTrees([TREE]);
+    form.setActive(true);
+
+    const hint = container.querySelector<HTMLElement>('.form-nearby-hint');
+    expect(hint?.hidden).toBe(false);
+    expect(hint?.textContent).toContain('#2190');
+    expect(boxes(container).every((box) => box.hidden)).toBe(true);
+  });
+
+  it('opens the box and drops the line once the fields open', () => {
+    const container = document.createElement('div');
+    const form = createReportForm(
+      container,
+      options({ getView: () => ({ lat: 25.04, lng: 121.54, zoom: 19 }) }),
+    );
+    form.setTrees([TREE]);
+    form.setActive(true);
+    button(container, strings.form.toForm).click();
+
+    expect(container.querySelector<HTMLElement>('.form-nearby-hint')?.hidden).toBe(true);
+    expect(boxes(container).some((box) => !box.hidden)).toBe(true);
+    expect(button(container, strings.form.nearbyConfirm).hidden).toBe(false);
+  });
+
+  it('says nothing when nothing is near', () => {
+    const container = document.createElement('div');
+    createReportForm(container, options()).setActive(true);
+
+    expect(container.querySelector<HTMLElement>('.form-nearby-hint')?.hidden).toBe(true);
   });
 });

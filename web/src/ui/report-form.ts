@@ -405,6 +405,15 @@ export function createReportForm(
   locateStatus.className = 'form-hint';
   locateStatus.hidden = true;
 
+  /**
+   * While aiming, what is nearby is only named in this line: the boxes below
+   * carry rows and buttons that would cover much of the map. They open once
+   * the point is locked, which is when their questions can be answered.
+   */
+  const nearbyHint = document.createElement('p');
+  nearbyHint.className = 'form-hint form-nearby-hint';
+  nearbyHint.hidden = true;
+
   const nearbyBox = document.createElement('div');
   nearbyBox.className = 'form-nearby';
   nearbyBox.hidden = true;
@@ -477,6 +486,7 @@ export function createReportForm(
     pickerGuide,
     coordLine,
     gateLine,
+    nearbyHint,
     pickerActions,
     locateStatus,
     nearbyBox,
@@ -865,6 +875,36 @@ export function createReportForm(
   }
 
   function renderNearby(view: PickedView): void {
+    renderNearbyBoxes(view);
+
+    const picking = mode === 'picking';
+    const parts: string[] = [];
+    if (draft.protectedTreeId !== '') {
+      parts.push(formatTemplate(strings.form.nearbyHintLinked, { id: draft.protectedTreeId }));
+    } else if (nearby !== null) {
+      parts.push(
+        formatTemplate(strings.form.nearbyHintTree, {
+          id: nearby.item.id,
+          distance: nearby.distanceM.toFixed(0),
+        }),
+      );
+    }
+    if (nearbyReportFound !== null) {
+      parts.push(
+        formatTemplate(strings.form.nearbyHintReport, {
+          distance: nearbyReportFound.distanceM.toFixed(0),
+        }),
+      );
+    }
+    nearbyHint.textContent = parts.join(strings.form.nearbyHintSeparator);
+    nearbyHint.hidden = !picking || parts.length === 0;
+    if (picking) {
+      nearbyBox.hidden = true;
+      nearbyReport.hidden = true;
+    }
+  }
+
+  function renderNearbyBoxes(view: PickedView): void {
     renderNearbyReport(view);
     nearby = nearestWithin(trees, view, PROTECTED_TREE_RADIUS_M);
     const linked = draft.protectedTreeId !== '';
