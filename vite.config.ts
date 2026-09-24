@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 
+import { webAnalytics } from './scripts/web-analytics.ts';
 import { readWranglerVar } from './scripts/wrangler-vars.ts';
 
 export default defineConfig({
@@ -12,6 +13,7 @@ export default defineConfig({
       readWranglerVar('TURNSTILE_SITE_KEY'),
     ),
   },
+  plugins: [webAnalytics(readWranglerVar('WEB_ANALYTICS_TOKEN'))],
   build: {
     outDir: 'dist',
     emptyOutDir: true,

@@ -109,11 +109,13 @@ taipei-tree-watch/
 
 其他請求交給 Static Assets。沒有 admin route，軟刪除走 wrangler（第 10 節）。
 
-Bindings：`DB`（D1）、`SNAPSHOTS`（KV）；secrets：`TURNSTILE_SECRET_KEY`、`REPORTER_SALT`；vars：`TURNSTILE_SITE_KEY`（公開）、`TURNSTILE_HOSTNAME`、`BBOX`。
+Bindings：`DB`（D1）、`SNAPSHOTS`（KV）；secrets：`TURNSTILE_SECRET_KEY`、`REPORTER_SALT`；vars：`TURNSTILE_SITE_KEY`（公開）、`TURNSTILE_HOSTNAME`、`BBOX`、`WEB_ANALYTICS_TOKEN`（公開，Worker 不用，只給前端 build 讀）。
 
 靜態前端讀不到 Worker vars，所以前端另有兩份副本：`web/src/config.ts` 的 BBOX（只用來提前停用送出鈕，Worker 才是執行點）與 build 期的 `VITE_TURNSTILE_SITE_KEY`。
 
 site key 注入方式（2026-09-20 定案）：以 `wrangler.toml` 的 `[vars]` 為單一來源，`vite.config.ts` 透過 `scripts/wrangler-vars.ts` 讀出 `TURNSTILE_SITE_KEY`，用 Vite `define` 烘進 `import.meta.env.VITE_TURNSTILE_SITE_KEY`。`npm run deploy` 不必額外帶環境變數，改 key 只改一個檔。不選 `GET /api/config` 是因為那會讓表單多一次往返才能顯示 widget；不選 HTML rewrite 是因為靜態資產由 Static Assets 直送，Worker 不在路徑上。`scripts/wrangler-vars.ts` 只解析 `[vars]` 底下的字串項，另有一個測試比對 `BBOX` 與 `web/src/config.ts` 的副本是否仍一致。單元測試不經 Vite，所以 `web/src/turnstile.ts` 在讀不到值時仍退回 Cloudflare 測試 key。
+
+Web Analytics beacon：站台在 workers.dev，不是專案帳號的 zone，Cloudflare 無法自動注入，所以由 `scripts/web-analytics.ts` 的 Vite plugin 在 production build 把 beacon `<script>` 插進 `index.html` 的 `<head>`，token 同樣從 `[vars]` 的 `WEB_ANALYTICS_TOKEN` 讀。plugin 只在 `vite build` 生效，本機 dev server 與測試不送流量。
 
 `TURNSTILE_SITE_KEY` 與搭配的 secret 都是正式 widget 的金鑰（2026-09-20 設定），secret 用 `wrangler secret put` 管入，不進 repo。
 

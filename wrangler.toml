@@ -27,6 +27,9 @@ enabled = true
 # scripts/wrangler-vars.ts, so this file is the single source. The matching
 # secret key is set with `wrangler secret put TURNSTILE_SECRET_KEY`.
 TURNSTILE_SITE_KEY = "0x4AAAAAAE9dYsoPZcxqgf-E"
+# Public Cloudflare Web Analytics token. The frontend build adds the beacon
+# to index.html with it; see scripts/web-analytics.ts.
+WEB_ANALYTICS_TOKEN = "977cc0940a4647cdb82b0a75e08a9b3a"
 # Hostname the Turnstile widget is served from. siteverify reports the page
 # that served the widget, so this rejects a token farmed from a copy of the
 # form hosted elsewhere. An empty value turns the comparison off, which is
