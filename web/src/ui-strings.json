@@ -7,9 +7,7 @@
   "topbar": {
     "filters": "篩選",
     "info": "說明",
-    "ortho": "航照",
-    "report": "回報",
-    "mine": "我的回報"
+    "report": "回報"
   },
   "attribution": {
     "map": "底圖與航照 © 內政部國土測繪中心｜受保護樹木 © 臺北市政府文化局（政府資料開放授權條款－第1版）｜回報資料 CC BY 4.0"
@@ -65,9 +63,11 @@
   "sheet": {
     "title": "回報這棵樹",
     "close": "關閉",
-    "editTitle": "修改回報"
+    "editTitle": "修改回報",
+    "mine": "我的回報"
   },
   "map": {
+    "ortho": "顯示航照",
     "locate": "目前位置",
     "locating": "定位中……",
     "locateFailed": "拿不到目前位置，地圖留在原地。"

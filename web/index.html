@@ -13,14 +13,15 @@
       <span id="brand" class="brand"></span>
       <nav class="topbar-actions">
         <button id="filters-toggle" type="button" class="chip" aria-expanded="false"></button>
-        <button id="ortho-toggle" type="button" class="chip" aria-pressed="false"></button>
         <button id="info-toggle" type="button" class="chip" aria-expanded="false"></button>
-        <button id="mine-toggle" type="button" class="chip" aria-expanded="false" hidden></button>
         <button id="report-toggle" type="button" class="chip chip-primary" aria-expanded="false"></button>
       </nav>
     </header>
 
-    <button id="locate-map" type="button" class="map-locate"></button>
+    <div class="map-controls">
+      <button id="ortho-toggle" type="button" class="map-control" aria-pressed="false"></button>
+      <button id="locate-map" type="button" class="map-control"></button>
+    </div>
 
     <div id="status-bar" class="status-bar" role="status" hidden></div>
 

@@ -73,15 +73,23 @@ required<HTMLElement>('#brand').textContent = strings.app.brand;
 
 const filtersToggle = required<HTMLButtonElement>('#filters-toggle');
 const infoToggle = required<HTMLButtonElement>('#info-toggle');
-const mineToggle = required<HTMLButtonElement>('#mine-toggle');
 const orthoToggle = required<HTMLButtonElement>('#ortho-toggle');
 const reportToggle = required<HTMLButtonElement>('#report-toggle');
 const locateMapButton = required<HTMLButtonElement>('#locate-map');
 
+// Lives in the report sheet header rather than the top bar, which has no
+// room left on a phone.
+const mineToggle = document.createElement('button');
+mineToggle.type = 'button';
+mineToggle.className = 'chip';
+mineToggle.hidden = true;
+mineToggle.setAttribute('aria-expanded', 'false');
+mineToggle.setAttribute('aria-controls', 'mine-panel');
+
 filtersToggle.textContent = strings.topbar.filters;
 infoToggle.textContent = strings.topbar.info;
-mineToggle.textContent = strings.topbar.mine;
-orthoToggle.textContent = strings.topbar.ortho;
+mineToggle.textContent = strings.sheet.mine;
+orthoToggle.textContent = strings.map.ortho;
 reportToggle.textContent = strings.topbar.report;
 locateMapButton.textContent = strings.map.locate;
 
@@ -138,6 +146,7 @@ infoPanel.onOpenChange((open) => {
   infoToggle.setAttribute('aria-expanded', String(open));
 });
 const reportSheet = createReportSheet(required('#report-sheet'));
+reportSheet.headerSlot.append(mineToggle);
 const minePanel = createMyReportsPanel(required('#mine-panel'), {
   onShow(link) {
     openOnly(null);
@@ -292,7 +301,7 @@ mineToggle.addEventListener('click', () => {
   openOnly(minePanel.isOpen() ? null : 'mine');
 });
 
-/** Keep the layer and the chip in step. */
+/** Keep the layer and the button in step. */
 function setOrtho(visible: boolean): void {
   mapController?.setOrthoVisible(visible);
   orthoToggle.setAttribute('aria-pressed', String(visible));
@@ -609,7 +618,7 @@ async function start(): Promise<void> {
     // column and has room for the instructions.
     guideOpen: window.matchMedia('(min-width: 768px)').matches,
   });
-  reportSheet.headerSlot.append(reportForm.guideToggle);
+  reportSheet.headerSlot.prepend(reportForm.guideToggle);
   reportForm.setTrees(trees);
   reportForm.setReports(reports);
 

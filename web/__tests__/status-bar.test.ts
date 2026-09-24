@@ -16,6 +16,7 @@ function harness() {
     element,
     text: element.querySelector('.status-bar-text') as HTMLElement,
     action: element.querySelector('.status-bar-retry') as HTMLButtonElement,
+    dismiss: element.querySelector('.status-bar-dismiss') as HTMLButtonElement,
   };
 }
 
@@ -48,6 +49,27 @@ describe('status bar notices', () => {
     expect(action.textContent).toBe(strings.status.retry);
     action.click();
     expect(retried).toBe(1);
+  });
+
+  it('lets the reader close a failure without retrying', () => {
+    const { bar, element, dismiss } = harness();
+    let retried = 0;
+    bar.showError(strings.map.locateFailed, () => {
+      retried += 1;
+    });
+
+    expect(dismiss.hidden).toBe(false);
+    expect(dismiss.textContent).toBe(strings.status.dismiss);
+    dismiss.click();
+    expect(element.hidden).toBe(true);
+    expect(retried).toBe(0);
+  });
+
+  it('shows a single close button on a notice', () => {
+    const { bar, dismiss } = harness();
+    bar.showError(strings.status.snapshotFailed, () => undefined);
+    bar.showNotice(strings.status.reportMissing);
+    expect(dismiss.hidden).toBe(true);
   });
 
   it('drops the dismiss handler when the bar is reused for loading', () => {
