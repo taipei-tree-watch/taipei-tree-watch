@@ -444,6 +444,8 @@ spec 所列七種全部在權威名錄中。CHANG 表一列 96 種，含黑板�
 
 ### 7.3 評估與建議
 
+定案結果見 `TECH-STACK.md`。
+
 同意 Cloudflare 全家桶，Cloudflare 是唯一在官方文件裡查不到閒置暫停條款的平台，Turnstile 又是無上限免費。但建議兩處修改：
 
 1. **Pages 改為 Workers Static Assets。** 官方已明示新專案用 Workers，且只有 Workers 有 Cron Triggers，靜態資源與寫入 Worker 與 Cron 可以是同一個部署單位。代價：custom domain 需由 Cloudflare 託管 DNS。

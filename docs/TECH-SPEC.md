@@ -1,6 +1,6 @@
 # Taipei Tree Watch 技術規格 Overview
 
-- 需求：`SPEC.md`；查證依據：`RESEARCH.md`；詞彙：根目錄 `CONTEXT.md`（本文件的名詞以它為準）；上線後的重複操作：`RUNBOOK.md`
+- 需求：`SPEC.md`；查證依據：`RESEARCH.md`；技術棧一覽：`TECH-STACK.md`；詞彙：根目錄 `CONTEXT.md`（本文件的名詞以它為準）；上線後的重複操作：`RUNBOOK.md`
 - 定案日期：2026-09-18。本文件是 overview，寫到「每個元件負責什麼、邊界在哪、資料長什麼樣」的深度；實作細節在 task 展開時決定。
 - 選型唯一標準沿用 SPEC 第 4 節：免費、方便、不因無流量被停用。所有額度數字見 `RESEARCH.md` 第 7 節。
 
@@ -26,7 +26,6 @@
                                    │                                    ▼
                  ┌──────────────────── GitHub organization taipei-tree-watch ─────────────────────┐
                  │  repo（public）                                                                │
-                 │   ├─ CI：typecheck / lint / vitest / pytest / ruff → wrangler deploy           │
                  │   ├─ pipelines（Python, uv）：受保護樹木同步、官方解列紀錄、清冊 diff         │
                  │   └─ data/：管線產出 JSON、每日公開快照（備份與歷史）                          │
                  └────────────────────────────────────────────────────────────────────────────────┘
@@ -50,7 +49,7 @@
 ```
 taipei-tree-watch/
 ├── CONTEXT.md                 詞彙表
-├── docs/                      SPEC、RESEARCH、TECH-SPEC、TASKS、RUNBOOK
+├── docs/                      SPEC、RESEARCH、TECH-SPEC、TECH-STACK、TASKS、RUNBOOK
 ├── shared/                    前後端與管線共用的 source of truth
 │   ├── tags.ts                病因、處置、證據來源、資料來源的代碼表
 │   ├── domains.ts             連結網域白名單
@@ -76,7 +75,7 @@ taipei-tree-watch/
 
 ### 3.1 前端 `web/`
 
-- Vite 加 TypeScript，無框架（DOM 直接操作），MapLibre GL JS，client-side clustering 用 MapLibre 內建 cluster 或 supercluster。
+- 技術棧見 `TECH-STACK.md` 第 2 節：無 UI 框架（DOM 直接操作），回報點叢集用 MapLibre GeoJSON source 內建的 cluster。
 - 單一頁面，手機優先，地圖全螢幕。回報表單是底部 sheet，桌面寬度變側欄。說明與免責是可展開區塊，安全警語常駐在表單開頭。
 - 啟動時載入兩個檔：`/api/snapshot`（回報）與 `/trees.json`（受保護樹木靜態資產）。兩者都是一次載入、全在記憶體篩選。
 - 圖層：底圖 raster（NLSC）、正射 raster（目前 NLSC `PHOTO2`，都發局待授權確認，見第 7 節；由地圖右上角的「顯示航照」浮動鈕切換（與「目前位置」鈕疊在一起；桌面開著回報側欄時移到側欄左側），選點時不自動切換）、受保護樹木（灰色小點）、回報點（依病因著色，褐根病最醒目）、清冊消失層（M3 之後）。
@@ -97,7 +96,7 @@ taipei-tree-watch/
 
 ### 3.2 Worker `worker/`
 
-原生 `fetch` 與 `scheduled` handler，zod 驗證，不用 web framework。路徑如下：
+原生 `fetch` 與 `scheduled` handler，zod 驗證，不用 web framework（技術棧見 `TECH-STACK.md` 第 3 節）。路徑如下：
 
 | 路徑 | 職責 |
 |---|---|
@@ -205,7 +204,7 @@ hostname 的期望值來自 var `TURNSTILE_HOSTNAME`，值為 `taipei-tree-watch
 
 ### 3.7 資料管線 `pipelines/`
 
-Python 3.12 以上，uv 管理，在本機執行（排程用本機 launchd 或 cron）。每支管線是一個 CLI 子命令，輸入是外部來源，輸出是 `data/` 下的 JSON，執行後 commit 並 push。共用的 tag 代碼從 `shared/generated/*.json` 讀。
+Python 與 uv（版本與套件見 `TECH-STACK.md` 第 5 節），在本機執行（排程用本機 launchd 或 cron）。每支管線是一個 CLI 子命令，輸入是外部來源，輸出是 `data/` 下的 JSON，執行後 commit 並 push。共用的 tag 代碼從 `shared/generated/*.json` 讀。
 
 | 管線 | 排程 | 輸入 | 輸出 |
 |---|---|---|---|
@@ -322,7 +321,7 @@ export const causes = [
 - `wrangler.toml`：`name = "taipei-tree-watch"`、`main = "worker/src/index.ts"`、`assets = { directory = "web/dist" }`、`triggers.crons = ["*/15 * * * *"]`、D1 與 KV bindings、`observability.enabled = true`。
 - 環境只有一個（production）。本機開發用 `wrangler dev` 加 `--local` D1 與 KV。
 - Cloudflare 憑證：`CLOUDFLARE_API_TOKEN`（權限：Workers Scripts、D1、KV、Workers Static Assets）與 `CLOUDFLARE_ACCOUNT_ID` 放在部署機器的 shell 環境，不進 repo。Worker secrets 用 `wrangler secret put` 設一次。
-- 不使用 GitHub Actions；檢查與部署都是本機 npm script：
+- 不使用 GitHub Actions；檢查與部署都是本機 npm script（工具版本見 `TECH-STACK.md` 第 7 節）：
   - `npm run check`：`build:shared` 並確認 `shared/generated` 無 diff → `typecheck` → `lint` → `vitest`（Worker 測試用 `@cloudflare/vitest-pool-workers`）。
   - `npm run check:pipelines`：`uv sync` → `ruff check` → `pytest`。
   - `npm run deploy`：`check` 通過後 `npm run build` → `wrangler deploy`。

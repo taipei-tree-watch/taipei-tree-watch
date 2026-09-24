@@ -214,6 +214,8 @@ tag 清單要放在**單一 source of truth 檔案**，前後端共用。
 
 地圖前端建議 MapLibre GL JS（避開 Google Maps 計費）+ client-side clustering。
 
+定案後的完整技術棧見 `TECH-STACK.md`。
+
 圖磚定案（見 `RESEARCH.md` 第 5 節）：
 
 - 底圖：國土測繪中心 WMTS（`EMAP`，或灰階 `EMAP01` 讓回報點更突出），EPSG:3857，免申請免金鑰，須註明出處
