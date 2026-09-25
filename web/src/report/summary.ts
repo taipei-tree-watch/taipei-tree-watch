@@ -12,7 +12,6 @@ import {
   causes,
   dispositions,
   evidence,
-  sources,
 } from '../../../shared/tags.ts';
 import type { Tag } from '../../../shared/tags.ts';
 import type { ReportRecord } from '../data/snapshot.ts';
@@ -78,7 +77,6 @@ export function reportSummary(report: ReportRecord): ReportSummary {
     [strings.card.causes, joined(causes, report.causes)],
     [strings.card.dispositions, joined(dispositions, report.dispositions)],
     [strings.card.evidence, labelForCode(evidence, report.evidence)],
-    [strings.card.source, labelForCode(sources, report.source)],
     [strings.card.observedAt, report.observedAt],
     [strings.card.note, report.note],
     [

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { EVIDENCE_CODES_WITHOUT_CAUSES, USER_REPORT_SOURCE_CODE } from '../../shared/tags.ts';
 import type { ReportRecord } from '../src/data/snapshot.ts';
 import { reportSummary } from '../src/report/summary.ts';
+import strings from '../src/ui-strings.json';
 
 /** An on-site notice: a reference source a cause can be read off. */
 const SITE_NOTICE = 1;
@@ -36,8 +37,8 @@ function labels(record: ReportRecord): string[] {
 
 describe('reportSummary', () => {
   it('leaves out every field that was not filled in', () => {
-    // The reference source and the data source are always known.
-    expect(labels(report())).toHaveLength(2);
+    // The reference source is always known.
+    expect(labels(report())).toEqual([strings.card.evidence]);
   });
 
   it('keeps the rows in the order the card reads them', () => {
@@ -49,7 +50,7 @@ describe('reportSummary', () => {
       observedAt: '2026-09-01',
       protectedTreeId: '1234',
     });
-    expect(labels(full)).toHaveLength(8);
+    expect(labels(full)).toHaveLength(7);
     expect(labels(full)[0]).toBe(reportSummary(report({ species: 'A' })).rows[0]?.label);
   });
 

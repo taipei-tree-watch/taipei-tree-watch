@@ -19,7 +19,6 @@ export interface FilterState {
   readonly causes: ReadonlySet<number>;
   readonly dispositions: ReadonlySet<number>;
   readonly evidence: ReadonlySet<number>;
-  readonly sources: ReadonlySet<number>;
   /** Inclusive YYYY-MM-DD bounds on the observation date. */
   readonly observedFrom: string | null;
   readonly observedTo: string | null;
@@ -30,7 +29,6 @@ export function emptyFilterState(): FilterState {
     causes: new Set(),
     dispositions: new Set(),
     evidence: new Set(),
-    sources: new Set(),
     observedFrom: null,
     observedTo: null,
   };
@@ -41,7 +39,6 @@ export function isFilterActive(state: FilterState): boolean {
     state.causes.size > 0 ||
     state.dispositions.size > 0 ||
     state.evidence.size > 0 ||
-    state.sources.size > 0 ||
     state.observedFrom !== null ||
     state.observedTo !== null
   );
@@ -97,7 +94,6 @@ export function matchesFilters(report: ReportRecord, state: FilterState): boolea
     matchesCauses(report, state.causes) &&
     matchesAny(report.dispositions, state.dispositions) &&
     matchesSingle(report.evidence, state.evidence) &&
-    matchesSingle(report.source, state.sources) &&
     matchesObserved(report, state)
   );
 }

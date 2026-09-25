@@ -64,7 +64,7 @@
 ### E1.5 前端地圖與圖層
 - MapLibre 初始化、NLSC 底圖、都發局正射（預設關）、attribution
 - 載入 `/api/snapshot` 與 `/trees.json`，兩層渲染，回報點依原因著色與 cluster
-- 篩選面板：原因、處置、證據來源、資料來源、日期範圍
+- 篩選面板：原因、處置、證據來源、日期範圍（目前只有使用者回報一種資料來源，資料來源篩選等 E2.3 匯入官方紀錄時再加）
 - 點擊回報顯示卡片：措辭依 SPEC 第 8 節，連結顯示網域、nofollow
 - 說明區塊沿用 `web/src/content/` 六個片段（E1.7 已寫好），重排版面即可；attribution 的顯名年份改由 `trees.json` 的 `fetched_at` 帶入，不寫死
 - 完成條件：手機與桌面各檢查一次；Lighthouse 行動版 FCP 低於 2 秒且 CLS 低於 0.1（performance 分數只記錄，理由見 TECH-SPEC 第 12 節）

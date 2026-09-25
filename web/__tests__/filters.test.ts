@@ -68,11 +68,6 @@ describe('matchesFilters', () => {
     expect(matchesFilters(report({ evidence: 6 }), state({ evidence: new Set([3]) }))).toBe(false);
   });
 
-  it('filters on data source', () => {
-    expect(matchesFilters(report({ source: 2 }), state({ sources: new Set([2]) }))).toBe(true);
-    expect(matchesFilters(report({ source: 1 }), state({ sources: new Set([2]) }))).toBe(false);
-  });
-
   it('includes both ends of the observation date range', () => {
     const range = state({ observedFrom: '2026-06-01', observedTo: '2026-06-30' });
 
