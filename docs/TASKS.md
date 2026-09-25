@@ -63,18 +63,18 @@
 
 ### E1.5 前端地圖與圖層
 - MapLibre 初始化、NLSC 底圖、都發局正射（預設關）、attribution
-- 載入 `/api/snapshot` 與 `/trees.json`，兩層渲染，回報點依病因著色與 cluster
-- 篩選面板：病因、處置、證據來源、資料來源、日期範圍
+- 載入 `/api/snapshot` 與 `/trees.json`，兩層渲染，回報點依原因著色與 cluster
+- 篩選面板：原因、處置、證據來源、資料來源、日期範圍
 - 點擊回報顯示卡片：措辭依 SPEC 第 8 節，連結顯示網域、nofollow
 - 說明區塊沿用 `web/src/content/` 六個片段（E1.7 已寫好），重排版面即可；attribution 的顯名年份改由 `trees.json` 的 `fetched_at` 帶入，不寫死
 - 完成條件：手機與桌面各檢查一次；Lighthouse 行動版 FCP 低於 2 秒且 CLS 低於 0.1（performance 分數只記錄，理由見 TECH-SPEC 第 12 節）
-- 狀態（2026-09-19）：**完成**。cluster 不顯示數字（需 glyphs 服務），改用圓圈大小分級加含褐根病即轉警示色；病因篩選多「未記載病因」選項（code 0，不儲存）
+- 狀態（2026-09-19）：**完成**。cluster 不顯示數字（需 glyphs 服務），改用圓圈大小分級加含褐根病即轉警示色；原因篩選多「未記載原因」選項（code 0，不儲存）
 - 2026-09-20：正射切回 NLSC `PHOTO2`，都發局圖層保留在 `basemaps.ts` 但不啟用；切換要同時改 attribution 相關四個檔案（TECH-SPEC 第 7 節）。都發局授權確認列為 E1.8 的項目，上線前要閉環
 
 ### E1.6 選點與表單
 - 準心選點：GPS flyTo、zoom 門檻 18、選點時自動開正射
 - 20 公尺內受保護樹木偵測與一鍵關聯
-- 底部 sheet 表單：欄位、預設值、病因區塊依證據來源收合、說明欄即時剝 URL、連結欄白名單提示、Turnstile widget；`web/src/content/safety.html` 常駐表單開頭；前端驗證直接呼叫 `shared/validation.ts`
+- 底部 sheet 表單：欄位、預設值、原因區塊依證據來源收合、說明欄即時剝 URL、連結欄白名單提示、Turnstile widget；`web/src/content/safety.html` 常駐表單開頭；前端驗證直接呼叫 `shared/validation.ts`
 - 送出、成功訊息、`localStorage` 暫存點
 - 前端驗證與 `shared/` 共用同一份 tag 與白名單
 - 完成條件：真機（iOS Safari、Android Chrome）完成一筆回報；錯誤訊息逐欄顯示
@@ -131,7 +131,7 @@
 
 ### E2.2 表格抽取
 - 從 PDF 找「受保護樹木需解除列管案件」表，抽 項次／樹種／地點／編號／解列原因／說明／權管單位，處理跨頁與折行
-- 民國日期解析（現勘日期）；病因關鍵字對應表放 `pipelines/` 並有測試
+- 民國日期解析（現勘日期）；原因關鍵字對應表放 `pipelines/` 並有測試
 - 對每份文件輸出抽取信心（列數、缺欄數），低於門檻的文件列入 `review.json` 人工看
 - 完成條件：抽樣 5 份不同年份文件人工比對，欄位正確率 95% 以上
 
