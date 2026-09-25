@@ -8,7 +8,8 @@
 import { formatTemplate } from '../format.ts';
 import type { StoredEditLink } from '../report/edit-links.ts';
 import type { ShareOutcome } from '../share.ts';
-import { setIconOnly, X } from '../icons.ts';
+import type { IconNode } from '../icons.ts';
+import { Copy, MapIcon, Pencil, setIconLabel, setIconOnly, X } from '../icons.ts';
 import strings from '../ui-strings.json';
 
 /** How long a copied confirmation stays beside an entry. */
@@ -84,11 +85,11 @@ export function createMyReportsPanel(
     setOpen(false);
   });
 
-  function button(label: string, onClick: () => void): HTMLButtonElement {
+  function button(icon: IconNode, label: string, onClick: () => void): HTMLButtonElement {
     const control = document.createElement('button');
     control.type = 'button';
     control.className = 'form-secondary';
-    control.textContent = label;
+    setIconLabel(control, icon, label);
     control.addEventListener('click', onClick);
     return control;
   }
@@ -127,13 +128,13 @@ export function createMyReportsPanel(
     const actions = document.createElement('div');
     actions.className = 'form-picker-actions';
     actions.append(
-      button(strings.mine.show, () => {
+      button(MapIcon, strings.mine.show, () => {
         options.onShow(link);
       }),
-      button(strings.mine.edit, () => {
+      button(Pencil, strings.mine.edit, () => {
         options.onEdit(link);
       }),
-      button(strings.mine.copy, () => {
+      button(Copy, strings.mine.copy, () => {
         const url = options.editLinkUrl(link);
         clear();
         void options.share(url, strings.app.title).then((outcome) => {

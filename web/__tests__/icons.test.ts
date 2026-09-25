@@ -95,3 +95,35 @@ describe('panel close buttons', () => {
     expect(close.getAttribute('aria-label')).toBe(label);
   });
 });
+
+describe('my reports list buttons', () => {
+  it('puts an icon before each action label', () => {
+    const element = document.createElement('aside');
+    const panel = createMyReportsPanel(element, {
+      onShow: () => undefined,
+      onEdit: () => undefined,
+      editLinkUrl: () => '',
+      share: () => Promise.resolve('shared'),
+    });
+    panel.setLinks([
+      {
+        id: '01JBZ8QF7KJ9M3N4P5R6S7T8V9',
+        token: 'token',
+        savedAt: '2026-09-25T08:00:00.000Z',
+        lat: 25.04,
+        lng: 121.54,
+        species: null,
+      },
+    ]);
+
+    const actions = [...element.querySelectorAll('.mine-item button')];
+    expect(actions.map((action) => action.textContent)).toEqual([
+      strings.mine.show,
+      strings.mine.edit,
+      strings.mine.copy,
+    ]);
+    for (const action of actions) {
+      expect(iconOf(action).getAttribute('aria-hidden')).toBe('true');
+    }
+  });
+});

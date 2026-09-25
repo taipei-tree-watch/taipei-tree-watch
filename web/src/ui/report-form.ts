@@ -77,7 +77,6 @@ import type { IconNode } from '../icons.ts';
 import {
   Check,
   CirclePlus,
-  CircleQuestionMark,
   Copy,
   Crosshair,
   Equal,
@@ -445,7 +444,7 @@ export function createReportForm(
   const guideToggle = document.createElement('button');
   guideToggle.type = 'button';
   guideToggle.className = 'chip';
-  setIconLabel(guideToggle, CircleQuestionMark, strings.form.guideToggle);
+  setIconLabel(guideToggle, Info, strings.form.guideToggle);
   guideToggle.setAttribute('aria-controls', pickerGuide.id);
 
   function setGuideOpen(open: boolean): void {

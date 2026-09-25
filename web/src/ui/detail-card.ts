@@ -12,7 +12,7 @@ import { formatTemplate } from '../format.ts';
 import type { PermalinkTarget } from '../permalink.ts';
 import type { ShareOutcome } from '../share.ts';
 import { reportRows } from './report-rows.ts';
-import { setIconOnly, X } from '../icons.ts';
+import { Link, MapPin, Pencil, setIconLabel, setIconOnly, X } from '../icons.ts';
 import strings from '../ui-strings.json';
 
 /** How long the copied confirmation stays on the card. */
@@ -102,7 +102,7 @@ export function createDetailCard(element: HTMLElement, options: DetailCardOption
   const shareButton = document.createElement('button');
   shareButton.type = 'button';
   shareButton.className = 'form-secondary';
-  shareButton.textContent = strings.card.copyLink;
+  setIconLabel(shareButton, Link, strings.card.copyLink);
 
   const feedback = document.createElement('p');
   feedback.className = 'card-share-feedback';
@@ -119,14 +119,14 @@ export function createDetailCard(element: HTMLElement, options: DetailCardOption
   const editButton = document.createElement('button');
   editButton.type = 'button';
   editButton.className = 'form-secondary';
-  editButton.textContent = strings.card.edit;
+  setIconLabel(editButton, Pencil, strings.card.edit);
   editButton.hidden = true;
 
   // Only a protected tree card offers this: a report is already a report.
   const reportTreeButton = document.createElement('button');
   reportTreeButton.type = 'button';
   reportTreeButton.className = 'form-submit';
-  reportTreeButton.textContent = strings.card.reportTree;
+  setIconLabel(reportTreeButton, MapPin, strings.card.reportTree);
   reportTreeButton.hidden = true;
 
   share.append(reportTreeButton, shareButton, editButton, feedback, manualUrl);

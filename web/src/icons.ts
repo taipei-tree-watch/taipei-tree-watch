@@ -10,7 +10,6 @@ export type { IconNode };
 export {
   Check,
   CirclePlus,
-  CircleQuestionMark,
   Copy,
   Crosshair,
   Equal,
@@ -20,6 +19,7 @@ export {
   Link,
   List,
   LocateFixed,
+  Map as MapIcon,
   MapPin,
   MapPinPlus,
   Pencil,
