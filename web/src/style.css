@@ -21,6 +21,7 @@
   --accent-ink: #ffffff;
   --danger: #a8243b;
   --shadow: 0 0.5rem 1.5rem rgb(15 23 32 / 18%);
+  --scrim: rgb(15 23 32 / 30%);
   --crosshair-halo: rgb(255 255 255 / 85%);
   --swatch-edge: rgb(0 0 0 / 15%);
   --bucket-brown-root-rot: #d7263d;
@@ -773,6 +774,55 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.form-info {
+  margin-left: 0.125rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.form-info:hover,
+.form-info:focus-visible {
+  color: var(--accent);
+}
+
+/* Centred by the UA popover rules; only the look is set here. */
+.form-popover {
+  width: min(20rem, calc(100vw - 2rem));
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.form-popover::backdrop {
+  background: var(--scrim);
+}
+
+.form-popover-title {
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+}
+
+.form-popover-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+}
+
+.form-popover .chip {
+  margin-top: 0.75rem;
+}
+
 .form-error {
   margin: 0.35rem 0 0;
   font-size: 0.8125rem;
@@ -954,6 +1004,7 @@ body {
     --accent-ink: #0d1117;
     --danger: #ff6b81;
     --shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 55%);
+    --scrim: rgb(0 0 0 / 55%);
     --crosshair-halo: rgb(13 17 23 / 85%);
     --swatch-edge: rgb(255 255 255 / 25%);
     --bucket-brown-root-rot: #ff5d6c;

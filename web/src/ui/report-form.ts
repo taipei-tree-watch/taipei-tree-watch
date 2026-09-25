@@ -17,6 +17,7 @@
  * to show the reporter what is wrong before a request is made, never to
  * decide what is accepted.
  */
+import { LINK_DOMAINS } from '../../../shared/domains.ts';
 import {
   causes as causeTags,
   dispositions as dispositionTags,
@@ -219,6 +220,52 @@ function hintCounter(hint: HTMLElement): HTMLElement {
   counter.className = 'form-counter';
   hint.append(' ', counter);
   return counter;
+}
+
+/**
+ * Info button for the link hint and the popover it opens, which lists every
+ * accepted domain. The popover sits in the top layer, so the scrolling sheet
+ * cannot clip it, and closes on Esc or a tap outside.
+ */
+function linkDomainsInfo(): { button: HTMLButtonElement; popover: HTMLElement } {
+  const popover = document.createElement('div');
+  popover.id = 'form-link-domains';
+  popover.className = 'form-popover';
+  popover.popover = 'auto';
+
+  const title = document.createElement('p');
+  title.className = 'form-popover-title';
+  title.textContent = strings.form.linkDomainsTitle;
+
+  const list = document.createElement('ul');
+  list.className = 'form-popover-list';
+  for (const domain of LINK_DOMAINS) {
+    const item = document.createElement('li');
+    item.textContent = domain;
+    list.append(item);
+  }
+
+  const note = document.createElement('p');
+  note.className = 'form-hint';
+  note.textContent = strings.form.linkDomainsNote;
+
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'chip';
+  close.textContent = strings.form.linkDomainsClose;
+  close.popoverTargetElement = popover;
+  close.popoverTargetAction = 'hide';
+
+  popover.append(title, list, note, close);
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'form-info';
+  button.textContent = '\u24d8';
+  button.setAttribute('aria-label', strings.form.linkDomainsInfo);
+  button.popoverTargetElement = popover;
+
+  return { button, popover };
 }
 
 function tagGroup(
@@ -614,6 +661,9 @@ export function createReportForm(
   linkInput.inputMode = 'url';
   linkInput.autocomplete = 'off';
   const linkRow = labelled(strings.form.link, linkInput, strings.form.linkHint, true);
+  const linkDomainsPopover = linkDomainsInfo();
+  linkRow.hint.append(' ', linkDomainsPopover.button);
+  linkRow.row.append(linkDomainsPopover.popover);
   const linkDomain = document.createElement('p');
   linkDomain.className = 'form-hint';
   linkDomain.hidden = true;

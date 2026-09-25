@@ -3,6 +3,7 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 
+import { LINK_DOMAINS } from '../../shared/domains.ts';
 import type { ReportFormOptions } from '../src/ui/report-form.ts';
 import { createReportForm } from '../src/ui/report-form.ts';
 import strings from '../src/ui-strings.json';
@@ -275,5 +276,80 @@ describe('nearby while aiming', () => {
     createReportForm(container, options()).setActive(true);
 
     expect(container.querySelector<HTMLElement>('.form-nearby-hint')?.hidden).toBe(true);
+  });
+});
+
+describe('link domains info', () => {
+  it('opens a popover listing every accepted domain', () => {
+    const container = document.createElement('div');
+    createReportForm(container, options());
+
+    const button = container.querySelector<HTMLButtonElement>('.form-info');
+    const popover = container.querySelector<HTMLElement>('#form-link-domains');
+    expect(button?.getAttribute('aria-label')).toBe(strings.form.linkDomainsInfo);
+    expect(button?.type).toBe('button');
+    expect(button?.popoverTargetElement).toBe(popover);
+    const listed = [...(popover?.querySelectorAll('li') ?? [])].map((item) => item.textContent);
+    expect(listed).toEqual([...LINK_DOMAINS]);
+  });
+});
+
+describe('character counters', () => {
+  it('ends the species and note hints with a live count', () => {
+    const container = document.createElement('div');
+    createReportForm(container, options());
+
+    const species = container.querySelector<HTMLInputElement>('input[type=text]');
+    const note = container.querySelector<HTMLTextAreaElement>('textarea');
+    if (species === null || note === null) {
+      throw new Error('species or note field is missing');
+    }
+    species.value = '榕樹';
+    species.dispatchEvent(new Event('input'));
+    note.value = '公告';
+    note.dispatchEvent(new Event('input'));
+
+    const hints = [...container.querySelectorAll('.form-hint')].map((hint) => hint.textContent);
+    expect(hints).toContain(`${strings.form.speciesHint} (2 ／ 50 字)`);
+    expect(hints).toContain(`${strings.form.noteHint} (2 ／ 300 字)`);
+  });
+});
+
+describe('reason block', () => {
+  function causeGroup(container: HTMLElement): HTMLElement {
+    const group = container.querySelector('input[name=report-cause]')?.closest('fieldset');
+    if (group === null || group === undefined) {
+      throw new Error('reason block is missing');
+    }
+    return group;
+  }
+
+  function pickEvidence(container: HTMLElement, code: number): void {
+    const input = container.querySelector<HTMLInputElement>(
+      `input[name=report-evidence][value="${code}"]`,
+    );
+    if (input === null) {
+      throw new Error(`evidence ${code} is missing`);
+    }
+    input.checked = true;
+    input.dispatchEvent(new Event('change'));
+  }
+
+  it('is hidden whole for a sighting with no notice', () => {
+    const container = document.createElement('div');
+    createReportForm(container, options());
+
+    pickEvidence(container, 6);
+
+    expect(causeGroup(container).hidden).toBe(true);
+  });
+
+  it('is shown for a high risk tag', () => {
+    const container = document.createElement('div');
+    createReportForm(container, options());
+
+    pickEvidence(container, 5);
+
+    expect(causeGroup(container).hidden).toBe(false);
   });
 });
