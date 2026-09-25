@@ -140,6 +140,38 @@ describe('locked point', () => {
   });
 });
 
+describe('button icons', () => {
+  it('puts a decorative icon before the label of every form button', () => {
+    const container = document.createElement('div');
+    const form = createReportForm(container, options());
+    form.setActive(true);
+
+    const buttons = [...container.querySelectorAll('.form-secondary, .form-submit')];
+    expect(buttons.length).toBeGreaterThan(0);
+    const bare = buttons
+      .filter((element) => element.querySelector(':scope > svg[aria-hidden="true"]') === null)
+      .map((element) => element.textContent);
+    expect(bare).toEqual([]);
+  });
+
+  it('swaps the mode button icon along with its label', () => {
+    const container = document.createElement('div');
+    const form = createReportForm(
+      container,
+      options({ getView: () => ({ lat: 25.04, lng: 121.54, zoom: 19 }) }),
+    );
+    form.setActive(true);
+
+    const toggle = button(container, strings.form.toForm);
+    const aiming = toggle.querySelector('svg')?.innerHTML;
+    toggle.click();
+
+    expect(toggle.textContent).toBe(strings.form.toPicking);
+    expect(toggle.querySelectorAll('svg')).toHaveLength(1);
+    expect(toggle.querySelector('svg')?.innerHTML).not.toBe(aiming);
+  });
+});
+
 describe('linkTree', () => {
   it('links the tree and borrows its species when none is typed', () => {
     const container = document.createElement('div');

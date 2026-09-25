@@ -44,6 +44,28 @@ export function createReportSheet(element: HTMLElement): ReportSheet {
 
   element.replaceChildren(header, content);
 
+  /**
+   * Header chips keep their icons while the title still fits on one line
+   * beside them, and drop them once the row is too narrow. Measured with the
+   * title held on one line: anything that no longer fits spills out of the
+   * header or the slot.
+   */
+  const fitHeader = (): void => {
+    header.classList.remove('panel-header-compact');
+    title.style.whiteSpace = 'nowrap';
+    const crowded =
+      header.scrollWidth > header.clientWidth || slot.scrollWidth > slot.clientWidth;
+    title.style.whiteSpace = '';
+    header.classList.toggle('panel-header-compact', crowded);
+  };
+  // The header follows the viewport; the slot follows a chip being shown or
+  // hidden. Either can change whether the chips fit.
+  if (typeof ResizeObserver !== 'undefined') {
+    const observer = new ResizeObserver(fitHeader);
+    observer.observe(header);
+    observer.observe(slot);
+  }
+
   const listeners = new Set<(open: boolean) => void>();
   const setOpen = (open: boolean): void => {
     element.hidden = !open;
@@ -71,6 +93,7 @@ export function createReportSheet(element: HTMLElement): ReportSheet {
     },
     setEditing(editing) {
       title.textContent = editing ? strings.sheet.editTitle : strings.sheet.title;
+      fitHeader();
     },
     onOpenChange(listener) {
       listeners.add(listener);

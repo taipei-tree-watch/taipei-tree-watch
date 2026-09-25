@@ -73,7 +73,29 @@ import { submitReport } from '../report/submit.ts';
 import type { ShareOutcome } from '../share.ts';
 import type { TurnstileWidget } from '../turnstile.ts';
 import { renderTurnstile } from '../turnstile.ts';
-import { Info, setIconOnly } from '../icons.ts';
+import type { IconNode } from '../icons.ts';
+import {
+  Check,
+  CirclePlus,
+  CircleQuestionMark,
+  Copy,
+  Crosshair,
+  Equal,
+  Info,
+  Link,
+  LocateFixed,
+  MapPinPlus,
+  Pencil,
+  RotateCcw,
+  Save,
+  Search,
+  Send,
+  setIconLabel,
+  setIconOnly,
+  Trash,
+  Unlink,
+  X,
+} from '../icons.ts';
 import strings from '../ui-strings.json';
 
 export type PickerMode = 'picking' | 'form';
@@ -356,7 +378,7 @@ function safetySection(storage: StorageLike): HTMLElement {
   const dismiss = document.createElement('button');
   dismiss.type = 'button';
   dismiss.className = 'form-secondary';
-  dismiss.textContent = strings.form.safetyDismiss;
+  setIconLabel(dismiss, Check, strings.form.safetyDismiss);
   dismiss.addEventListener('click', () => {
     section.hidden = true;
     dismissSafety(storage);
@@ -423,7 +445,7 @@ export function createReportForm(
   const guideToggle = document.createElement('button');
   guideToggle.type = 'button';
   guideToggle.className = 'chip';
-  guideToggle.textContent = strings.form.guideToggle;
+  setIconLabel(guideToggle, CircleQuestionMark, strings.form.guideToggle);
   guideToggle.setAttribute('aria-controls', pickerGuide.id);
 
   function setGuideOpen(open: boolean): void {
@@ -464,7 +486,7 @@ export function createReportForm(
   const lookupButton = document.createElement('button');
   lookupButton.type = 'submit';
   lookupButton.className = 'form-secondary';
-  lookupButton.textContent = strings.form.lookupSubmit;
+  setIconLabel(lookupButton, Search, strings.form.lookupSubmit);
 
   const lookupRow = document.createElement('div');
   lookupRow.className = 'form-lookup-row';
@@ -484,7 +506,7 @@ export function createReportForm(
   const lookupToggle = document.createElement('button');
   lookupToggle.type = 'button';
   lookupToggle.className = 'chip';
-  lookupToggle.textContent = strings.form.lookupToggle;
+  setIconLabel(lookupToggle, Search, strings.form.lookupToggle);
   lookupToggle.setAttribute('aria-controls', lookupForm.id);
 
   /**
@@ -521,7 +543,7 @@ export function createReportForm(
   const locateButton = document.createElement('button');
   locateButton.type = 'button';
   locateButton.className = 'form-secondary';
-  locateButton.textContent = strings.map.locate;
+  setIconLabel(locateButton, LocateFixed, strings.map.locate);
 
   const modeButton = document.createElement('button');
   modeButton.type = 'button';
@@ -555,11 +577,11 @@ export function createReportForm(
   const nearbyConfirm = document.createElement('button');
   nearbyConfirm.type = 'button';
   nearbyConfirm.className = 'form-secondary';
-  nearbyConfirm.textContent = strings.form.nearbyConfirm;
+  setIconLabel(nearbyConfirm, Link, strings.form.nearbyConfirm);
   const nearbyClear = document.createElement('button');
   nearbyClear.type = 'button';
   nearbyClear.className = 'form-secondary';
-  nearbyClear.textContent = strings.form.nearbyClear;
+  setIconLabel(nearbyClear, Unlink, strings.form.nearbyClear);
   const nearbyActions = document.createElement('div');
   nearbyActions.className = 'form-picker-actions';
   nearbyActions.append(nearbyConfirm, nearbyClear);
@@ -582,19 +604,19 @@ export function createReportForm(
   const nearbyReportQuestion = document.createElement('p');
   nearbyReportQuestion.className = 'form-nearby-question';
 
-  function secondaryButton(label: string): HTMLButtonElement {
+  function secondaryButton(icon: IconNode, label: string): HTMLButtonElement {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'form-secondary';
-    button.textContent = label;
+    setIconLabel(button, icon, label);
     return button;
   }
 
-  const sameButton = secondaryButton(strings.form.nearbyReportSame);
-  const differentButton = secondaryButton(strings.form.nearbyReportDifferent);
-  const updateButton = secondaryButton(strings.form.nearbyReportUpdate);
-  const unchangedButton = secondaryButton(strings.form.nearbyReportUnchanged);
-  const recheckButton = secondaryButton(strings.form.nearbyReportRecheck);
+  const sameButton = secondaryButton(Check, strings.form.nearbyReportSame);
+  const differentButton = secondaryButton(X, strings.form.nearbyReportDifferent);
+  const updateButton = secondaryButton(CirclePlus, strings.form.nearbyReportUpdate);
+  const unchangedButton = secondaryButton(Equal, strings.form.nearbyReportUnchanged);
+  const recheckButton = secondaryButton(RotateCcw, strings.form.nearbyReportRecheck);
   const nearbyReportActions = document.createElement('div');
   nearbyReportActions.className = 'form-picker-actions';
   nearbyReportActions.append(
@@ -793,7 +815,7 @@ export function createReportForm(
   const submitButton = document.createElement('button');
   submitButton.type = 'submit';
   submitButton.className = 'form-submit';
-  submitButton.textContent = strings.form.submit;
+  setIconLabel(submitButton, Send, strings.form.submit);
   form.append(submitButton);
 
   const resultLine = document.createElement('p');
@@ -834,7 +856,7 @@ export function createReportForm(
   const againButton = document.createElement('button');
   againButton.type = 'button';
   againButton.className = 'form-secondary';
-  againButton.textContent = strings.form.successAgain;
+  setIconLabel(againButton, MapPinPlus, strings.form.successAgain);
 
   /**
    * The edit link of a report just created. This is the only moment the
@@ -853,7 +875,7 @@ export function createReportForm(
   const editLinkCopy = document.createElement('button');
   editLinkCopy.type = 'button';
   editLinkCopy.className = 'form-secondary';
-  editLinkCopy.textContent = strings.form.editLinkCopy;
+  setIconLabel(editLinkCopy, Copy, strings.form.editLinkCopy);
   const editLinkFeedback = document.createElement('p');
   editLinkFeedback.className = 'card-share-feedback';
   editLinkFeedback.hidden = true;
@@ -936,7 +958,11 @@ export function createReportForm(
       setLookupOpen(false);
     }
     form.hidden = next !== 'form';
-    modeButton.textContent = next === 'form' ? strings.form.toPicking : strings.form.toForm;
+    if (next === 'form') {
+      setIconLabel(modeButton, Crosshair, strings.form.toPicking);
+    } else {
+      setIconLabel(modeButton, Pencil, strings.form.toForm);
+    }
     container.dataset.mode = next;
     options.onModeChange(next);
     if (next === 'form') {
@@ -1122,15 +1148,21 @@ export function createReportForm(
     const busy = submitting || withdrawing;
     submitButton.disabled = block !== null || issues.size > 0 || busy || submitted;
     if (editing === null) {
-      submitButton.textContent = submitting ? strings.form.submitting : strings.form.submit;
+      setIconLabel(submitButton, Send, submitting ? strings.form.submitting : strings.form.submit);
     } else {
-      submitButton.textContent = submitting
-        ? strings.form.submittingEdit
-        : strings.form.submitEdit;
+      setIconLabel(
+        submitButton,
+        Save,
+        submitting ? strings.form.submittingEdit : strings.form.submitEdit,
+      );
     }
     withdrawButton.hidden = editing === null;
     withdrawButton.disabled = busy || submitted;
-    withdrawButton.textContent = withdrawing ? strings.form.withdrawing : strings.form.withdraw;
+    setIconLabel(
+      withdrawButton,
+      Trash,
+      withdrawing ? strings.form.withdrawing : strings.form.withdraw,
+    );
   }
 
   /* Field wiring ---------------------------------------------------------- */

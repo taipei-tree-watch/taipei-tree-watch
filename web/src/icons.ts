@@ -5,7 +5,32 @@
  */
 import { createElement, type IconNode } from 'lucide';
 
-export { Funnel, Info, Layers, List, LocateFixed, MapPin, X } from 'lucide';
+export type { IconNode };
+
+export {
+  Check,
+  CirclePlus,
+  CircleQuestionMark,
+  Copy,
+  Crosshair,
+  Equal,
+  Funnel,
+  Info,
+  Layers,
+  Link,
+  List,
+  LocateFixed,
+  MapPin,
+  MapPinPlus,
+  Pencil,
+  RotateCcw,
+  Save,
+  Search,
+  Send,
+  Trash,
+  Unlink,
+  X,
+} from 'lucide';
 
 function icon(node: IconNode): SVGElement {
   const svg = createElement(node, { class: 'icon', 'stroke-width': 2 });
@@ -15,8 +40,16 @@ function icon(node: IconNode): SVGElement {
   return svg;
 }
 
-/** Icon followed by a visible label; call again to change the label. */
+/** What each button last showed, so a repeated render leaves the DOM alone. */
+const shown = new WeakMap<HTMLElement, { node: IconNode; label: string }>();
+
+/** Icon followed by a visible label; call again to change either. */
 export function setIconLabel(button: HTMLElement, node: IconNode, label: string): void {
+  const last = shown.get(button);
+  if (last?.node === node && last.label === label) {
+    return;
+  }
+  shown.set(button, { node, label });
   const text = document.createElement('span');
   text.textContent = label;
   button.replaceChildren(icon(node), text);

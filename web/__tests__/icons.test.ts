@@ -40,6 +40,15 @@ describe('setIconLabel', () => {
     expect(button.querySelectorAll('svg')).toHaveLength(1);
     expect(button.textContent).toBe(strings.map.locating);
   });
+
+  it('leaves the button alone when nothing changed', () => {
+    const button = document.createElement('button');
+    setIconLabel(button, Funnel, strings.topbar.filters);
+    const svg = iconOf(button);
+    setIconLabel(button, Funnel, strings.topbar.filters);
+
+    expect(iconOf(button)).toBe(svg);
+  });
 });
 
 describe('setIconOnly', () => {

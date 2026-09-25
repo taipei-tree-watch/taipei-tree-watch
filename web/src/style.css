@@ -290,6 +290,12 @@ body {
   display: none;
 }
 
+/* Set by the report sheet when its chips would push the title onto a second
+   line. */
+.panel-header-compact .panel-header-slot .icon {
+  display: none;
+}
+
 .panel-header-slot + .panel-close {
   margin-left: 0;
 }
@@ -695,6 +701,10 @@ body {
 
 .form-secondary {
   flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
   border: 1px solid var(--line);
   border-radius: 0.5rem;
   background: var(--surface-muted);
@@ -936,6 +946,10 @@ body {
 }
 
 .form-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   width: 100%;
   margin-top: 0.5rem;
   border: 1px solid var(--accent);
