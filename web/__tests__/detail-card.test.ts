@@ -244,3 +244,26 @@ describe('report from a protected tree card', () => {
     expect(onReportTree).not.toHaveBeenCalled();
   });
 });
+
+describe('pending notice', () => {
+  it('heads a report only this browser holds with a not yet public notice', () => {
+    const { card, element } = harness('copied');
+    card.showReport({ ...REPORT, pending: true });
+    const first = element.querySelector('.card-body')?.firstElementChild;
+    expect(first?.classList.contains('card-pending')).toBe(true);
+    expect(first?.textContent).toBe(strings.card.pending);
+  });
+
+  it('leaves a snapshot report without the notice', () => {
+    const { card, element } = harness('copied');
+    card.showReport(REPORT);
+    expect(element.querySelector('.card-pending')).toBeNull();
+  });
+
+  it('drops the notice when the next card is a snapshot report', () => {
+    const { card, element } = harness('copied');
+    card.showReport({ ...REPORT, pending: true });
+    card.showReport(REPORT);
+    expect(element.querySelector('.card-pending')).toBeNull();
+  });
+});

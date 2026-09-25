@@ -65,6 +65,18 @@ function textRow(label: string, value: string | null): HTMLDivElement | null {
   return line;
 }
 
+/**
+ * Heads a report only this browser holds so far. The map marks it too, but
+ * the card is where the reporter reads, and where they would share a link
+ * that nobody else can open yet.
+ */
+function pendingNotice(): HTMLParagraphElement {
+  const notice = document.createElement('p');
+  notice.className = 'card-notice card-pending';
+  notice.textContent = strings.card.pending;
+  return notice;
+}
+
 export function createDetailCard(element: HTMLElement, options: DetailCardOptions): DetailCard {
   const header = document.createElement('div');
   header.className = 'card-header';
@@ -203,7 +215,10 @@ export function createDetailCard(element: HTMLElement, options: DetailCardOption
     showReport(report) {
       openTree = null;
       reportTreeButton.hidden = true;
-      render(strings.card.reportTitle, { kind: 'report', id: report.id }, reportRows(report));
+      render(strings.card.reportTitle, { kind: 'report', id: report.id }, [
+        report.pending === true ? pendingNotice() : null,
+        ...reportRows(report),
+      ]);
     },
     showTree(tree) {
       openTree = tree;

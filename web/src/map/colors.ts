@@ -53,7 +53,7 @@ export interface MapPalette {
   readonly buckets: Readonly<Record<CauseBucket, string>>;
   /** Protected trees: small, muted, clearly not a report. */
   readonly protectedTree: string;
-  /** Ring around a report this browser submitted that is not in a snapshot yet. */
+  /** Edge and outer ring of a report this browser submitted that is not in a snapshot yet. */
   readonly pendingStroke: string;
   /** Outline that lifts a point or cluster off the basemap. */
   readonly halo: string;

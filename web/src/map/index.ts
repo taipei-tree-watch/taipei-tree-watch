@@ -40,6 +40,7 @@ export const LAYER_IDS = {
   ortho: 'ortho-raster',
   trees: 'trees-points',
   clusters: 'reports-clusters',
+  pendingRing: 'reports-pending-ring',
   reports: 'reports-points',
 } as const;
 
@@ -128,6 +129,25 @@ function strokeColorExpression(palette: MapPalette): ExpressionSpecification {
   return ['case', ['get', 'pending'], palette.pendingStroke, palette.halo];
 }
 
+/** Gap between a pending point's edge and the outer ring drawn around it. */
+const PENDING_RING_GAP_PX = 3;
+
+/**
+ * Report point radius by zoom, brown root rot drawn larger. `extra` widens
+ * it for the pending ring, which must track the point at every zoom.
+ */
+function reportRadiusExpression(extra = 0): ExpressionSpecification {
+  return [
+    'interpolate',
+    ['linear'],
+    ['zoom'],
+    10,
+    ['case', ['==', ['get', 'bucket'], 'brown-root-rot'], 5 + extra, 3.5 + extra],
+    16,
+    ['case', ['==', ['get', 'bucket'], 'brown-root-rot'], 11 + extra, 8 + extra],
+  ];
+}
+
 function clusterColorExpression(palette: MapPalette): ExpressionSpecification {
   return ['case', ['>', ['get', 'alert'], 0], palette.clusterAlert, palette.cluster];
 }
@@ -211,6 +231,22 @@ function buildStyle(scheme: ColorScheme): StyleSpecification {
           'circle-radius': ['step', ['get', 'point_count'], 13, 10, 18, 50, 24, 200, 30],
         },
       },
+      // A locally pending report is drawn half transparent, with a dark edge
+      // and a second ring around it, so the reporter can tell their own
+      // unsynced point from one that is in the snapshot. MapLibre circles
+      // have no dashed stroke, so the ring is a separate hollow circle.
+      {
+        id: LAYER_IDS.pendingRing,
+        type: 'circle',
+        source: REPORTS_SOURCE,
+        filter: ['all', ['!', ['has', 'point_count']], ['get', 'pending']],
+        paint: {
+          'circle-opacity': 0,
+          'circle-stroke-width': 1.5,
+          'circle-stroke-color': palette.pendingStroke,
+          'circle-radius': reportRadiusExpression(PENDING_RING_GAP_PX),
+        },
+      },
       {
         id: LAYER_IDS.reports,
         type: 'circle',
@@ -218,19 +254,10 @@ function buildStyle(scheme: ColorScheme): StyleSpecification {
         filter: ['!', ['has', 'point_count']],
         paint: {
           'circle-color': bucketColorExpression(palette),
-          // A locally pending report is drawn with a dark ring so the reporter
-          // can tell their own unsynced point from one that is in the snapshot.
-          'circle-stroke-width': ['case', ['get', 'pending'], 3, 1.5],
+          'circle-opacity': ['case', ['get', 'pending'], 0.5, 1],
+          'circle-stroke-width': 1.5,
           'circle-stroke-color': strokeColorExpression(palette),
-          'circle-radius': [
-            'interpolate',
-            ['linear'],
-            ['zoom'],
-            10,
-            ['case', ['==', ['get', 'bucket'], 'brown-root-rot'], 5, 3.5],
-            16,
-            ['case', ['==', ['get', 'bucket'], 'brown-root-rot'], 11, 8],
-          ],
+          'circle-radius': reportRadiusExpression(),
         },
       },
     ],
@@ -445,6 +472,7 @@ export function createMapController(
         map.setPaintProperty(LAYER_IDS.clusters, 'circle-stroke-color', palette.halo);
         map.setPaintProperty(LAYER_IDS.reports, 'circle-color', bucketColorExpression(palette));
         map.setPaintProperty(LAYER_IDS.reports, 'circle-stroke-color', strokeColorExpression(palette));
+        map.setPaintProperty(LAYER_IDS.pendingRing, 'circle-stroke-color', palette.pendingStroke);
       };
       if (loaded) {
         apply();
