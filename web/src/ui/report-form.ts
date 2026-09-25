@@ -124,7 +124,10 @@ export interface ReportForm {
    * the map so the crosshair sits on the stored point.
    */
   startEdit(link: EditLink, report: EditableReport): void;
-  /** Leave edit mode, if in it, for a blank new report. */
+  /**
+   * Blank fields for a new report after an edit or a finished report. A draft
+   * still being filled in is left as it is.
+   */
   startCreate(): void;
   isEditing(): boolean;
 }
@@ -1508,7 +1511,9 @@ export function createReportForm(
       render();
     },
     startCreate() {
-      if (editing === null) {
+      // A draft in progress is kept across closing the sheet; an edit or a
+      // finished report is not, so the next report starts from empty fields.
+      if (editing === null && successPanel.hidden) {
         return;
       }
       resetForm();
