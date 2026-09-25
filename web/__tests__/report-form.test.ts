@@ -20,6 +20,7 @@ function options(overrides: Partial<ReportFormOptions> = {}): ReportFormOptions 
     getView: () => ({ lat: 25.04, lng: 121.54, zoom: 12 }),
     bbox: { minLng: 121.43, minLat: 24.94, maxLng: 121.68, maxLat: 25.24 },
     locate: () => Promise.resolve(),
+    moveTo: vi.fn(),
     onPendingReport: vi.fn(),
     onModeChange: vi.fn(),
     onDismiss: vi.fn(),
@@ -351,5 +352,125 @@ describe('reason block', () => {
     pickEvidence(container, 5);
 
     expect(causeGroup(container).hidden).toBe(false);
+  });
+});
+
+describe('lookup box', () => {
+  function box(container: HTMLElement): HTMLElement {
+    const element = container.querySelector<HTMLElement>('.form-lookup');
+    if (element === null) {
+      throw new Error('lookup box missing');
+    }
+    return element;
+  }
+
+  it('starts folded and unfolds from its header chip', () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const form = createReportForm(container, options());
+    form.setActive(true);
+
+    expect(box(container).hidden).toBe(true);
+    expect(form.lookupToggle.getAttribute('aria-expanded')).toBe('false');
+    expect(form.lookupToggle.textContent).toBe(strings.form.lookupToggle);
+
+    (form.lookupToggle as HTMLButtonElement).click();
+    expect(box(container).hidden).toBe(false);
+    expect(form.lookupToggle.getAttribute('aria-expanded')).toBe('true');
+    expect(document.activeElement?.id).toBe('report-lookup');
+
+    (form.lookupToggle as HTMLButtonElement).click();
+    expect(box(container).hidden).toBe(true);
+    container.remove();
+  });
+
+  it('folds again whenever the sheet reopens', () => {
+    const container = document.createElement('div');
+    const form = createReportForm(container, options());
+    form.setActive(true);
+    (form.lookupToggle as HTMLButtonElement).click();
+
+    form.setActive(false);
+    form.setActive(true);
+
+    expect(box(container).hidden).toBe(true);
+  });
+
+  it('is put away while the point is locked for the fields', () => {
+    const container = document.createElement('div');
+    const form = createReportForm(
+      container,
+      options({ getView: () => ({ lat: 25.04, lng: 121.54, zoom: 19 }) }),
+    );
+    form.setActive(true);
+    (form.lookupToggle as HTMLButtonElement).click();
+
+    button(container, strings.form.toForm).click();
+    expect(form.lookupToggle.hidden).toBe(true);
+    expect(box(container).hidden).toBe(true);
+
+    button(container, strings.form.toPicking).click();
+    expect(form.lookupToggle.hidden).toBe(false);
+    expect(box(container).hidden).toBe(true);
+  });
+
+  function lookup(container: HTMLElement, text: string): string {
+    const input = container.querySelector<HTMLInputElement>('#report-lookup');
+    const form = container.querySelector<HTMLFormElement>('.form-lookup');
+    if (input === null || form === null) {
+      throw new Error('lookup box missing');
+    }
+    input.value = text;
+    form.dispatchEvent(new Event('submit', { cancelable: true }));
+    return container.querySelector('.form-lookup [role=status]')?.textContent ?? '';
+  }
+
+  it('flies to a pasted Plus Code', () => {
+    const container = document.createElement('div');
+    const moveTo = vi.fn();
+    createReportForm(container, options({ moveTo }));
+
+    const message = lookup(container, '2GCV+7P8 \u5B78\u5E9C\u91CC');
+
+    expect(message).toBe(strings.form.lookupPoint);
+    expect(moveTo).toHaveBeenCalledTimes(1);
+    const [point, zoom] = moveTo.mock.calls[0] as [{ lat: number; lng: number }, number];
+    expect(point.lat).toBeCloseTo(25.02066, 4);
+    expect(point.lng).toBeCloseTo(121.54433, 4);
+    expect(zoom).toBe(18);
+  });
+
+  it('flies to a protected tree once the layer is set', () => {
+    const container = document.createElement('div');
+    const moveTo = vi.fn();
+    const form = createReportForm(container, options({ moveTo }));
+
+    expect(lookup(container, '7')).toBe(strings.form.lookupTreesUnavailable);
+    form.setTrees([
+      {
+        id: '7',
+        species: null,
+        lat: 25.03,
+        lng: 121.52,
+        dbhM: null,
+        address: null,
+        manager: null,
+        siteType: null,
+        district: null,
+      },
+    ]);
+    lookup(container, '#7');
+
+    expect(moveTo).toHaveBeenCalledWith(expect.objectContaining({ lat: 25.03, lng: 121.52 }), 18);
+  });
+
+  it('explains what it accepts and leaves the map alone otherwise', () => {
+    const container = document.createElement('div');
+    const moveTo = vi.fn();
+    createReportForm(container, options({ moveTo }));
+
+    expect(lookup(container, 'https://maps.app.goo.gl/x')).toBe(strings.form.lookupUnrecognised);
+    expect(lookup(container, '22.6273, 120.3014')).toBe(strings.form.lookupPointOutside);
+    expect(moveTo).not.toHaveBeenCalled();
   });
 });

@@ -587,6 +587,9 @@ async function start(): Promise<void> {
     getView: () => ({ ...controller.getCenter(), zoom: controller.getZoom() }),
     bbox: REPORT_BBOX,
     locate,
+    moveTo(point, zoom) {
+      controller.flyTo(point, Math.max(controller.getZoom(), zoom));
+    },
     onPendingReport(entry) {
       pendingReports = addPending(storage, entry, new Date());
       refresh(filterPanel?.getState() ?? emptyFilterState());
@@ -618,7 +621,7 @@ async function start(): Promise<void> {
     // column and has room for the instructions.
     guideOpen: window.matchMedia('(min-width: 768px)').matches,
   });
-  reportSheet.headerSlot.prepend(reportForm.guideToggle);
+  reportSheet.headerSlot.prepend(reportForm.lookupToggle, reportForm.guideToggle);
   reportForm.setTrees(trees);
   reportForm.setReports(reports);
 
