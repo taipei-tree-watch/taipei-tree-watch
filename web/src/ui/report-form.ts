@@ -184,7 +184,7 @@ function labelled(
   control: HTMLElement,
   hintText: string,
   optional: boolean,
-): { row: HTMLElement; error: HTMLElement } {
+): { row: HTMLElement; hint: HTMLElement; error: HTMLElement } {
   const row = document.createElement('div');
   row.className = 'form-row';
 
@@ -210,7 +210,15 @@ function labelled(
   error.hidden = true;
   row.append(error);
 
-  return { row, error };
+  return { row, hint, error };
+}
+
+/** Live character count appended to the end of a field's hint line. */
+function hintCounter(hint: HTMLElement): HTMLElement {
+  const counter = document.createElement('span');
+  counter.className = 'form-counter';
+  hint.append(' ', counter);
+  return counter;
 }
 
 function tagGroup(
@@ -515,6 +523,7 @@ export function createReportForm(
     strings.form.speciesHint,
     true,
   );
+  const speciesCounter = hintCounter(speciesRow.hint);
   errorSlots.set('species', speciesRow.error);
   form.append(speciesRow.row);
 
@@ -591,9 +600,7 @@ export function createReportForm(
   const noteInput = document.createElement('textarea');
   noteInput.rows = 4;
   const noteRow = labelled(strings.form.note, noteInput, strings.form.noteHint, true);
-  const noteCounter = document.createElement('p');
-  noteCounter.className = 'form-hint form-counter';
-  noteRow.row.insertBefore(noteCounter, noteRow.error);
+  const noteCounter = hintCounter(noteRow.hint);
   const noteStripped = document.createElement('p');
   noteStripped.className = 'form-notice';
   noteStripped.textContent = strings.form.noteStripped;
@@ -1003,13 +1010,17 @@ export function createReportForm(
   speciesInput.addEventListener('input', () => {
     draft = { ...draft, species: speciesInput.value };
     clearFieldError('species');
+    renderCounters();
     render();
   });
 
-  function renderNoteCounter(): void {
-    const stripped = stripUrls(noteInput.value);
-    noteCounter.textContent = formatTemplate(strings.form.noteCounter, {
-      count: countCharacters(stripped),
+  function renderCounters(): void {
+    speciesCounter.textContent = formatTemplate(strings.form.charCounter, {
+      count: countCharacters(speciesInput.value),
+      max: SPECIES_MAX_CHARS,
+    });
+    noteCounter.textContent = formatTemplate(strings.form.charCounter, {
+      count: countCharacters(stripUrls(noteInput.value)),
       max: NOTE_MAX_CHARS,
     });
   }
@@ -1036,13 +1047,13 @@ export function createReportForm(
     } else {
       noteStripped.hidden = stripUrls(noteInput.value) === noteInput.value;
     }
-    renderNoteCounter();
+    renderCounters();
     render();
   });
 
   noteInput.addEventListener('blur', () => {
     applyNoteStrip();
-    renderNoteCounter();
+    renderCounters();
     render();
   });
 
@@ -1090,6 +1101,7 @@ export function createReportForm(
     if (draft.species === '' && tree.species !== null) {
       draft = { ...draft, species: tree.species };
       speciesInput.value = tree.species;
+      renderCounters();
     }
     render();
   }
@@ -1131,6 +1143,7 @@ export function createReportForm(
     speciesInput.value = draft.species;
     protectedInput.value = draft.protectedTreeId;
     inventoryInput.value = draft.inventoryTreeId;
+    renderCounters();
     setMode('form');
     render();
   });
@@ -1284,7 +1297,7 @@ export function createReportForm(
       });
     }
     noteStripped.hidden = true;
-    renderNoteCounter();
+    renderCounters();
   }
 
   function resetForm(): void {
@@ -1316,7 +1329,7 @@ export function createReportForm(
       input.checked = Number(input.value) === draft.evidence;
     }
     widget?.reset();
-    renderNoteCounter();
+    renderCounters();
   }
 
   form.addEventListener('submit', (event) => {
@@ -1330,7 +1343,7 @@ export function createReportForm(
     }
 
     applyNoteStrip();
-    renderNoteCounter();
+    renderCounters();
 
     const view = currentView();
     if (submitBlock(view, options.bbox) !== null) {
@@ -1461,7 +1474,7 @@ export function createReportForm(
   /* Initial state --------------------------------------------------------- */
 
   observedInput.max = taipeiDate(options.now());
-  renderNoteCounter();
+  renderCounters();
   setMode('picking');
   render();
 
