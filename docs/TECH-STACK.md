@@ -71,7 +71,7 @@ ULID 由 `worker/src/routes/ulid.ts` 自行產生，不依賴套件。
 
 目前實作的子命令只有 `protected-trees`；`delisting`、`inventory-diff` 還在規劃（`TASKS.md`）。
 
-**Node 腳本 `scripts/`**：以 tsx 執行的 TypeScript，涵蓋 `snapshot-backup`、`issue-edit-links`、`build-shared`、`copy-assets`；`d1-export.sh` 是呼叫 `wrangler d1 export` 的 bash 腳本。定期執行的腳本由本機 launchd 排程，plist 範例在 `RUNBOOK.md` 第 3.1 節。
+**Node 腳本 `scripts/`**：以 tsx 執行的 TypeScript，涵蓋 `snapshot-backup`、`issue-edit-links`、`build-shared`、`copy-assets`、`check-deploy-env`（`npm run deploy` 的第一步，缺 Cloudflare 憑證時提早停下並指向 `DEPLOY.md`）；`d1-export.sh` 是呼叫 `wrangler d1 export` 的 bash 腳本。定期執行的腳本由本機 launchd 排程，plist 範例在 `RUNBOOK.md` 第 3.1 節。
 
 ---
 

@@ -1,6 +1,6 @@
 # Taipei Tree Watch 技術規格 Overview
 
-- 需求：`SPEC.md`；查證依據：`RESEARCH.md`；技術棧一覽：`TECH-STACK.md`；詞彙：根目錄 `CONTEXT.md`（本文件的名詞以它為準）；上線後的重複操作：`RUNBOOK.md`
+- 需求：`SPEC.md`；查證依據：`RESEARCH.md`；技術棧一覽：`TECH-STACK.md`；詞彙：根目錄 `CONTEXT.md`（本文件的名詞以它為準）；部署步驟：`DEPLOY.md`；上線後的重複操作：`RUNBOOK.md`
 - 定案日期：2026-09-18。本文件是 overview，寫到「每個元件負責什麼、邊界在哪、資料長什麼樣」的深度；實作細節在 task 展開時決定。
 - 選型唯一標準沿用 SPEC 第 4 節：免費、方便、不因無流量被停用。所有額度數字見 `RESEARCH.md` 第 7 節。
 
@@ -49,7 +49,7 @@
 ```
 taipei-tree-watch/
 ├── CONTEXT.md                 詞彙表
-├── docs/                      SPEC、RESEARCH、TECH-SPEC、TECH-STACK、TASKS、RUNBOOK
+├── docs/                      SPEC、RESEARCH、TECH-SPEC、TECH-STACK、TASKS、DEPLOY、RUNBOOK
 ├── shared/                    前後端與管線共用的 source of truth
 │   ├── tags.ts                原因、處置、證據來源、資料來源的代碼表
 │   ├── domains.ts             連結網域白名單
