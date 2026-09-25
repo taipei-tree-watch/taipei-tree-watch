@@ -6,7 +6,7 @@ import { reportSummary } from '../src/report/summary.ts';
 
 /** An on-site notice: a reference source a cause can be read off. */
 const SITE_NOTICE = 1;
-const [, SIGHTING_ONLY] = EVIDENCE_CODES_WITHOUT_CAUSES;
+const [SIGHTING_ONLY] = EVIDENCE_CODES_WITHOUT_CAUSES;
 const BROWN_ROOT_ROT = 1;
 const ROOTS_ONLY = 3;
 

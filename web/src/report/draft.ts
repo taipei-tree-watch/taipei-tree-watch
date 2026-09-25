@@ -72,7 +72,7 @@ const EVIDENCE_WITHOUT_CAUSES: ReadonlySet<number> = new Set(EVIDENCE_CODES_WITH
 
 /**
  * False when the chosen evidence source states no cause, in which case the
- * cause block is collapsed and any earlier selection is dropped.
+ * whole cause block is hidden and any earlier selection is dropped.
  */
 export function causesAllowed(evidence: number): boolean {
   return !EVIDENCE_WITHOUT_CAUSES.has(evidence);

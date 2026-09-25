@@ -22,8 +22,10 @@ const BBOX: Bbox = { minLng: 121.43, minLat: 24.94, maxLng: 121.68, maxLat: 25.2
 const INSIDE = { lat: 25.033, lng: 121.5654, zoom: MIN_SUBMIT_ZOOM };
 const TODAY = '2026-09-19';
 
-/** The evidence codes the spec calls out: sighting only, and a high risk tag. */
-const [HIGH_RISK_TAG, SIGHTING_ONLY] = EVIDENCE_CODES_WITHOUT_CAUSES;
+/** The only evidence source that states no cause. */
+const [SIGHTING_ONLY] = EVIDENCE_CODES_WITHOUT_CAUSES;
+/** A high risk tag hangs on the tree and may state a cause. */
+const HIGH_RISK_TAG = 5;
 /** An on-site notice, which is evidence a cause can be copied from. */
 const SITE_NOTICE = 1;
 
@@ -51,6 +53,10 @@ describe('causesAllowed', () => {
   it('is true for an on-site notice', () => {
     expect(causesAllowed(SITE_NOTICE)).toBe(true);
   });
+
+  it('is true for a high risk tag', () => {
+    expect(causesAllowed(HIGH_RISK_TAG)).toBe(true);
+  });
 });
 
 describe('withEvidence', () => {
@@ -59,9 +65,9 @@ describe('withEvidence', () => {
     expect(withEvidence(picked, SIGHTING_ONLY).causes).toEqual([]);
   });
 
-  it('clears causes when switching to the high risk tag', () => {
+  it('keeps causes when switching to the high risk tag', () => {
     const picked = { ...emptyDraft(), evidence: SITE_NOTICE, causes: [1] };
-    expect(withEvidence(picked, HIGH_RISK_TAG).causes).toEqual([]);
+    expect(withEvidence(picked, HIGH_RISK_TAG).causes).toEqual([1]);
   });
 
   it('keeps causes when the new source can carry them', () => {

@@ -251,11 +251,12 @@ describe('POST /api/reports check 6: evidence without causes', () => {
     await expect(errorFields(response)).resolves.toEqual(['causes']);
   });
 
-  it('rejects causes when the evidence is a high-risk tag', async () => {
+  it('accepts causes when the evidence is a high-risk tag', async () => {
     const response = await post(validBody({ evidence: 5, causes: [1] }));
 
-    expect(response.status).toBe(400);
-    await expect(errorFields(response)).resolves.toEqual(['causes']);
+    expect(response.status).toBe(201);
+    const { id } = (await response.json()) as { id: string };
+    expect((await readRow(id))?.causes).toBe('[1]');
   });
 
   it('accepts causes when the evidence is a site notice', async () => {

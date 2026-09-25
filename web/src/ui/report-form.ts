@@ -572,11 +572,6 @@ export function createReportForm(
       clearFieldError('causes');
     },
   );
-  const causesLocked = document.createElement('p');
-  causesLocked.className = 'form-locked';
-  causesLocked.textContent = strings.form.causesLocked;
-  causesLocked.hidden = true;
-  causeBlock.group.insertBefore(causesLocked, causeBlock.options);
   errorSlots.set('causes', causeBlock.error);
   form.append(causeBlock.group);
 
@@ -771,8 +766,7 @@ export function createReportForm(
       input.checked = allowed && draft.causes.includes(code);
       input.disabled = !allowed;
     }
-    causeBlock.options.hidden = !allowed;
-    causesLocked.hidden = allowed;
+    causeBlock.group.hidden = !allowed;
   }
 
   function showIssue(field: FormField, message: string | null): void {

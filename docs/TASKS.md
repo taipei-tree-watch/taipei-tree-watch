@@ -74,7 +74,7 @@
 ### E1.6 選點與表單
 - 準心選點：GPS flyTo、zoom 門檻 18、選點時自動開正射
 - 20 公尺內受保護樹木偵測與一鍵關聯
-- 底部 sheet 表單：欄位、預設值、原因區塊依證據來源收合、說明欄即時剝 URL、連結欄白名單提示、Turnstile widget；`web/src/content/safety.html` 常駐表單開頭；前端驗證直接呼叫 `shared/validation.ts`
+- 底部 sheet 表單：欄位、預設值、原因區塊依證據來源隱藏、說明欄即時剝 URL、連結欄白名單提示、Turnstile widget；`web/src/content/safety.html` 常駐表單開頭；前端驗證直接呼叫 `shared/validation.ts`
 - 送出、成功訊息、`localStorage` 暫存點
 - 前端驗證與 `shared/` 共用同一份 tag 與白名單
 - 完成條件：真機（iOS Safari、Android Chrome）完成一筆回報；錯誤訊息逐欄顯示

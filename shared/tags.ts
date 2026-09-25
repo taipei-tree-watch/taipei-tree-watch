@@ -82,7 +82,7 @@ export const DEFAULT_EVIDENCE_CODE = 6 satisfies EvidenceCode;
 export const USER_REPORT_SOURCE_CODE = 1 satisfies SourceCode;
 
 /** Evidence codes under which causes must stay empty: nothing on site states a cause. */
-export const EVIDENCE_CODES_WITHOUT_CAUSES = [5, 6] as const satisfies readonly EvidenceCode[];
+export const EVIDENCE_CODES_WITHOUT_CAUSES = [6] as const satisfies readonly EvidenceCode[];
 
 export const tags = {
   causes,
