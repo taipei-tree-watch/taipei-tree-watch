@@ -82,7 +82,6 @@ import {
   Equal,
   Info,
   Link,
-  LocateFixed,
   MapPinPlus,
   Pencil,
   RotateCcw,
@@ -103,8 +102,6 @@ export interface ReportFormOptions {
   readonly getView: () => PickedView;
   /** Accepted coordinate range, mirroring the Worker's BBOX var. */
   readonly bbox: Bbox;
-  /** Move the map to the device location; rejects when it is unavailable. */
-  readonly locate: () => Promise<void>;
   /** Move the camera to a looked-up place, never closer than `zoom`. */
   readonly moveTo: (point: Coordinates, zoom: number) => void;
   readonly onPendingReport: (report: PendingReport) => void;
@@ -539,22 +536,13 @@ export function createReportForm(
   const gateLine = document.createElement('p');
   gateLine.className = 'form-gate';
 
-  const locateButton = document.createElement('button');
-  locateButton.type = 'button';
-  locateButton.className = 'form-secondary';
-  setIconLabel(locateButton, LocateFixed, strings.map.locate);
-
   const modeButton = document.createElement('button');
   modeButton.type = 'button';
   modeButton.className = 'form-secondary';
 
   const pickerActions = document.createElement('div');
   pickerActions.className = 'form-picker-actions';
-  pickerActions.append(locateButton, modeButton);
-
-  const locateStatus = document.createElement('p');
-  locateStatus.className = 'form-hint';
-  locateStatus.hidden = true;
+  pickerActions.append(modeButton);
 
   /**
    * While aiming, what is nearby is only named in this line: the boxes below
@@ -640,7 +628,6 @@ export function createReportForm(
     gateLine,
     nearbyHint,
     pickerActions,
-    locateStatus,
     nearbyBox,
     nearbyReport,
   );
@@ -950,7 +937,6 @@ export function createReportForm(
     mode = next;
     // A point already locked (an edit's stored location) survives re-entry.
     lockedView = next === 'form' ? (lockedView ?? options.getView()) : null;
-    locateButton.hidden = next === 'form';
     // The lookup moves the map, which the locked point does not allow.
     lookupToggle.hidden = next === 'form';
     if (next === 'form') {
@@ -1323,28 +1309,6 @@ export function createReportForm(
     setMode(mode === 'form' ? 'picking' : 'form');
     render();
   });
-
-  function runLocate(): void {
-    locateStatus.hidden = false;
-    locateStatus.textContent = strings.map.locating;
-    locateButton.disabled = true;
-    options
-      .locate()
-      .then(() => {
-        locateStatus.hidden = true;
-      })
-      .catch(() => {
-        // A refusal is not an error worth stopping for: the reporter aims the
-        // crosshair by hand, which is the accurate path anyway.
-        locateStatus.textContent = strings.form.locateFailed;
-      })
-      .finally(() => {
-        locateButton.disabled = false;
-        render();
-      });
-  }
-
-  locateButton.addEventListener('click', runLocate);
 
   function lookupMessage(outcome: LookupOutcome): string {
     switch (outcome.kind) {

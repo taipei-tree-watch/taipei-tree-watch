@@ -17,7 +17,6 @@ function options(overrides: Partial<ReportFormOptions> = {}): ReportFormOptions 
   return {
     getView: () => ({ lat: 25.04, lng: 121.54, zoom: 19 }),
     bbox: { minLng: 121.43, minLat: 24.94, maxLng: 121.68, maxLat: 25.24 },
-    locate: () => Promise.resolve(),
     moveTo: vi.fn(),
     onPendingReport: vi.fn(),
     onModeChange: vi.fn(),

@@ -336,7 +336,7 @@ function locate(): Promise<void> {
   });
 }
 
-/** The map's own locate control, available without opening the report sheet. */
+/** The floating locate button, the one way to fly the map to the device. */
 function runMapLocate(): void {
   locateMapButton.disabled = true;
   setIconLabel(locateMapButton, LocateFixed, strings.map.locating);
@@ -587,7 +587,6 @@ async function start(): Promise<void> {
   reportForm = createReportForm(reportSheet.contentElement, {
     getView: () => ({ ...controller.getCenter(), zoom: controller.getZoom() }),
     bbox: REPORT_BBOX,
-    locate,
     moveTo(point, zoom) {
       controller.flyTo(point, Math.max(controller.getZoom(), zoom));
     },
