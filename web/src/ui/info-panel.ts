@@ -8,6 +8,7 @@
  */
 import { sections } from '../content/index.ts';
 import { attributionYear } from '../data/trees.ts';
+import { setIconOnly, X } from '../icons.ts';
 import strings from '../ui-strings.json';
 
 /** Marks the protected tree attribution year inside the attribution fragment. */
@@ -33,8 +34,7 @@ export function createInfoPanel(element: HTMLElement): InfoPanel {
   const close = document.createElement('button');
   close.type = 'button';
   close.className = 'panel-close';
-  close.setAttribute('aria-label', strings.info.close);
-  close.textContent = 'x';
+  setIconOnly(close, X, strings.info.close);
   header.append(close);
 
   const body = document.createElement('div');

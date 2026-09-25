@@ -12,6 +12,7 @@ import { formatTemplate } from '../format.ts';
 import type { PermalinkTarget } from '../permalink.ts';
 import type { ShareOutcome } from '../share.ts';
 import { reportRows } from './report-rows.ts';
+import { setIconOnly, X } from '../icons.ts';
 import strings from '../ui-strings.json';
 
 /** How long the copied confirmation stays on the card. */
@@ -87,8 +88,7 @@ export function createDetailCard(element: HTMLElement, options: DetailCardOption
   const close = document.createElement('button');
   close.type = 'button';
   close.className = 'panel-close';
-  close.setAttribute('aria-label', strings.card.close);
-  close.textContent = 'x';
+  setIconOnly(close, X, strings.card.close);
   header.append(close);
 
   const body = document.createElement('div');

@@ -73,6 +73,7 @@ import { submitReport } from '../report/submit.ts';
 import type { ShareOutcome } from '../share.ts';
 import type { TurnstileWidget } from '../turnstile.ts';
 import { renderTurnstile } from '../turnstile.ts';
+import { Info, setIconOnly } from '../icons.ts';
 import strings from '../ui-strings.json';
 
 export type PickerMode = 'picking' | 'form';
@@ -269,8 +270,7 @@ function linkDomainsInfo(): { button: HTMLButtonElement; popover: HTMLElement } 
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'form-info';
-  button.textContent = '\u24d8';
-  button.setAttribute('aria-label', strings.form.linkDomainsInfo);
+  setIconOnly(button, Info, strings.form.linkDomainsInfo);
   button.popoverTargetElement = popover;
 
   return { button, popover };

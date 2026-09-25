@@ -8,6 +8,7 @@
 import { formatTemplate } from '../format.ts';
 import type { StoredEditLink } from '../report/edit-links.ts';
 import type { ShareOutcome } from '../share.ts';
+import { setIconOnly, X } from '../icons.ts';
 import strings from '../ui-strings.json';
 
 /** How long a copied confirmation stays beside an entry. */
@@ -52,8 +53,7 @@ export function createMyReportsPanel(
   const close = document.createElement('button');
   close.type = 'button';
   close.className = 'panel-close';
-  close.setAttribute('aria-label', strings.mine.close);
-  close.textContent = 'x';
+  setIconOnly(close, X, strings.mine.close);
   header.append(close);
 
   const body = document.createElement('div');

@@ -25,6 +25,7 @@
     "issue:edit-links": "tsx scripts/issue-edit-links.ts"
   },
   "dependencies": {
+    "lucide": "^1.48.0",
     "maplibre-gl": "^6.10.0",
     "zod": "^4.1.0"
   },

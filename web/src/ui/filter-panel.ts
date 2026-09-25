@@ -11,6 +11,7 @@ import type { FilterState } from '../filters.ts';
 import { NO_CAUSE_CODE, emptyFilterState } from '../filters.ts';
 import { formatTemplate } from '../format.ts';
 import { bucketColorVar, bucketForCause } from '../map/colors.ts';
+import { setIconOnly, X } from '../icons.ts';
 import strings from '../ui-strings.json';
 
 export interface FilterPanel {
@@ -152,8 +153,7 @@ export function createFilterPanel(
   const close = document.createElement('button');
   close.type = 'button';
   close.className = 'panel-close';
-  close.setAttribute('aria-label', strings.filters.close);
-  close.textContent = 'x';
+  setIconOnly(close, X, strings.filters.close);
   header.append(close);
 
   const summary = document.createElement('p');

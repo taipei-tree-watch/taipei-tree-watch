@@ -288,6 +288,7 @@ describe('link domains info', () => {
     const button = container.querySelector<HTMLButtonElement>('.form-info');
     const popover = container.querySelector<HTMLElement>('#form-link-domains');
     expect(button?.getAttribute('aria-label')).toBe(strings.form.linkDomainsInfo);
+    expect(button?.querySelector('svg')).not.toBeNull();
     expect(button?.type).toBe('button');
     expect(button?.popoverTargetElement).toBe(popover);
     const listed = [...(popover?.querySelectorAll('li') ?? [])].map((item) => item.textContent);

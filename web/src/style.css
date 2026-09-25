@@ -114,8 +114,19 @@ body {
   scrollbar-width: none;
 }
 
+/* Lucide icons stroke with currentColor, so they follow the button's text
+   colour in both schemes and in the pressed state. */
+.icon {
+  flex: 0 0 auto;
+  width: 1.125em;
+  height: 1.125em;
+}
+
 .chip {
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--surface);
@@ -202,6 +213,10 @@ body {
 }
 
 .map-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--surface);
@@ -281,8 +296,13 @@ body {
 
 .panel-close {
   margin-left: auto;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
   width: 2rem;
   height: 2rem;
+  padding: 0;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--surface);
@@ -604,6 +624,15 @@ body {
 /* Tighter spacing while aiming on a phone, so more of the map shows above
    the sheet. */
 @media (width < 768px) {
+  /* Room for the sheet title on one line beside three header chips. */
+  .panel-header-slot {
+    gap: 0.375rem;
+  }
+
+  .panel-header-slot .chip {
+    padding-inline: 0.625rem;
+  }
+
   .sheet:has(> .sheet-content[data-mode='picking']) > .panel-header {
     padding-block: 0.375rem;
   }
@@ -800,6 +829,8 @@ body {
 }
 
 .form-info {
+  display: inline-flex;
+  vertical-align: -0.15em;
   margin-left: 0.125rem;
   padding: 0;
   border: 0;

@@ -114,7 +114,10 @@ describe('detail card permalink', () => {
   it('closes from the card button as well', () => {
     const { card, element, targets } = harness('copied');
     card.showReport(REPORT);
-    (element.querySelector('.panel-close') as HTMLButtonElement).click();
+    const close = element.querySelector('.panel-close') as HTMLButtonElement;
+    expect(close.getAttribute('aria-label')).toBe(strings.card.close);
+    expect(close.querySelector('svg')).not.toBeNull();
+    close.click();
     expect(element.hidden).toBe(true);
     expect(targets.at(-1)).toBeNull();
   });

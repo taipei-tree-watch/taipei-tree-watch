@@ -27,6 +27,7 @@
 | TypeScript | 6 | 全部前端程式；MVP 階段直接操作 DOM，先不用 React、Vue 等框架 |
 | Vite | 8 | 打包與開發伺服器；`define` 注入 Turnstile site key，`?worker&url` 產出 MapLibre worker |
 | MapLibre GL JS | 6 | 地圖、raster 底圖與航照、回報點圖層；叢集用 GeoJSON source 內建的 `cluster: true` |
+| Lucide（`lucide`） | 1 | 按鈕圖示；具名 import 逐個 tree shake，`createElement` 直接產生 SVG 元素，stroke 用 `currentColor` 跟著 token 換色；包裝在 `web/src/icons.ts`。之後改用 React 時換成同名的 `lucide-react`。ISC 授權，顯名在 `web/src/content/attribution.html` |
 | CSS | | 單一 `web/src/style.css`，顏色全部是 `:root` token，深色模式用 `prefers-color-scheme` 覆寫 |
 
 地圖模組以 dynamic import 載入，讓頂列與狀態列先出現。
@@ -107,6 +108,7 @@ ULID 由 `worker/src/routes/ulid.ts` 自行產生，不依賴套件。
 | 不用 | 改用 | 理由出處 |
 |---|---|---|
 | 前端 UI 框架（MVP 階段） | 直接操作 DOM | 為了讓初版簡單，不是長期原則；之後若 React 等框架有明顯好處再評估 |
+| Icon font、圖示 CDN | npm 套件的 SVG 圖示（Lucide），隨 bundle 出貨 | 本文件第 2 節 |
 | Worker web framework | 原生 handler | `TECH-SPEC.md` 第 3.2 節 |
 | Cloudflare Pages | Workers Static Assets | `RESEARCH.md` 第 7.3 節 |
 | R2 | KV 存快照 | `RESEARCH.md` 第 7.3 節 |

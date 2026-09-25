@@ -20,6 +20,7 @@ import type { ProtectedTree } from './data/trees.ts';
 import { loadMapData } from './data/load.ts';
 import type { FilterState } from './filters.ts';
 import { applyFilters, emptyFilterState } from './filters.ts';
+import { Funnel, Info, Layers, List, LocateFixed, MapPin, setIconLabel } from './icons.ts';
 import type { MapController } from './map/index.ts';
 import type { EditLink, PermalinkTarget } from './permalink.ts';
 import {
@@ -86,12 +87,12 @@ mineToggle.hidden = true;
 mineToggle.setAttribute('aria-expanded', 'false');
 mineToggle.setAttribute('aria-controls', 'mine-panel');
 
-filtersToggle.textContent = strings.topbar.filters;
-infoToggle.textContent = strings.topbar.info;
-mineToggle.textContent = strings.sheet.mine;
-orthoToggle.textContent = strings.map.ortho;
-reportToggle.textContent = strings.topbar.report;
-locateMapButton.textContent = strings.map.locate;
+setIconLabel(filtersToggle, Funnel, strings.topbar.filters);
+setIconLabel(infoToggle, Info, strings.topbar.info);
+setIconLabel(mineToggle, List, strings.sheet.mine);
+setIconLabel(orthoToggle, Layers, strings.map.ortho);
+setIconLabel(reportToggle, MapPin, strings.topbar.report);
+setIconLabel(locateMapButton, LocateFixed, strings.map.locate);
 
 // A pinched phone browser would otherwise leave the bar off screen with no
 // way to scroll it back, which takes every control with it.
@@ -338,7 +339,7 @@ function locate(): Promise<void> {
 /** The map's own locate control, available without opening the report sheet. */
 function runMapLocate(): void {
   locateMapButton.disabled = true;
-  locateMapButton.textContent = strings.map.locating;
+  setIconLabel(locateMapButton, LocateFixed, strings.map.locating);
   locate()
     .then(() => {
       statusBar.hide();
@@ -350,7 +351,7 @@ function runMapLocate(): void {
     })
     .finally(() => {
       locateMapButton.disabled = false;
-      locateMapButton.textContent = strings.map.locate;
+      setIconLabel(locateMapButton, LocateFixed, strings.map.locate);
     });
 }
 

@@ -5,6 +5,7 @@
  * crosshair picker and the form are mounted into `contentElement` by
  * ui/report-form.ts.
  */
+import { setIconOnly, X } from '../icons.ts';
 import strings from '../ui-strings.json';
 
 export interface ReportSheet {
@@ -35,8 +36,7 @@ export function createReportSheet(element: HTMLElement): ReportSheet {
   const close = document.createElement('button');
   close.type = 'button';
   close.className = 'panel-close';
-  close.setAttribute('aria-label', strings.sheet.close);
-  close.textContent = 'x';
+  setIconOnly(close, X, strings.sheet.close);
   header.append(close);
 
   const content = document.createElement('div');
