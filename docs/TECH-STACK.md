@@ -9,7 +9,7 @@
 
 | 層 | 技術 | 細節 |
 |---|---|---|
-| 前端 | TypeScript、Vite、MapLibre GL JS，無 UI 框架 | 第 2 節、`TECH-SPEC.md` 第 3.1 節 |
+| 前端 | TypeScript、Vite、MapLibre GL JS，MVP 階段不用 UI 框架 | 第 2 節、`TECH-SPEC.md` 第 3.1 節 |
 | 後端 | Cloudflare Workers，無 web framework，zod 驗證 | 第 3 節、`TECH-SPEC.md` 第 3.2 節 |
 | 資料儲存 | Cloudflare D1（回報）、KV（快照） | 第 3 節、`TECH-SPEC.md` 第 3.3、3.4 節 |
 | 防濫用 | Cloudflare Turnstile | `TECH-SPEC.md` 第 3.5 節 |
@@ -24,7 +24,7 @@
 
 | 項目 | 版本 | 用途 |
 |---|---|---|
-| TypeScript | 6 | 全部前端程式；DOM 直接操作，不用 React、Vue 等框架 |
+| TypeScript | 6 | 全部前端程式；MVP 階段直接操作 DOM，先不用 React、Vue 等框架 |
 | Vite | 8 | 打包與開發伺服器；`define` 注入 Turnstile site key，`?worker&url` 產出 MapLibre worker |
 | MapLibre GL JS | 6 | 地圖、raster 底圖與航照、回報點圖層；叢集用 GeoJSON source 內建的 `cluster: true` |
 | CSS | | 單一 `web/src/style.css`，顏色全部是 `:root` token，深色模式用 `prefers-color-scheme` 覆寫 |
@@ -106,7 +106,7 @@ ULID 由 `worker/src/routes/ulid.ts` 自行產生，不依賴套件。
 
 | 不用 | 改用 | 理由出處 |
 |---|---|---|
-| 前端 UI 框架 | 直接操作 DOM | `TECH-SPEC.md` 第 3.1 節 |
+| 前端 UI 框架（MVP 階段） | 直接操作 DOM | 為了讓初版簡單，不是長期原則；之後若 React 等框架有明顯好處再評估 |
 | Worker web framework | 原生 handler | `TECH-SPEC.md` 第 3.2 節 |
 | Cloudflare Pages | Workers Static Assets | `RESEARCH.md` 第 7.3 節 |
 | R2 | KV 存快照 | `RESEARCH.md` 第 7.3 節 |

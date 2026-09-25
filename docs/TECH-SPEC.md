@@ -75,7 +75,7 @@ taipei-tree-watch/
 
 ### 3.1 前端 `web/`
 
-- 技術棧見 `TECH-STACK.md` 第 2 節：無 UI 框架（DOM 直接操作），回報點叢集用 MapLibre GeoJSON source 內建的 cluster。
+- 技術棧見 `TECH-STACK.md` 第 2 節：MVP 階段不用 UI 框架（DOM 直接操作），之後若框架有明顯好處再評估；回報點叢集用 MapLibre GeoJSON source 內建的 cluster。
 - 單一頁面，手機優先，地圖全螢幕。回報表單是底部 sheet，桌面寬度變側欄。說明與免責是可展開區塊，安全警語常駐在表單開頭。
 - 啟動時載入兩個檔：`/api/snapshot`（回報）與 `/trees.json`（受保護樹木靜態資產）。兩者都是一次載入、全在記憶體篩選。
 - 圖層：底圖 raster（NLSC）、正射 raster（目前 NLSC `PHOTO2`，都發局待授權確認，見第 7 節；由地圖右上角的「顯示航照」浮動鈕切換（與「目前位置」鈕疊在一起；桌面開著回報側欄時移到側欄左側），選點時不自動切換）、受保護樹木（灰色小點）、回報點（依原因著色，褐根病最醒目）、清冊消失層（M3 之後）。
