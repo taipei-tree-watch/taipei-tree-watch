@@ -107,7 +107,7 @@
   - 軟刪除與快照回滾都已在遠端演練過，步驟與觀察寫在 `docs/RUNBOOK.md`
   - `snapshot-backup` 與 `d1-export` 兩支腳本已寫好並實跑成功，launchd plist 範例與安裝步驟在 `docs/RUNBOOK.md` 第 3 節
   - cron 遠端量測（1 到 2 列）：CPU 2 ms、wall 560 到 596 ms，記在 TECH-SPEC 第 12 節
-  - Web Analytics 站台已建立（2026-09-24），token 在 `wrangler.toml` 的 `WEB_ANALYTICS_TOKEN`，production build 自動插入 beacon（TECH-SPEC 3.2）
+  - Web Analytics 站台已建立（2026-09-24），token 在 `wrangler.toml` 的 `WEB_ANALYTICS_TOKEN`，production build 自動插入 beacon（TECH-SPEC 3.2）；2026-09-24 部署上線，瀏覽器確認 beacon 送出 `cdn-cgi/rum`（204），dashboard 已收到瀏覽數
   - 待辦：真機 widget 挑戰 iframe 仍待人工確認；launchd plist 待在部署機器上安裝
   - 都發局授權確認仍為人工作業，未動
 
