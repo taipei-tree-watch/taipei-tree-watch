@@ -57,10 +57,6 @@ import {
 import type { EditableReport } from '../report/edit.ts';
 import { saveReport, withdrawReport } from '../report/edit.ts';
 import type { FormField } from '../report/errors.ts';
-import type { Coordinates } from '../report/coordinates.ts';
-import { bboxCentre } from '../report/coordinates.ts';
-import type { LookupOutcome } from '../report/lookup.ts';
-import { LOOKUP_ZOOM, lookupPlace, parseLookupQuery } from '../report/lookup.ts';
 import { readGuideOpen, writeGuideOpen } from '../report/guide.ts';
 import type { PendingReport, StorageLike } from '../report/pending.ts';
 import { toReportRecord } from '../report/pending.ts';
@@ -86,7 +82,6 @@ import {
   Pencil,
   RotateCcw,
   Save,
-  Search,
   Send,
   setIconLabel,
   setIconOnly,
@@ -102,8 +97,6 @@ export interface ReportFormOptions {
   readonly getView: () => PickedView;
   /** Accepted coordinate range, mirroring the Worker's BBOX var. */
   readonly bbox: Bbox;
-  /** Move the camera to a looked-up place, never closer than `zoom`. */
-  readonly moveTo: (point: Coordinates, zoom: number) => void;
   readonly onPendingReport: (report: PendingReport) => void;
   readonly onModeChange: (mode: PickerMode) => void;
   /** The reporter found their tree already reported as it is: close the sheet. */
@@ -133,8 +126,6 @@ export interface ReportFormOptions {
 export interface ReportForm {
   /** Folds the aiming instructions; the caller places it in the sheet header. */
   readonly guideToggle: HTMLElement;
-  /** Unfolds the position lookup; the caller places it in the sheet header. */
-  readonly lookupToggle: HTMLElement;
   setTrees(trees: readonly ProtectedTree[]): void;
   /** Reports already on the map, used only for the nearby report check. */
   setReports(reports: readonly ReportRecord[]): void;
@@ -461,70 +452,6 @@ export function createReportForm(
   pickerHint.className = 'form-hint';
   pickerHint.textContent = strings.form.positionHint;
 
-  const lookupForm = document.createElement('form');
-  lookupForm.className = 'form-lookup';
-  lookupForm.id = 'form-lookup';
-  lookupForm.setAttribute('role', 'search');
-  lookupForm.noValidate = true;
-
-  const lookupLabel = document.createElement('label');
-  lookupLabel.className = 'form-label';
-  lookupLabel.htmlFor = 'report-lookup';
-  lookupLabel.textContent = strings.form.lookupLabel;
-
-  const lookupInput = document.createElement('input');
-  lookupInput.type = 'search';
-  lookupInput.id = 'report-lookup';
-  lookupInput.enterKeyHint = 'search';
-  lookupInput.autocomplete = 'off';
-  lookupInput.placeholder = strings.form.lookupPlaceholder;
-
-  const lookupButton = document.createElement('button');
-  lookupButton.type = 'submit';
-  lookupButton.className = 'form-secondary';
-  setIconLabel(lookupButton, Search, strings.form.lookupSubmit);
-
-  const lookupRow = document.createElement('div');
-  lookupRow.className = 'form-lookup-row';
-  lookupRow.append(lookupInput, lookupButton);
-
-  const lookupHint = document.createElement('p');
-  lookupHint.className = 'form-hint';
-  lookupHint.textContent = strings.form.lookupHint;
-
-  const lookupStatus = document.createElement('p');
-  lookupStatus.className = 'form-hint';
-  lookupStatus.setAttribute('role', 'status');
-  lookupStatus.hidden = true;
-
-  lookupForm.append(lookupLabel, lookupRow, lookupHint, lookupStatus);
-
-  const lookupToggle = document.createElement('button');
-  lookupToggle.type = 'button';
-  lookupToggle.className = 'chip';
-  setIconLabel(lookupToggle, Search, strings.form.lookupToggle);
-  lookupToggle.setAttribute('aria-controls', lookupForm.id);
-
-  /**
-   * The lookup is a detour most reporters never take, so it starts folded
-   * every time the sheet opens rather than remembering the last choice.
-   */
-  function setLookupOpen(open: boolean): void {
-    lookupForm.hidden = !open;
-    lookupToggle.setAttribute('aria-expanded', String(open));
-    if (open) {
-      lookupInput.focus();
-    } else {
-      lookupStatus.hidden = true;
-    }
-  }
-
-  setLookupOpen(false);
-
-  lookupToggle.addEventListener('click', () => {
-    setLookupOpen(lookupToggle.getAttribute('aria-expanded') !== 'true');
-  });
-
   const coordLine = document.createElement('p');
   coordLine.className = 'form-coords';
 
@@ -623,7 +550,6 @@ export function createReportForm(
 
   picker.append(
     pickerGuide,
-    lookupForm,
     coordLine,
     gateLine,
     nearbyHint,
@@ -937,11 +863,6 @@ export function createReportForm(
     mode = next;
     // A point already locked (an edit's stored location) survives re-entry.
     lockedView = next === 'form' ? (lockedView ?? options.getView()) : null;
-    // The lookup moves the map, which the locked point does not allow.
-    lookupToggle.hidden = next === 'form';
-    if (next === 'form') {
-      setLookupOpen(false);
-    }
     form.hidden = next !== 'form';
     if (next === 'form') {
       setIconLabel(modeButton, Crosshair, strings.form.toPicking);
@@ -1310,50 +1231,6 @@ export function createReportForm(
     render();
   });
 
-  function lookupMessage(outcome: LookupOutcome): string {
-    switch (outcome.kind) {
-      case 'point':
-        return strings.form.lookupPoint;
-      case 'pointOutside':
-        return strings.form.lookupPointOutside;
-      case 'tree':
-        return formatTemplate(strings.form.lookupTree, {
-          id: outcome.tree.id,
-          species: outcome.tree.species ?? strings.form.nearbyUnknownSpecies,
-        });
-      case 'treeMissing':
-        return formatTemplate(strings.form.lookupTreeMissing, { id: outcome.id });
-      case 'treesUnavailable':
-        return strings.form.lookupTreesUnavailable;
-      case 'unrecognised':
-        return strings.form.lookupUnrecognised;
-    }
-  }
-
-  function runLookup(): void {
-    const query = parseLookupQuery(lookupInput.value, bboxCentre(options.bbox));
-    if (query === null) {
-      return;
-    }
-    const outcome = lookupPlace(query, {
-      bbox: options.bbox,
-      findTree: (id) => trees.find((tree) => tree.id === id),
-      treesLoaded: trees.length > 0,
-    });
-    if (outcome.kind === 'point') {
-      options.moveTo(outcome, LOOKUP_ZOOM);
-    } else if (outcome.kind === 'tree') {
-      options.moveTo(outcome.tree, LOOKUP_ZOOM);
-    }
-    lookupStatus.hidden = false;
-    lookupStatus.textContent = lookupMessage(outcome);
-    render();
-  }
-
-  lookupForm.addEventListener('submit', (event) => {
-    event.preventDefault();
-    runLookup();
-  });
 
   againButton.addEventListener('click', () => {
     resetForm();
@@ -1415,7 +1292,6 @@ export function createReportForm(
     successPanel.hidden = false;
     picker.hidden = true;
     guideToggle.hidden = true;
-    lookupToggle.hidden = true;
     form.hidden = true;
     // The sheet is the scrolling element, and the form it replaces was
     // taller than the screen.
@@ -1430,7 +1306,6 @@ export function createReportForm(
     clearEditLinkFeedback();
     picker.hidden = false;
     guideToggle.hidden = false;
-    lookupToggle.hidden = mode === 'form';
   }
 
   function setEditing(next: EditLink | null): void {
@@ -1485,8 +1360,6 @@ export function createReportForm(
     observedInput.value = '';
     protectedInput.value = '';
     inventoryInput.value = '';
-    lookupInput.value = '';
-    lookupStatus.hidden = true;
     linkDomain.hidden = true;
     noteStripped.hidden = true;
     resultLine.hidden = true;
@@ -1652,7 +1525,6 @@ export function createReportForm(
 
   return {
     guideToggle,
-    lookupToggle,
     setTrees(next) {
       trees = next;
       render();
@@ -1670,7 +1542,6 @@ export function createReportForm(
       }
       observedInput.max = taipeiDate(options.now());
       sameTree = null;
-      setLookupOpen(false);
       // An edit starts on its fields; the reader moves the point on purpose.
       setMode(editing === null ? 'picking' : 'form');
       render();

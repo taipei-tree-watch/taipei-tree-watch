@@ -229,10 +229,28 @@ body {
   cursor: pointer;
 }
 
-.map-control[aria-pressed='true'] {
+.map-control[aria-pressed='true'],
+.map-control[aria-expanded='true'] {
   background: var(--ink);
   border-color: var(--ink);
   color: var(--accent-ink);
+}
+
+/* The place lookup opens beside the button column, level with its top. */
+.place-lookup {
+  position: fixed;
+  top: calc(var(--topbar-height) + env(safe-area-inset-top) + 0.625rem);
+  right: calc(0.625rem + var(--map-controls-width) + 0.5rem);
+  z-index: 3;
+  width: min(20rem, calc(100vw - var(--map-controls-width) - 1.75rem));
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.place-lookup .form-hint {
+  margin-bottom: 0;
 }
 
 .map-control:disabled {
@@ -804,9 +822,6 @@ body {
   resize: vertical;
 }
 
-.form-lookup {
-  margin-top: 0.625rem;
-}
 
 .form-lookup-row {
   display: flex;
@@ -822,6 +837,10 @@ body {
 
 .form-lookup-row .form-secondary {
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 0.625rem;
 }
 
 .form-hint {
@@ -1154,6 +1173,10 @@ body {
   /* The sheet column covers the right edge, so the buttons move to its side. */
   body:has(> .sheet:not([hidden])) .map-controls {
     right: calc(var(--panel-width) + 0.625rem);
+  }
+
+  body:has(> .sheet:not([hidden])) .place-lookup {
+    right: calc(var(--panel-width) + 0.625rem + var(--map-controls-width) + 0.5rem);
   }
 
   body:has(> .sheet:not([hidden])) .status-bar {

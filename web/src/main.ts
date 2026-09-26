@@ -20,7 +20,7 @@ import type { ProtectedTree } from './data/trees.ts';
 import { loadMapData } from './data/load.ts';
 import type { FilterState } from './filters.ts';
 import { applyFilters, emptyFilterState } from './filters.ts';
-import { Funnel, Info, Layers, List, LocateFixed, MapPin, setIconLabel } from './icons.ts';
+import { Funnel, Info, Layers, List, LocateFixed, MapPin, Search, setIconLabel } from './icons.ts';
 import type { MapController } from './map/index.ts';
 import type { EditLink, PermalinkTarget } from './permalink.ts';
 import {
@@ -54,6 +54,7 @@ import { createInfoPanel } from './ui/info-panel.ts';
 import { createMyReportsPanel } from './ui/my-reports-panel.ts';
 import { pinToVisualViewport } from './ui/pinned-chrome.ts';
 import type { ReportForm } from './ui/report-form.ts';
+import { createPlaceLookup } from './ui/place-lookup.ts';
 import { createReportForm } from './ui/report-form.ts';
 import { createReportSheet } from './ui/report-sheet.ts';
 import { createStatusBar } from './ui/status-bar.ts';
@@ -77,6 +78,7 @@ const infoToggle = required<HTMLButtonElement>('#info-toggle');
 const orthoToggle = required<HTMLButtonElement>('#ortho-toggle');
 const reportToggle = required<HTMLButtonElement>('#report-toggle');
 const locateMapButton = required<HTMLButtonElement>('#locate-map');
+const lookupMapButton = required<HTMLButtonElement>('#lookup-map');
 
 // Lives in the report sheet header rather than the top bar, which has no
 // room left on a phone.
@@ -93,6 +95,7 @@ setIconLabel(mineToggle, List, strings.sheet.mine);
 setIconLabel(orthoToggle, Layers, strings.map.ortho);
 setIconLabel(reportToggle, MapPin, strings.topbar.report);
 setIconLabel(locateMapButton, LocateFixed, strings.map.locate);
+setIconLabel(lookupMapButton, Search, strings.lookup.toggle);
 
 // A pinched phone browser would otherwise leave the bar off screen with no
 // way to scroll it back, which takes every control with it.
@@ -357,6 +360,16 @@ function runMapLocate(): void {
 
 locateMapButton.addEventListener('click', runMapLocate);
 
+/** Like GPS, a looked-up place only moves the camera. */
+const placeLookup = createPlaceLookup(lookupMapButton, required('#place-lookup'), {
+  bbox: REPORT_BBOX,
+  getTrees: () => trees,
+  moveTo(point, zoom) {
+    const controller = mapController;
+    controller?.flyTo(point, Math.max(controller.getZoom(), zoom));
+  },
+});
+
 /**
  * A report started from a protected tree card: the sheet opens with the tree
  * already linked and the map flies to it close enough to submit. The point is
@@ -383,6 +396,7 @@ function reportOnTree(tree: ProtectedTree): void {
 function setMapFrozen(frozen: boolean): void {
   mapController?.setInteractive(!frozen);
   locateMapButton.hidden = frozen;
+  placeLookup.setAvailable(!frozen);
 }
 
 reportToggle.addEventListener('click', () => {
@@ -587,9 +601,6 @@ async function start(): Promise<void> {
   reportForm = createReportForm(reportSheet.contentElement, {
     getView: () => ({ ...controller.getCenter(), zoom: controller.getZoom() }),
     bbox: REPORT_BBOX,
-    moveTo(point, zoom) {
-      controller.flyTo(point, Math.max(controller.getZoom(), zoom));
-    },
     onPendingReport(entry) {
       pendingReports = addPending(storage, entry, new Date());
       refresh(filterPanel?.getState() ?? emptyFilterState());
@@ -621,7 +632,7 @@ async function start(): Promise<void> {
     // column and has room for the instructions.
     guideOpen: window.matchMedia('(min-width: 768px)').matches,
   });
-  reportSheet.headerSlot.prepend(reportForm.lookupToggle, reportForm.guideToggle);
+  reportSheet.headerSlot.prepend(reportForm.guideToggle);
   reportForm.setTrees(trees);
   reportForm.setReports(reports);
 
