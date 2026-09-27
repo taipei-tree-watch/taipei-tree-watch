@@ -52,7 +52,7 @@ import type { FilterPanel } from './ui/filter-panel.ts';
 import { createFilterPanel } from './ui/filter-panel.ts';
 import { createInfoPanel } from './ui/info-panel.ts';
 import { createMyReportsPanel } from './ui/my-reports-panel.ts';
-import { pinToVisualViewport } from './ui/pinned-chrome.ts';
+import { blockPagePinch, pinToVisualViewport } from './ui/pinned-chrome.ts';
 import type { ReportForm } from './ui/report-form.ts';
 import { createPlaceLookup } from './ui/place-lookup.ts';
 import { createReportForm } from './ui/report-form.ts';
@@ -100,6 +100,7 @@ setIconLabel(lookupMapButton, Search, strings.lookup.toggle);
 // A pinched phone browser would otherwise leave the bar off screen with no
 // way to scroll it back, which takes every control with it.
 pinToVisualViewport(required<HTMLElement>('.topbar'));
+blockPagePinch(document);
 
 const statusBar = createStatusBar(required('#status-bar'));
 

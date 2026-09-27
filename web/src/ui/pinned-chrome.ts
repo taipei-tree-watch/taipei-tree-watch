@@ -57,3 +57,19 @@ export function pinToVisualViewport(element: HTMLElement): void {
   viewport.addEventListener('scroll', sync);
   sync();
 }
+
+/**
+ * Stop Safari's own pinch gesture on the page. iOS ignores user-scalable=no
+ * in the viewport meta, and gesturestart is the Safari-only event behind the
+ * page zoom. MapLibre pinches the map from touch events, which this leaves
+ * untouched.
+ */
+export function blockPagePinch(target: EventTarget): void {
+  target.addEventListener(
+    'gesturestart',
+    (event) => {
+      event.preventDefault();
+    },
+    { passive: false },
+  );
+}

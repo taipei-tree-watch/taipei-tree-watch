@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { chromeTransform } from '../src/ui/pinned-chrome.ts';
+import { blockPagePinch, chromeTransform } from '../src/ui/pinned-chrome.ts';
 
 describe('chromeTransform', () => {
   it('leaves an unzoomed viewport alone', () => {
@@ -28,5 +28,15 @@ describe('chromeTransform', () => {
   it('ignores a scale a browser could not mean', () => {
     expect(chromeTransform({ offsetLeft: 0, offsetTop: 10, scale: 0 })).toBe('');
     expect(chromeTransform({ offsetLeft: 0, offsetTop: 10, scale: Number.NaN })).toBe('');
+  });
+});
+
+describe('blockPagePinch', () => {
+  it("cancels Safari's page pinch", () => {
+    const target = new EventTarget();
+    blockPagePinch(target);
+    const event = new Event('gesturestart', { cancelable: true });
+    target.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
   });
 });
