@@ -8,7 +8,7 @@
 import { causes, dispositions, evidence, sources } from '../../../shared/tags.ts';
 import type { Tag } from '../../../shared/tags.ts';
 import type { FilterState } from '../filters.ts';
-import { NO_CAUSE_CODE, emptyFilterState } from '../filters.ts';
+import { NO_CAUSE_CODE, defaultFilterState } from '../filters.ts';
 import { formatTemplate } from '../format.ts';
 import { bucketColorVar, bucketForCause } from '../map/colors.ts';
 import { setIconOnly, X } from '../icons.ts';
@@ -59,6 +59,7 @@ function createCheckbox(
   input.type = 'checkbox';
   input.name = name;
   input.value = String(code);
+  input.checked = selected.has(code);
   input.addEventListener('change', () => {
     if (input.checked) {
       selected.add(code);
@@ -124,13 +125,14 @@ export function createFilterPanel(
   element: HTMLElement,
   onChange: (state: FilterState) => void,
 ): FilterPanel {
+  const initial = defaultFilterState();
   const selection: Selection = {
-    causes: new Set(),
-    dispositions: new Set(),
-    evidence: new Set(),
-    sources: new Set(),
-    observedFrom: null,
-    observedTo: null,
+    causes: new Set(initial.causes),
+    dispositions: new Set(initial.dispositions),
+    evidence: new Set(initial.evidence),
+    sources: new Set(initial.sources),
+    observedFrom: initial.observedFrom,
+    observedTo: initial.observedTo,
   };
 
   const readState = (): FilterState => ({
@@ -256,7 +258,9 @@ export function createFilterPanel(
   reset.className = 'filter-reset';
   reset.textContent = strings.filters.reset;
   reset.addEventListener('click', () => {
-    const cleared = emptyFilterState();
+    // Back to what the page opens with, not to an empty selection: the data
+    // source group starts on user reports only.
+    const cleared = defaultFilterState();
     selection.causes = new Set(cleared.causes);
     selection.dispositions = new Set(cleared.dispositions);
     selection.evidence = new Set(cleared.evidence);
@@ -265,8 +269,8 @@ export function createFilterPanel(
     selection.observedTo = null;
     fromInput.value = '';
     toInput.value = '';
-    for (const input of element.querySelectorAll('input[type=checkbox]')) {
-      (input as HTMLInputElement).checked = false;
+    for (const input of element.querySelectorAll<HTMLInputElement>('input[type=checkbox]')) {
+      input.checked = input.name === 'source' && cleared.sources.has(Number(input.value));
     }
     notify();
   });

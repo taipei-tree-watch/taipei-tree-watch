@@ -20,7 +20,7 @@ import type { ProtectedTree } from './data/trees.ts';
 import { loadMapData } from './data/load.ts';
 import { attachPlans } from './data/removal-plans.ts';
 import type { FilterState } from './filters.ts';
-import { applyFilters, emptyFilterState } from './filters.ts';
+import { applyFilters, defaultFilterState } from './filters.ts';
 import { Funnel, Info, Layers, List, LocateFixed, MapPin, Search, setIconLabel } from './icons.ts';
 import type { MapController } from './map/index.ts';
 import type { EditLink, PermalinkTarget } from './permalink.ts';
@@ -142,7 +142,7 @@ const detailCard = createDetailCard(required('#detail-card'), {
     addressFor(target);
     if (target === null && pinnedReportId !== null) {
       pinnedReportId = null;
-      refresh(filterPanel?.getState() ?? emptyFilterState());
+      refresh(filterPanel?.getState() ?? defaultFilterState());
     }
   },
   onReportTree: reportOnTree,
@@ -498,7 +498,7 @@ function openInitialTarget(quiet: boolean): void {
       return;
     }
     pinnedReportId = report.id;
-    refresh(filterPanel?.getState() ?? emptyFilterState());
+    refresh(filterPanel?.getState() ?? defaultFilterState());
     focusOn(report.lat, report.lng);
     detailCard.showReport(report);
     return;
@@ -561,7 +561,7 @@ async function load(): Promise<void> {
     infoPanel.setProtectedTreesFetchedAt(result.trees.fetchedAt);
   }
 
-  refresh(filterPanel?.getState() ?? emptyFilterState());
+  refresh(filterPanel?.getState() ?? defaultFilterState());
 
   if (result.snapshotFailed && result.treesFailed) {
     statusBar.showError(strings.status.bothFailed, () => void load());
@@ -605,7 +605,7 @@ async function start(): Promise<void> {
     bbox: REPORT_BBOX,
     onPendingReport(entry) {
       pendingReports = addPending(storage, entry, new Date());
-      refresh(filterPanel?.getState() ?? emptyFilterState());
+      refresh(filterPanel?.getState() ?? defaultFilterState());
     },
     onModeChange(mode) {
       setMapFrozen(mode === 'form');

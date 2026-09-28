@@ -6,6 +6,7 @@
  * dimensions. Nothing here touches the DOM, so the rules are testable on
  * their own and the panel only has to hand over a state object.
  */
+import { USER_REPORT_SOURCE_CODE } from '../../shared/tags.ts';
 import type { ReportRecord } from './data/snapshot.ts';
 
 /**
@@ -34,6 +35,15 @@ export function emptyFilterState(): FilterState {
     observedFrom: null,
     observedTo: null,
   };
+}
+
+/**
+ * What the map shows before the reader touches the panel: user reports only.
+ * Imported official records, such as plan trees, are opt in through the data
+ * source group, so a first look at the map is what people saw on site.
+ */
+export function defaultFilterState(): FilterState {
+  return { ...emptyFilterState(), sources: new Set([USER_REPORT_SOURCE_CODE]) };
 }
 
 export function isFilterActive(state: FilterState): boolean {

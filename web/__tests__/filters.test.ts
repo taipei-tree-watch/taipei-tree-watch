@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import type { ReportRecord } from '../src/data/snapshot.ts';
 import type { FilterState } from '../src/filters.ts';
-import { NO_CAUSE_CODE, applyFilters, emptyFilterState, isFilterActive, matchesFilters } from '../src/filters.ts';
+import {
+  NO_CAUSE_CODE,
+  applyFilters,
+  defaultFilterState,
+  emptyFilterState,
+  isFilterActive,
+  matchesFilters,
+} from '../src/filters.ts';
 
 function report(overrides: Partial<ReportRecord> = {}): ReportRecord {
   return {
@@ -33,6 +40,15 @@ describe('isFilterActive', () => {
     expect(isFilterActive(emptyFilterState())).toBe(false);
     expect(isFilterActive(state({ causes: new Set([1]) }))).toBe(true);
     expect(isFilterActive(state({ observedTo: '2026-01-01' }))).toBe(true);
+  });
+});
+
+describe('defaultFilterState', () => {
+  it('shows user reports only until the reader opts in to official records', () => {
+    const initial = defaultFilterState();
+    expect(isFilterActive(initial)).toBe(true);
+    expect(matchesFilters(report({ source: 1 }), initial)).toBe(true);
+    expect(matchesFilters(report({ source: 3 }), initial)).toBe(false);
   });
 });
 
