@@ -1,7 +1,7 @@
 /**
  * Emit the shared TypeScript definitions as JSON under shared/generated/ so the
- * Python pipelines can read the same tag codes, domain whitelist and snapshot
- * layout without a TypeScript toolchain.
+ * Python pipelines can read the same tag codes, domain whitelist, snapshot
+ * layout and field limits without a TypeScript toolchain.
  *
  * Output is deterministic (same input, same bytes) and committed to git.
  * Run with: npm run build:shared
@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { LINK_DOMAINS } from '../shared/domains.ts';
 import { SNAPSHOT_COLUMNS, SNAPSHOT_SCHEMA } from '../shared/snapshot.ts';
 import { DEFAULT_EVIDENCE_CODE, USER_REPORT_SOURCE_CODE, tags } from '../shared/tags.ts';
+import { COORDINATE_DECIMALS, NOTE_MAX_CHARS, SPECIES_MAX_CHARS } from '../shared/validation.ts';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const outDir = join(repoRoot, 'shared', 'generated');
@@ -27,6 +28,11 @@ const outputs: Record<string, unknown> = {
   },
   'domains.json': { domains: LINK_DOMAINS },
   'snapshot.json': { schema: SNAPSHOT_SCHEMA, columns: SNAPSHOT_COLUMNS },
+  'validation.json': {
+    species_max_chars: SPECIES_MAX_CHARS,
+    note_max_chars: NOTE_MAX_CHARS,
+    coordinate_decimals: COORDINATE_DECIMALS,
+  },
 };
 
 mkdirSync(outDir, { recursive: true });

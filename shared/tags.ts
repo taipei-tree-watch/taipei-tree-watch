@@ -81,6 +81,9 @@ export const DEFAULT_EVIDENCE_CODE = 6 satisfies EvidenceCode;
 /** Every report created through the public API carries this source; the server enforces it. */
 export const USER_REPORT_SOURCE_CODE = 1 satisfies SourceCode;
 
+/** Reports imported from the Parks Office removal and transplant plans. */
+export const REMOVAL_PLAN_SOURCE_CODE = 3 satisfies SourceCode;
+
 /** Evidence codes under which causes must stay empty: nothing on site states a cause. */
 export const EVIDENCE_CODES_WITHOUT_CAUSES = [6] as const satisfies readonly EvidenceCode[];
 

@@ -14,6 +14,7 @@ import type {
   SourceCode,
 } from '../../../shared/tags.ts';
 import type { Row } from './columns.ts';
+import type { RemovalPlanRef } from './removal-plans.ts';
 import {
   DecodeError,
   asCodes,
@@ -45,6 +46,11 @@ export interface ReportRecord {
    * yet. The decoder never sets it; it comes from report/pending.ts.
    */
   readonly pending?: boolean;
+  /**
+   * The Parks Office plan an imported plan tree comes from. The decoder never
+   * sets it; it comes from removal-plans.ts once that file has loaded.
+   */
+  readonly plan?: RemovalPlanRef;
 }
 
 export interface DecodedSnapshot {

@@ -9,6 +9,7 @@ installed in editable mode by `uv sync`).
 from __future__ import annotations
 
 import json
+import tomllib
 from functools import cache
 from pathlib import Path
 from typing import Any, TypedDict
@@ -59,3 +60,25 @@ def load_link_domains() -> list[str]:
 def load_snapshot_layout() -> dict[str, Any]:
     """Return the snapshot schema version and column order from snapshot.json."""
     return _read_json("snapshot.json")
+
+
+@cache
+def load_validation_limits() -> dict[str, int]:
+    """Return the field limits from validation.json (species and note length, decimals)."""
+    return _read_json("validation.json")
+
+
+@cache
+def load_bbox() -> tuple[float, float, float, float]:
+    """Return the accepted report area as (min_lng, min_lat, max_lng, max_lat).
+
+    The BBOX var in wrangler.toml is the value the Worker enforces on every
+    report, so an import that places points outside it would put rows on the
+    map that no user could have submitted.
+    """
+    with (REPO_ROOT / "wrangler.toml").open("rb") as handle:
+        config = tomllib.load(handle)
+    parts = [float(part) for part in config["vars"]["BBOX"].split(",")]
+    if len(parts) != 4:
+        raise ValueError(f"BBOX must have four numbers: {config['vars']['BBOX']}")
+    return (parts[0], parts[1], parts[2], parts[3])

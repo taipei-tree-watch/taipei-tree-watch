@@ -24,6 +24,7 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 
 import { ACTIVE_ORTHO, BASE_MAP, INITIAL_VIEW, MAP_ATTRIBUTION } from '../basemaps.ts';
 import type { ReportRecord } from '../data/snapshot.ts';
+import { REMOVAL_PLAN_SOURCE_CODE } from '../../../shared/tags.ts';
 import type { ProtectedTree } from '../data/trees.ts';
 import type { MapPalette } from './colors.ts';
 import { bucketForCauses, paletteFor } from './colors.ts';
@@ -124,10 +125,30 @@ function bucketColorExpression(palette: MapPalette): ExpressionSpecification {
   ];
 }
 
+/**
+ * A plan tree is drawn as a ring: its cause colour moves to the edge and the
+ * inside takes the halo colour. Nobody has seen it removed yet, so it must not
+ * look like the solid points that record what someone saw.
+ */
+function reportFillExpression(palette: MapPalette): ExpressionSpecification {
+  return ['case', ['get', 'planned'], palette.halo, bucketColorExpression(palette)];
+}
+
 /** Stroke that separates a point from the map, darker for a pending point. */
 function strokeColorExpression(palette: MapPalette): ExpressionSpecification {
-  return ['case', ['get', 'pending'], palette.pendingStroke, palette.halo];
+  return [
+    'case',
+    ['get', 'pending'],
+    palette.pendingStroke,
+    ['get', 'planned'],
+    bucketColorExpression(palette),
+    palette.halo,
+  ];
 }
+
+/** Wide enough for a plan tree's ring to carry its cause colour. */
+const PLANNED_STROKE_PX = 3;
+const REPORT_STROKE_PX = 1.5;
 
 /** Gap between a pending point's edge and the outer ring drawn around it. */
 const PENDING_RING_GAP_PX = 3;
@@ -253,9 +274,9 @@ function buildStyle(scheme: ColorScheme): StyleSpecification {
         source: REPORTS_SOURCE,
         filter: ['!', ['has', 'point_count']],
         paint: {
-          'circle-color': bucketColorExpression(palette),
+          'circle-color': reportFillExpression(palette),
           'circle-opacity': ['case', ['get', 'pending'], 0.5, 1],
-          'circle-stroke-width': 1.5,
+          'circle-stroke-width': ['case', ['get', 'planned'], PLANNED_STROKE_PX, REPORT_STROKE_PX],
           'circle-stroke-color': strokeColorExpression(palette),
           'circle-radius': reportRadiusExpression(),
         },
@@ -273,6 +294,7 @@ function reportFeature(report: ReportRecord): Feature<Point> {
       id: report.id,
       bucket,
       pending: report.pending === true,
+      planned: report.source === REMOVAL_PLAN_SOURCE_CODE,
     },
   };
 }
@@ -470,7 +492,7 @@ export function createMapController(
         map.setPaintProperty(LAYER_IDS.trees, 'circle-color', palette.protectedTree);
         map.setPaintProperty(LAYER_IDS.clusters, 'circle-color', clusterColorExpression(palette));
         map.setPaintProperty(LAYER_IDS.clusters, 'circle-stroke-color', palette.halo);
-        map.setPaintProperty(LAYER_IDS.reports, 'circle-color', bucketColorExpression(palette));
+        map.setPaintProperty(LAYER_IDS.reports, 'circle-color', reportFillExpression(palette));
         map.setPaintProperty(LAYER_IDS.reports, 'circle-stroke-color', strokeColorExpression(palette));
         map.setPaintProperty(LAYER_IDS.pendingRing, 'circle-stroke-color', palette.pendingStroke);
       };

@@ -64,7 +64,7 @@
 ### E1.5 前端地圖與圖層
 - MapLibre 初始化、NLSC 底圖、都發局正射（預設關）、attribution
 - 載入 `/api/snapshot` 與 `/trees.json`，兩層渲染，回報點依原因著色與 cluster
-- 篩選面板：原因、處置、證據來源、日期範圍（目前只有使用者回報一種資料來源，資料來源篩選等 E2.3 匯入官方紀錄時再加）
+- 篩選面板：原因、處置、證據來源、資料來源、日期範圍（資料來源篩選在 E2.5 匯入公園處計畫書時加回）
 - 點擊回報顯示卡片：措辭依 SPEC 第 8 節，連結顯示網域、nofollow
 - 說明區塊沿用 `web/src/content/` 六個片段（E1.7 已寫好），重排版面即可；attribution 的顯名年份改由 `trees.json` 的 `fetched_at` 帶入，不寫死
 - 完成條件：手機與桌面各檢查一次；Lighthouse 行動版 FCP 低於 2 秒且 CLS 低於 0.1（performance 分數只記錄，理由見 TECH-SPEC 第 12 節）
@@ -141,6 +141,13 @@
 - `pipeline-delisting.yml`：每週跑，commit JSON，`wrangler d1 execute --remote --file import.sql`
 - 前端：資料來源篩選可切「只看官方紀錄」；卡片標示「來源：臺北市樹木保護委員會 第 N 屆第 M 次會議」並連到原 PDF
 - 完成條件：remote D1 有官方紀錄列且快照含之；`pending.json` 數量與比例寫進 `RESEARCH.md`
+
+### E2.5 公園處移除與移植計畫書匯入
+- `removal-plans` 管線：整理人工抽取的 2026 年 23 案逐株 CSV 成 `data/removal-plans/plans.json`，只取移除與移植；產出 `import.sql`、`index.json`、`pending.json`、`review.json`（TECH-SPEC 第 4.2.1 節）
+- 前端：加回資料來源篩選與卡片的資料來源列；計畫樹畫成空心圓，卡片開頭說明「不代表已經移除」，並列計畫狀態與計畫處置
+- 完成條件：remote D1 有計畫樹且快照含之；`pending.json` 的數量寫進 TECH-SPEC
+- 狀態（2026-09-28）：有座標的 291 株（CF760 移除案 216、文景 28 號綠地移除 71 與移植 3、仁愛國中 1）匯入；1,514 株進 `pending.json`。本機 D1 匯入兩次確認不重複，瀏覽器確認環形點位、篩選與卡片
+- 後續：以 `tree_tag` 對公園處清冊補座標，寫進 `coordinates.json` 後重跑；再視剩下的數量決定是否用地點文字定位
 
 ### E2.4 待定位處理（視 E2.3 數量決定）
 - 若 `pending.json` 佔比高：評估 NLSC 門牌定位 API 對「地址」欄的命中率，僅對門牌級地址做地理編碼，描述型地點不做

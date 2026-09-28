@@ -19,3 +19,32 @@ When `trees.json` already exists, the tree id sets are compared and the differen
 Output is byte-stable for identical input, so a rerun produces an empty git diff unless the source data moved. The first release refreshes the dataset by hand: download the CSV with curl, run the command with `--input`, and commit `trees.json` together with any `changes/` file. Scheduled runs are deferred until the data.taipei TLS issue noted in docs/TECH-SPEC.md section 12 is resolved.
 
 The dataset is published under the Open Government Data License v1; the site must credit the provider, year and dataset name.
+
+## `removal-plans`
+
+```
+uv run ttw-pipelines removal-plans [--input <dir>] [--out data/removal-plans]
+```
+
+Turns the Parks Office tree removal and transplant plans (pkl.gov.taipei review pages) into report rows. The per-tree tables are extracted from the plan PDFs by hand into `trees_2026.csv` and `cases_2026.csv`, which stay outside the repo; `--input` names the directory holding them and rewrites `plans.json` from them. Without `--input` the committed `plans.json` is rebuilt, which is what a coordinate update needs.
+
+`plans.json` keeps every tree a plan removes or transplants, with the plan's own wording, plus one entry per case with its title, review status (`approved`, `under_review`, `unclear`) and posting date. Trees the plans retain, or mark as already felled or dead, are left out.
+
+The build writes, all byte-stable for identical input:
+
+- `import.sql`: one `INSERT OR IGNORE` per tree with a usable point, `source` = removal plan, `evidence` = official document. Run it with `wrangler d1 execute --remote --file` after deploying (docs/DEPLOY.md section 4.1); rows already imported are skipped through the unique index on `external_ref`.
+- `index.json`: case title, status and page per report id, shipped as `/removal-plans.json` for the detail card.
+- `pending.json`: trees without a usable point, columns `external_ref, case, plan_no, tree_tag, species, action, location, why`; `why` is `no-coordinate`, `placeholder-coordinate` or `outside-bbox`.
+- `review.json`: trees of one case sharing the exact same point, and trees listed by two plans (only one of each pair is imported).
+
+`external_ref` is `pkl:<case>:<pdf index>:<plan number>`, and the report id is a ULID derived from it and the posting date, so reruns and re-imports never duplicate a tree. TWD97 coordinates (EPSG:3826) are converted with pyproj and rounded to 5 decimals; points outside the `BBOX` in `wrangler.toml` are not placed.
+
+To place pending trees later, write `coordinates.json` next to the other files:
+
+```json
+{"schema": 1, "coordinates": {"pkl:<case>:<pdf>:<plan no>": {"lat": 25.0, "lng": 121.5, "via": "inventory"}}}
+```
+
+`via` is `inventory` (joined on `tree_tag` against the Parks Office inventory) or `geocode` (from the location text); the note on the card says which. A coordinate printed in the plan always wins. Rebuild, commit, and import the new `import.sql`.
+
+Field mapping, cause keywords and the reasoning behind them are in docs/TECH-SPEC.md section 4.2.1.

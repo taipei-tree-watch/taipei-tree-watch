@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from ttw_pipelines import protected_trees
+from ttw_pipelines import protected_trees, removal_plans
 
 
 def _run_protected_trees(args: argparse.Namespace) -> int:
@@ -18,6 +18,20 @@ def _run_protected_trees(args: argparse.Namespace) -> int:
             f"wrote {summary['changes_path']}: "
             f"{summary['added']} added, {summary['removed']} removed"
         )
+    return 0
+
+
+def _run_removal_plans(args: argparse.Namespace) -> int:
+    summary = removal_plans.run(out_dir=args.out, input_dir=args.input)
+    print(
+        f"wrote {summary['out_dir']}: {summary['trees']} planned trees, "
+        f"{summary['imported']} placed, {summary['pending']} pending, "
+        f"{summary['covered']} listed twice"
+    )
+    for reason, count in sorted(summary["pending_by_reason"].items()):
+        print(f"pending {reason}: {count}")
+    if summary["shared_coordinates"]:
+        print(f"points shared by more than one tree: {summary['shared_coordinates']} (review.json)")
     return 0
 
 
@@ -44,6 +58,27 @@ def build_parser() -> argparse.ArgumentParser:
         help="read this local CSV instead of downloading (offline runs)",
     )
     trees.set_defaults(handler=_run_protected_trees)
+
+    plans = subparsers.add_parser(
+        "removal-plans",
+        help="Turn the Parks Office removal and transplant plans into report rows and import.sql",
+    )
+    plans.add_argument(
+        "--out",
+        type=Path,
+        default=removal_plans.DEFAULT_OUT_DIR,
+        help="output directory (default: data/removal-plans in the checkout)",
+    )
+    plans.add_argument(
+        "--input",
+        type=Path,
+        default=None,
+        help=(
+            "directory holding the extraction CSVs; rewrites plans.json from them "
+            "(without it, the committed plans.json is rebuilt)"
+        ),
+    )
+    plans.set_defaults(handler=_run_removal_plans)
 
     return parser
 

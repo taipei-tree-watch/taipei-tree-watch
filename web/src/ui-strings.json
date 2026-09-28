@@ -19,6 +19,8 @@
     "causes": "原因",
     "dispositions": "處置",
     "evidence": "參考來源",
+    "sources": "資料來源",
+    "plannedHint": "空心圓是公園處計畫書列出的樹，只代表計畫要移除或移植，不代表已經動工。",
     "observed": "發現日期",
     "observedFrom": "起",
     "observedTo": "迄",
@@ -32,10 +34,19 @@
     "reportTitle": "回報",
     "treeTitle": "受保護樹木",
     "noticeReason": "此處的公告記載原因為{causes}。",
+    "planReason": "計畫書記載的原因為{causes}。",
+    "plannedRemove": "這棵樹列在公園處的移除計畫書上，計畫要移除，不代表已經移除。",
+    "plannedTransplant": "這棵樹列在公園處的移植計畫書上，計畫要移植，不代表已經移植。",
+    "plannedEither": "這棵樹列在公園處的計畫書上，計畫要移除或移植，不代表已經動工。",
     "causes": "原因",
     "dispositions": "處置",
     "evidence": "參考來源",
+    "source": "資料來源",
+    "sourcePlanValue": "{source} · {title}",
+    "planStatus": "計畫狀態",
+    "planAction": "計畫處置",
     "observedAt": "發現日期",
+    "postedAt": "上網日期",
     "note": "說明",
     "link": "參考連結",
     "protectedTree": "關聯受保護樹木",
@@ -54,6 +65,15 @@
     "listSeparator": "、",
     "edit": "修改這筆回報",
     "pending": "尚未公開：這個版本目前只有這個瀏覽器看得到，約 15 分鐘後其他人才會看到。"
+  },
+  "planStatus": {
+    "approved": "已核准",
+    "under_review": "審查中",
+    "unclear": "狀態不明"
+  },
+  "planAction": {
+    "remove": "計畫移除",
+    "transplant": "計畫移植"
   },
   "info": {
     "title": "說明與免責",

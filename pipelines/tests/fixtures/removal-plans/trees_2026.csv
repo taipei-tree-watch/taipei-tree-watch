@@ -1,0 +1,10 @@
+zone,title,status_guess,page_url,case,doc,page,plan_no,tree_tag,protected,species,height_m,dbh_cm,action,destination,reason,location,twd97_x,twd97_y,lat,lon,notes
+removal,t,unclear,u,removal_AAAA,raw/removal_AAAA_0.pdf,1,A10,sy1680021119,,黑板樹,8,50,remove,,主幹明顯腐朽，有傾倒之虞,信義區,307367,2769650,,,
+removal,t,unclear,u,removal_AAAA,raw/removal_AAAA_0.pdf,1,A9,,,榕樹,8,50,remove,,褐根病,信義區,307400,2769700,,,
+removal,t,unclear,u,removal_AAAA,raw/removal_AAAA_0.pdf,1,A11,,,樟樹,8,50,remove,,,信義區,,,,,no form
+removal,t,unclear,u,removal_AAAA,raw/removal_AAAA_2.pdf,1,216,,,小葉欖仁,8,50,remove,,生長勢劣,信義區,307541,2768553,,,
+removal,t,unclear,u,removal_AAAA,raw/removal_AAAA_2.pdf,1,254,,,榕樹,8,50,remove,,生長勢劣,信義區,307541,2768553,,,
+removal,t,unclear,u,removal_AAAA,raw/removal_AAAA_0.pdf,1,A12,,,榕樹,8,50,other,,颱風樹倒已砍除,信義區,,,,,
+transplant,t,approved,u,transplant_BBBB,raw/transplant_BBBB_0.pdf,1,T1,333501-126306,N,櫻花,7,26,transplant,園區基地內,配合工程需求,文山區,,,25.037522367,121.55049942,
+transplant,t,approved,u,transplant_BBBB,raw/transplant_BBBB_0.pdf,1,T2,,N,血桐,4,28,remove,,先驅樹種,文山區,305699,2765450,,,
+transplant,t,approved,u,transplant_BBBB,raw/transplant_BBBB_0.pdf,1,T3,,N,血桐,4,28,retain,,,文山區,305700,2765451,,,

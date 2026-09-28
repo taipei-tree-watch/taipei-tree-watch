@@ -26,9 +26,26 @@ function row(label: string, value: Node | string): HTMLDivElement {
   return line;
 }
 
+/** A new tab keeps the map where the reader left it. */
+function anchor(href: string, text: string): HTMLAnchorElement {
+  const element = document.createElement('a');
+  element.href = href;
+  element.textContent = text;
+  element.rel = 'nofollow noopener';
+  element.target = '_blank';
+  return element;
+}
+
 export function reportRows(report: ReportRecord): HTMLElement[] {
   const summary = reportSummary(report);
   const parts: HTMLElement[] = [];
+
+  if (summary.caveat !== null) {
+    const caveat = document.createElement('p');
+    caveat.className = 'card-notice card-planned';
+    caveat.textContent = summary.caveat;
+    parts.push(caveat);
+  }
 
   if (summary.notice !== null) {
     const sentence = document.createElement('p');
@@ -38,18 +55,13 @@ export function reportRows(report: ReportRecord): HTMLElement[] {
   }
 
   for (const entry of summary.rows) {
-    parts.push(row(entry.label, entry.value));
+    parts.push(row(entry.label, entry.href === undefined ? entry.value : anchor(entry.href, entry.value)));
   }
 
   if (summary.link !== null) {
     // The hostname stands in for the address, and nofollow leaves link spam
-    // nothing to gain. A new tab keeps the map where the reporter left it.
-    const anchor = document.createElement('a');
-    anchor.href = summary.link.href;
-    anchor.textContent = summary.link.hostname;
-    anchor.rel = 'nofollow noopener';
-    anchor.target = '_blank';
-    parts.push(row(strings.card.link, anchor));
+    // nothing to gain.
+    parts.push(row(strings.card.link, anchor(summary.link.href, summary.link.hostname)));
   }
 
   return parts;

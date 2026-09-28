@@ -203,11 +203,13 @@ def diff_documents(
     return {"added": added, "removed": removed}
 
 
-def dumps(document: dict[str, Any]) -> str:
+def dumps(
+    document: dict[str, Any], line_per_item_keys: frozenset[str] = _LINE_PER_ITEM_KEYS
+) -> str:
     """Serialise a document with one row per line, byte-identical for equal input."""
     parts = []
     for key, value in document.items():
-        if key in _LINE_PER_ITEM_KEYS and isinstance(value, list):
+        if key in line_per_item_keys and isinstance(value, list):
             items = [
                 json.dumps(item, ensure_ascii=False, separators=(",", ":")) for item in value
             ]

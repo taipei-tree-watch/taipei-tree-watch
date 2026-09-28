@@ -18,6 +18,7 @@ import { REPORT_BBOX } from './config.ts';
 import type { ReportRecord } from './data/snapshot.ts';
 import type { ProtectedTree } from './data/trees.ts';
 import { loadMapData } from './data/load.ts';
+import { attachPlans } from './data/removal-plans.ts';
 import type { FilterState } from './filters.ts';
 import { applyFilters, emptyFilterState } from './filters.ts';
 import { Funnel, Info, Layers, List, LocateFixed, MapPin, Search, setIconLabel } from './icons.ts';
@@ -535,7 +536,7 @@ async function load(): Promise<void> {
 
   if (result.snapshot !== null) {
     snapshotLoaded = true;
-    reports = result.snapshot.reports;
+    reports = attachPlans(result.snapshot.reports, result.removalPlans);
     reportsById.clear();
     for (const report of reports) {
       reportsById.set(report.id, report);

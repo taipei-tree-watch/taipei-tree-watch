@@ -5,7 +5,7 @@
  * any edit to this file. Filtering itself lives in filters.ts; the panel only
  * collects the selection and hands over a FilterState.
  */
-import { causes, dispositions, evidence } from '../../../shared/tags.ts';
+import { causes, dispositions, evidence, sources } from '../../../shared/tags.ts';
 import type { Tag } from '../../../shared/tags.ts';
 import type { FilterState } from '../filters.ts';
 import { NO_CAUSE_CODE, emptyFilterState } from '../filters.ts';
@@ -27,6 +27,7 @@ interface Selection {
   causes: Set<number>;
   dispositions: Set<number>;
   evidence: Set<number>;
+  sources: Set<number>;
   observedFrom: string | null;
   observedTo: string | null;
 }
@@ -127,6 +128,7 @@ export function createFilterPanel(
     causes: new Set(),
     dispositions: new Set(),
     evidence: new Set(),
+    sources: new Set(),
     observedFrom: null,
     observedTo: null,
   };
@@ -135,6 +137,7 @@ export function createFilterPanel(
     causes: new Set(selection.causes),
     dispositions: new Set(selection.dispositions),
     evidence: new Set(selection.evidence),
+    sources: new Set(selection.sources),
     observedFrom: selection.observedFrom,
     observedTo: selection.observedTo,
   });
@@ -189,6 +192,22 @@ export function createFilterPanel(
     ),
   );
 
+  const sourceGroup = createGroup(
+    strings.filters.sources,
+    'source',
+    toOptions(sources),
+    selection.sources,
+    false,
+    notify,
+  );
+  // The map draws plan trees as rings; the legend for that sits with the
+  // filter that isolates them.
+  const sourceHint = document.createElement('p');
+  sourceHint.className = 'filter-hint';
+  sourceHint.textContent = strings.filters.plannedHint;
+  sourceGroup.append(sourceHint);
+  body.append(sourceGroup);
+
   const dateGroup = document.createElement('fieldset');
   dateGroup.className = 'filter-group';
   const dateLegend = document.createElement('legend');
@@ -241,6 +260,7 @@ export function createFilterPanel(
     selection.causes = new Set(cleared.causes);
     selection.dispositions = new Set(cleared.dispositions);
     selection.evidence = new Set(cleared.evidence);
+    selection.sources = new Set(cleared.sources);
     selection.observedFrom = null;
     selection.observedTo = null;
     fromInput.value = '';

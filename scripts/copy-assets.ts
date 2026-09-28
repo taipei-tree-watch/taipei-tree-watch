@@ -2,7 +2,7 @@
  * Copy pipeline output into web/public/ so Vite ships it as a static asset.
  *
  * The files under data/ are produced by the Python pipelines and committed to
- * the repo; web/public/trees.json is a build product and is gitignored.
+ * the repo; their copies under web/public/ are build products and are gitignored.
  * Run with: npm run build:assets
  */
 import { copyFileSync, mkdirSync } from 'node:fs';
@@ -13,6 +13,7 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 const assets: Array<[string, string]> = [
   [join('data', 'protected-trees', 'trees.json'), join('web', 'public', 'trees.json')],
+  [join('data', 'removal-plans', 'index.json'), join('web', 'public', 'removal-plans.json')],
 ];
 
 for (const [from, to] of assets) {

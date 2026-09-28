@@ -1,0 +1,5 @@
+{
+  "species_max_chars": 50,
+  "note_max_chars": 300,
+  "coordinate_decimals": 5
+}

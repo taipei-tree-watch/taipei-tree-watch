@@ -3,6 +3,7 @@ workdocs/
 node_modules/
 web/dist/
 web/public/trees.json
+web/public/removal-plans.json
 .wrangler/
 pipelines/.venv/
 pipelines/.cache/

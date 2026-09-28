@@ -497,7 +497,8 @@ body {
   font-size: 0.9375rem;
 }
 
-.card-pending {
+.card-pending,
+.card-planned {
   border-left-color: var(--ink-muted);
 }
 

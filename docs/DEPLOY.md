@@ -12,6 +12,7 @@
 | 查 migration | `npx wrangler d1 migrations list taipei-tree-watch --remote` | 每次 |
 | 套 migration | `npx wrangler d1 migrations apply taipei-tree-watch --remote` | 上一步列出待套用項目時 |
 | 部署 | `npm run deploy` | 每次 |
+| 匯入官方紀錄 | `npx wrangler d1 execute taipei-tree-watch --remote --file data/removal-plans/import.sql` | `import.sql` 這次有變動時，見第 4.1 節 |
 | 驗證 | 見第 5 節 | 每次 |
 
 凡是帶 `--remote` 的 wrangler 指令與 `npm run deploy` 都需要 Cloudflare 憑證，帶法見第 2 節。
@@ -71,6 +72,22 @@ grep -E "Tests  |Uploaded|Deployed|workers.dev|Version ID|ERROR" deploy.log
 - 某個元件新增了必填選項，但其他測試檔自己的 options helper 沒補上，typecheck 會失敗。
 - 頁面上新增了一個 `<form>`，既有測試用 `querySelector('form')` 抓到的就變成另一個表單。選擇器要寫得夠具體，例如 `form.form-fields`。
 - `theme-tokens.test.ts` 不允許在規則裡直接寫顏色值。顏色要寫成 `:root` 的 token，深色主題也要重新定義一次。
+
+### 4.1 匯入官方紀錄
+
+官方紀錄由管線產生 `import.sql`（目前只有 `data/removal-plans/import.sql`），每行一筆 `INSERT OR IGNORE`，已匯入的列以 `external_ref` 跳過，所以重跑是安全的。**先部署，再匯入**：新版前端認得這些列（空心圓、卡片上的計畫資訊），舊版前端會把它們畫成一般回報。
+
+```bash
+npx wrangler d1 execute taipei-tree-watch --remote --file data/removal-plans/import.sql
+```
+
+這會寫進正式資料庫。匯入後確認筆數：
+
+```bash
+npx wrangler d1 execute taipei-tree-watch --remote --command "SELECT source, count(*) FROM reports GROUP BY source"
+```
+
+下一次 cron（最多 15 分鐘）才會把它們放進快照。
 
 ## 5. 上線驗證
 

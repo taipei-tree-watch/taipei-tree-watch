@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { EVIDENCE_CODES_WITHOUT_CAUSES, USER_REPORT_SOURCE_CODE } from '../../shared/tags.ts';
+import {
+  EVIDENCE_CODES_WITHOUT_CAUSES,
+  REMOVAL_PLAN_SOURCE_CODE,
+  USER_REPORT_SOURCE_CODE,
+  causes,
+  sources,
+} from '../../shared/tags.ts';
+import type { Tag } from '../../shared/tags.ts';
+import type { RemovalPlanRef } from '../src/data/removal-plans.ts';
 import type { ReportRecord } from '../src/data/snapshot.ts';
+import { formatTemplate } from '../src/format.ts';
 import { reportSummary } from '../src/report/summary.ts';
 import strings from '../src/ui-strings.json';
 
@@ -31,14 +40,28 @@ function report(overrides: Partial<ReportRecord> = {}): ReportRecord {
   } as ReportRecord;
 }
 
+function labelOf(tags: readonly Tag[], code: number): string {
+  const tag = tags.find((entry) => entry.code === code);
+  if (tag === undefined) {
+    throw new Error(`no tag ${String(code)}`);
+  }
+  return tag.label;
+}
+
 function labels(record: ReportRecord): string[] {
   return reportSummary(record).rows.map((row) => row.label);
 }
 
 describe('reportSummary', () => {
   it('leaves out every field that was not filled in', () => {
-    // The reference source is always known.
-    expect(labels(report())).toEqual([strings.card.evidence]);
+    // The reference source and the data source are always known.
+    expect(labels(report())).toEqual([strings.card.evidence, strings.card.source]);
+  });
+
+  it('names the data source of a user report', () => {
+    const row = reportSummary(report()).rows.find((entry) => entry.label === strings.card.source);
+    expect(row).toEqual({ label: strings.card.source, value: labelOf(sources, USER_REPORT_SOURCE_CODE) });
+    expect(reportSummary(report()).caveat).toBeNull();
   });
 
   it('keeps the rows in the order the card reads them', () => {
@@ -50,7 +73,7 @@ describe('reportSummary', () => {
       observedAt: '2026-09-01',
       protectedTreeId: '1234',
     });
-    expect(labels(full)).toHaveLength(7);
+    expect(labels(full)).toHaveLength(8);
     expect(labels(full)[0]).toBe(reportSummary(report({ species: 'A' })).rows[0]?.label);
   });
 
@@ -86,5 +109,78 @@ describe('reportSummary', () => {
     const summary = reportSummary(report({ causes: [9999] as unknown as ReportRecord['causes'] }));
     expect(summary.rows.some((row) => row.value.includes('9999'))).toBe(false);
     expect(summary.notice).toBeNull();
+  });
+
+  describe('a plan tree', () => {
+    const PLAN: RemovalPlanRef = {
+      title: 'Wenjing green space removal plan',
+      status: 'under_review',
+      url: 'https://pkl.gov.taipei/News_Content.aspx?n=1&s=2',
+      action: 'remove',
+    };
+    const OFFICIAL_DOCUMENT = 3;
+    const MRT_WORKS = 20;
+
+    function planTree(overrides: Partial<ReportRecord> = {}): ReportRecord {
+      return report({
+        source: REMOVAL_PLAN_SOURCE_CODE,
+        evidence: OFFICIAL_DOCUMENT,
+        observedAt: '2026-04-17',
+        link: PLAN.url,
+        plan: PLAN,
+        ...overrides,
+      });
+    }
+
+    it('says the tree is only planned to go', () => {
+      expect(reportSummary(planTree()).caveat).toBe(strings.card.plannedRemove);
+      expect(reportSummary(planTree({ plan: { ...PLAN, action: 'transplant' } })).caveat).toBe(
+        strings.card.plannedTransplant,
+      );
+    });
+
+    it('keeps the caveat when the plan file did not load', () => {
+      const summary = reportSummary(planTree({ plan: undefined }));
+      expect(summary.caveat).toBe(strings.card.plannedEither);
+      expect(summary.link?.hostname).toBe('pkl.gov.taipei');
+    });
+
+    it('names the plan in the source row and links to its page', () => {
+      const row = reportSummary(planTree()).rows.find((entry) => entry.label === strings.card.source);
+      expect(row).toEqual({
+        label: strings.card.source,
+        value: formatTemplate(strings.card.sourcePlanValue, {
+          source: labelOf(sources, REMOVAL_PLAN_SOURCE_CODE),
+          title: PLAN.title,
+        }),
+        href: PLAN.url,
+      });
+    });
+
+    it('shows the plan status and the planned action', () => {
+      const rows = reportSummary(planTree()).rows;
+      expect(rows.find((entry) => entry.label === strings.card.planStatus)?.value).toBe(
+        strings.planStatus.under_review,
+      );
+      expect(rows.find((entry) => entry.label === strings.card.planAction)?.value).toBe(
+        strings.planAction.remove,
+      );
+    });
+
+    it('labels the date as the posting date', () => {
+      const labelsOfPlan = labels(planTree());
+      expect(labelsOfPlan).toContain(strings.card.postedAt);
+      expect(labelsOfPlan).not.toContain(strings.card.observedAt);
+    });
+
+    it('does not repeat the plan page as a separate link', () => {
+      expect(reportSummary(planTree()).link).toBeNull();
+    });
+
+    it('reads the cause off the plan rather than a notice', () => {
+      expect(reportSummary(planTree({ causes: [MRT_WORKS] })).notice).toBe(
+        formatTemplate(strings.card.planReason, { causes: labelOf(causes, MRT_WORKS) }),
+      );
+    });
   });
 });

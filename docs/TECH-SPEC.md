@@ -54,13 +54,14 @@ taipei-tree-watch/
 │   ├── tags.ts                原因、處置、證據來源、資料來源的代碼表
 │   ├── domains.ts             連結網域白名單
 │   ├── snapshot.ts            快照 schema 型別與版本號
-│   └── generated/             build 時由上面三檔產出的 JSON，給 Python 讀（進 git）
+│   └── generated/             build 時由上面三檔與 validation.ts 的欄位上限產出的 JSON，給 Python 讀（進 git）
 ├── web/                       Vite 前端：index.html、src/
 ├── worker/                    Worker：src/index.ts、routes/、validate/、snapshot/
 ├── migrations/                D1 SQL migrations（wrangler d1 migrations）
 ├── data/
 │   ├── protected-trees/       trees.json（前端資產來源）＋ changes/<date>.json
 │   ├── delisting/             官方解列紀錄：<meeting-id>.json、pending.json（待定位）
+│   ├── removal-plans/         公園處移除與移植計畫書：plans.json、import.sql、index.json、pending.json、review.json
 │   ├── inventory/             M3：清冊 diff 結果
 │   └── snapshots/             每日公開快照 latest.json ＋ <date>.json
 ├── pipelines/                 Python：pyproject.toml、src/ttw_pipelines/、tests/
@@ -79,7 +80,8 @@ taipei-tree-watch/
 - 單一頁面，手機優先，地圖全螢幕。回報表單是底部 sheet，桌面寬度變側欄。說明與免責是可展開區塊，安全警語常駐在表單開頭。
 - 啟動時載入兩個檔：`/api/snapshot`（回報）與 `/trees.json`（受保護樹木靜態資產）。兩者都是一次載入、全在記憶體篩選。
 - 圖層：底圖 raster（NLSC）、正射 raster（目前 NLSC `PHOTO2`，都發局待授權確認，見第 7 節；由地圖右上角的「顯示航照」浮動鈕切換（與「目前位置」鈕疊在一起；桌面開著回報側欄時移到側欄左側），選點時不自動切換）、受保護樹木（灰色小點）、回報點（依原因著色，褐根病最醒目）、清冊消失層（M3 之後）。
-- 篩選：原因、處置、證據來源、發現日期範圍，全部在前端對快照做。目前只有使用者回報一種資料來源，資料來源篩選等官方紀錄匯入後再加。
+- 篩選：原因、處置、證據來源、資料來源、發現日期範圍，全部在前端對快照做。資料來源選項取自 `shared/tags.ts` 的 `sources`，可以只看官方紀錄或只看使用者回報；該組底下一行小字說明空心圓的意思。
+- 公園處計畫樹（資料來源＝公園處移除計畫書，第 4.2.1 節）畫成空心圓：原因色移到外圈（3 px），圓心填 halo 色。計畫書只說要移除或移植，沒有人看到樹已經不在，實心點則是有人看到的狀況，兩者不能讀成同一件事。卡片開頭另有一行「這棵樹列在公園處的移除（移植）計畫書上……不代表已經移除（移植）」，原因句改為「計畫書記載的原因為……」，日期欄標為「上網日期」。資料來源列寫「公園處移除計畫書 · <案名>」並連到公園處的案件頁，接著是「計畫狀態」（已核准／審查中／狀態不明）與「計畫處置」（計畫移除／計畫移植）；參考連結與案件頁相同時不再重複列出。案名、狀態與處置來自 `/removal-plans.json`（第 3.6 節），以回報 id 對應，載入後併進回報紀錄；這個檔載入失敗時卡片仍顯示開頭那行與參考連結，只是叫不出案名，不另外提示。
 - 選點流程（SPEC 第 6 節）：GPS 只用來 flyTo（由地圖上的「目前位置」浮動鈕觸發，回報 sheet 裡沒有另一顆），地圖中心固定準心，zoom 未達 18 或超出收件範圍時「開始填寫」停用；按下「開始填寫」就鎖定點位（表單改讀當下的中心點，地圖手勢、縮放鈕、點擊點位與「目前位置」鈕都暫停），手機上表單填滿頂列以下的畫面，要改位置得按「重新定位」回到選點。用編輯連結打開既有回報時，直接鎖在該筆存的座標，不看地圖飛行中途的中心點。正射圖層維持使用者原本的選擇，要看樹冠就用地圖右上角的「顯示航照」鈕。頂列「回報」和「說明」一樣是開關，再按一次就收起 sheet。收起再打開時，填到一半的欄位原樣保留；送出成功（或修改、撤回完成）後再打開，則從空白表單的選點開始，不停在成功畫面。準心 20 公尺內有受保護樹木時，sheet 顯示「這是受保護樹木 #編號 樹種 嗎？」讓使用者一鍵關聯。準心 20 公尺內已有回報時，同一處以同樣的提示框列出最近那筆回報的內容（與地圖卡片同一套欄位），問「是同一棵樹嗎？」。答「不是」就照常回報；答「是」再給「對這筆回報」的三個選擇（見下方）。答案只對那一筆有效，準心移到另一筆或重開 sheet 就重問。同一棵樹的多筆回報仍各自獨立、不會合併。受保護樹木的資訊框有「回報這棵樹」按鈕：打開回報 sheet、先關聯這棵樹（樹種未填時帶入），地圖飛到該樹、縮放至少 18，點位仍由使用者對準，因為清冊座標可能差幾公尺。座標數字以小字顯示。選點時附近的受保護樹木與既有回報只以一行小字點名（距離與編號，或「已關聯」），上面兩種提示框與它們的按鈕要等按下「開始填寫」鎖定點位後才展開，免得選點時蓋住地圖。選點時的操作說明由 sheet 標題列的「說明」開關收合，收合狀態記在 localStorage（`ttw:picker-guide-open`）；沒有記錄時手機預設收合、桌面側欄預設展開。手機上選點時間距也收緊，讓 sheet 盡量矮、準心周圍的地圖盡量大。
 - 「對這筆回報」的三個選擇，選點流程與回報卡片共用同一個元件（`web/src/ui/` 內一個模組，兩處各自 mount）：
   - **樹況有變化，繼續回報**：帶入那筆的樹種與兩種樹木編號（只填空著的欄位，原因、處置、證據、說明、連結、日期不帶），切到填表，送出時帶 `follows_report_id`。從卡片進來時先開 sheet、flyTo 到那筆的位置並把答案設成「是同一棵」。送出前若回報者把準心移到 20 公尺外，提示「離那筆回報已經超過 20 公尺，還是同一棵嗎？」並讓他取消接續。
@@ -239,6 +241,7 @@ hostname 的期望值來自 var `TURNSTILE_HOSTNAME`，值為 `taipei-tree-watch
 
 - 匯入時丟棄緯度或經度非數值或小數少於 2 位的列（2026-09-19 為 5 筆：2 筆緯度為整數、3 筆經度只有 1 位小數，後者定位誤差約 1.1 公里），丟棄數量記在 `dropped` 欄位；`district` 從地址前綴「臺北市XX區」解析，解析不到為 null。`rows` 每列一行 compact JSON，讓 git diff 一列一行。
 - Cloudflare 自動 gzip/brotli，3,874 筆約 400 KB 壓後約 100 KB。
+- `removal-plans.json`：`data/removal-plans/index.json` 在 build 時複製進 `web/public/`。`cases` 以案件 id 為鍵，存案名、`status`（`approved`／`under_review`／`unclear`）、上網日期與案件頁網址；`rows` 是 `["id","case","action"]` 欄位陣列，`id` 是快照裡的回報 id，`action` 是 `remove` 或 `transplant`。目前 291 列約 22 KB。
 
 ### 3.7 資料管線 `pipelines/`
 
@@ -248,6 +251,7 @@ Python 與 uv（版本與套件見 `TECH-STACK.md` 第 5 節），在本機執�
 |---|---|---|---|
 | `protected-trees` | 第一版手動一次性（自動每週排程列為後續版本，見 TASKS） | data.taipei CSV | `data/protected-trees/trees.json`；與前版 diff 出 `changes/<date>.json`（新增／消失的編號，消失者標「疑似解列」） |
 | `delisting`（M2） | 每週 | 文化局樹保會列表頁 → 委員會議程／紀錄 PDF | `data/delisting/<meeting-id>.json`（可上圖的回報列）、`pending.json`（對不到座標的） |
+| `removal-plans` | 有新計畫書抽取結果時手動 | 公園處移除、移植計畫書的逐株抽取 CSV（不進 repo） | `data/removal-plans/plans.json`（整理後的輸入）、`import.sql`、`index.json`、`pending.json`、`review.json`，見第 4.2.1 節 |
 | `inventory-diff`（M3） | 每日 | 公園處 `TaipeiTree.csv`、`TaipeiParkTree.csv` | `data/inventory/<date>.json`（消失與新增的樹籤編號） |
 | `snapshot-backup` | 每日 | `GET /api/snapshot` | `data/snapshots/latest.json`、`<date>.json` |
 | `d1-export` | 每週 | `wrangler d1 export` | 本機備份目錄（含 `reporter_hash`，不進 repo，保留 90 天） |
@@ -276,6 +280,48 @@ Python 與 uv（版本與套件見 `TECH-STACK.md` 第 5 節），在本機執�
 4. 原因 tag 由關鍵字表對應（褐根病、倒伏、腐朽、枯死、颱風等），對不到留空。
 5. 座標：以 `protected_tree_id` 查 `data/protected-trees/` 的所有歷史版本，找到就上圖，找不到進 `pending.json`。
 6. 產 `import.sql`，以 `wrangler d1 execute --remote --file` 匯入。
+
+### 4.2.1 公園處移除與移植計畫書
+
+公園處的樹木移除計畫、移植計畫審查專區（pkl.gov.taipei）逐案貼出計畫書 PDF。逐株表格由人工抽成 CSV（不進 repo），`removal-plans` 管線分兩步：
+
+1. **整理**（`--input <目錄>`）：只留 `action` 為 `remove` 或 `transplant` 的列（`retain` 與 `other`，例如颱風已倒、已枯死、計畫沒標處置，都不匯入），原文照抄，寫成 `data/removal-plans/plans.json`。每案一筆 `cases`，含案名、`status`、民國上網日期與換算後的 `posted_at`、案件頁網址。不論狀態都匯入，狀態顯示在卡片上。
+2. **建置**（每次都跑）：從 `plans.json` 產出其餘四個檔。
+
+每株一筆回報，欄位對應：
+
+| 欄位 | 值 |
+|---|---|
+| `source` / `evidence` | 3 公園處移除計畫書 / 3 機關官網公告或計畫書 |
+| `lat` / `lng` | 計畫書的 TWD97（EPSG:3826）以 pyproj 轉 WGS84，或計畫書本身的經緯度；四捨五入到 5 位 |
+| `species` | 照抄 |
+| `inventory_tree_id` | 樹籤編號，只收公園處格式（兩個英文字母加十位數字，轉大寫）；學校自編的樹籍號不填 |
+| `causes` | 原因原文的關鍵字（褐根病 → 1、腐朽／樹洞 → 3、枯死 → 4、傾倒／公共安全 → 5、高風險／風險評估 → 6、颱風 → 24），加上案名的工程類別（捷運 → 20、道路／交流道／國道 → 21、公園／綠地／花園／學校 → 23，只取第一個符合的）。對不到就留空，不推論 |
+| `dispositions` | 空：計畫書不是現場觀察 |
+| `note` | 「計畫移除（移植）。<案名>（<狀態>）。計畫書編號 <編號>。日期為計畫上網日期。」，必要時加座標警語，最後是「原因：<原文>」；超過 300 字只截原因，結尾加「…」 |
+| `observed_at` | 案件的上網日期（民國轉西元）；note 註明它是上網日期，與解列紀錄的「日期為會議日期」同一慣例 |
+| `link` | 案件頁網址 |
+| `external_ref` | `pkl:<案件 id>:<PDF 序號>:<計畫書編號>`，PDF 序號取自檔名 `_N.pdf` |
+| `id` | 固定的 ULID：時間部分是上網日期的臺北零時，亂數部分取 `sha256(external_ref)` 前 10 bytes，重跑產生同一個 id |
+| `created_at` | 匯入當下，由 SQL 的 `strftime('%Y-%m-%dT%H:%M:%fZ', 'now')` 填，`import.sql` 本身因此重跑不變 |
+
+座標與去重：
+
+- 同一株樹出現在兩份計畫：CF762 移植計畫書列了它要移除的 29 株，但只有編號；同樣 29 株在 CF760 移除案的第 2 份 PDF（CF762 移除計畫書）有樹種與座標。管線以 `COVERED_BY` 表明示這組對應，只匯入移除計畫書那一筆，兩者的 `external_ref` 對照記在 `review.json` 的 `covered`。
+- 已知的樣板座標（文景 28 號綠地安全評估表上反覆出現的 305699, 2765450）不上圖，進待定位清單。
+- 轉換後落在 `wrangler.toml` 的 `BBOX` 外就進待定位清單，因為那是使用者也無法回報的範圍。
+- 同一案裡不同樹落在完全相同的點（例如 CF762 的 216 與 254）：兩筆都上圖，note 加「座標與計畫書編號 N 相同，位置可能有誤」，並列在 `review.json` 的 `shared_coordinates`。
+
+輸出（都在 `data/removal-plans/`，全部 commit）：
+
+- `import.sql`：每筆一行 `INSERT OR IGNORE`，以 `external_ref` 的 unique index 去重，執行方式見 `DEPLOY.md`。已匯入的列重跑不會更新；要改既有列得另寫 UPDATE。
+- `index.json`：前端的 `/removal-plans.json`（第 3.6 節）。
+- `pending.json`：還沒有座標的樹，欄位 `external_ref, case, plan_no, tree_tag, species, action, location, why`，`why` 為 `no-coordinate`、`placeholder-coordinate` 或 `outside-bbox`。2026 年的 23 案整理後為 1,834 株，291 株上圖、1,514 株待定位（其中 1 株為樣板座標）、29 株是重複列。
+- `review.json`：共用座標與重複列，給人工複查。
+
+補座標的路徑：後續來源（先以 `tree_tag` 對公園處清冊 `TaipeiTree.csv`／`TaipeiParkTree.csv`，之後可能以地點文字定位）把結果寫成 `data/removal-plans/coordinates.json`：`{"schema": 1, "coordinates": {"<external_ref>": {"lat": …, "lng": …, "via": "inventory" | "geocode"}}}`，再跑一次建置。計畫書本身的座標永遠優先；由 `coordinates.json` 補上的點在 note 註明「座標依樹籤編號取自公園處清冊」或「座標依地點文字定位，可能有誤差」。新上圖的樹是新的 `external_ref`，照常由 `import.sql` 插入。
+
+連結白名單：匯入列的 `link` 是 pkl.gov.taipei，不在 `shared/domains.ts` 的白名單裡。白名單是擋使用者輸入的垃圾連結用的，只在 API 的寫入路徑檢查；匯入走 `wrangler d1 execute`，網址由管線從案件清單產生，不經使用者，所以直接略過白名單，白名單本身不擴大。前端顯示連結時本來就只看網域、加 `nofollow`，不看白名單。官方紀錄沒有編輯密鑰，編輯 API 碰不到它們。
 
 ### 4.4 更正（M5）
 
