@@ -39,7 +39,9 @@ function options(overrides: Partial<ReportFormOptions> = {}): ReportFormOptions 
     onEditLinkGone: vi.fn(),
     onEditingChange: vi.fn(),
     editLinkUrl: () => 'https://example.test/?edit=x',
-    share: () => Promise.resolve('copied'),
+    reportUrl: (id) => `https://example.test/?report=${id}`,
+    copy: () => Promise.resolve('copied'),
+    notify: vi.fn(),
     confirm: () => true,
     ...overrides,
   };
@@ -117,5 +119,74 @@ describe('after a report is sent', () => {
     form.setActive(true);
 
     expect(species.value).toBe('Ficus');
+  });
+});
+
+describe('copying the edit link', () => {
+  it('copies straight to the clipboard and confirms in the toast', async () => {
+    const container = document.createElement('div');
+    const copy = vi.fn(() => Promise.resolve('copied' as const));
+    const notify = vi.fn();
+    const form = createReportForm(container, options({ copy, notify }));
+    form.setActive(true);
+
+    await submitNewReport(container);
+    button(container, strings.form.editLinkCopy).click();
+    await settle();
+
+    expect(copy).toHaveBeenCalledWith('https://example.test/?edit=x');
+    expect(notify).toHaveBeenCalledWith(strings.form.editLinkCopied);
+  });
+
+  it('shows the edit link to copy by hand when the clipboard refused', async () => {
+    const container = document.createElement('div');
+    const notify = vi.fn();
+    const form = createReportForm(
+      container,
+      options({ copy: () => Promise.resolve('manual'), notify }),
+    );
+    form.setActive(true);
+
+    await submitNewReport(container);
+    button(container, strings.form.editLinkCopy).click();
+    await settle();
+
+    expect(notify).not.toHaveBeenCalled();
+    const manual = container.querySelector<HTMLElement>('.form-edit-link .card-share-url');
+    expect(manual?.hidden).toBe(false);
+    expect(manual?.textContent).toBe('https://example.test/?edit=x');
+  });
+});
+
+describe('copying the share link', () => {
+  function shareRow(container: HTMLElement): HTMLElement | null {
+    return container.querySelector<HTMLElement>('.form-share-link');
+  }
+
+  it('copies the public permalink of the report just sent', async () => {
+    const container = document.createElement('div');
+    const copy = vi.fn(() => Promise.resolve('copied' as const));
+    const notify = vi.fn();
+    const form = createReportForm(container, options({ copy, notify }));
+    form.setActive(true);
+
+    await submitNewReport(container);
+    button(container, strings.form.shareLinkCopy).click();
+    await settle();
+
+    expect(copy).toHaveBeenCalledWith('https://example.test/?report=01JBZ8QF7KJ9M3N4P5R6S7T8V9');
+    expect(notify).toHaveBeenCalledWith(strings.form.shareLinkCopied);
+  });
+
+  it('hides the share link once the panel gives way to a new report', async () => {
+    const container = document.createElement('div');
+    const form = createReportForm(container, options());
+    form.setActive(true);
+
+    await submitNewReport(container);
+    expect(shareRow(container)?.hidden).toBe(false);
+
+    button(container, strings.form.successAgain).click();
+    expect(shareRow(container)?.hidden).toBe(true);
   });
 });

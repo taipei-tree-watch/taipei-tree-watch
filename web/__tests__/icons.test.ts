@@ -74,7 +74,8 @@ describe('panel close buttons', () => {
           onShow: () => undefined,
           onEdit: () => undefined,
           editLinkUrl: () => '',
-          share: () => Promise.resolve('shared'),
+          copy: () => Promise.resolve('copied'),
+          notify: () => undefined,
         }),
       strings.mine.close,
     ],
@@ -103,7 +104,8 @@ describe('my reports list buttons', () => {
       onShow: () => undefined,
       onEdit: () => undefined,
       editLinkUrl: () => '',
-      share: () => Promise.resolve('shared'),
+      copy: () => Promise.resolve('copied'),
+      notify: () => undefined,
     });
     panel.setLinks([
       {

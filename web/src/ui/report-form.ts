@@ -66,7 +66,7 @@ import { prefillFromReport, sameTreeStage } from '../report/same-tree.ts';
 import { reportRows } from './report-rows.ts';
 import type { FetchLike } from '../report/submit.ts';
 import { submitReport } from '../report/submit.ts';
-import type { ShareOutcome } from '../share.ts';
+import type { CopyOutcome } from '../copy-link.ts';
 import type { TurnstileWidget } from '../turnstile.ts';
 import { renderTurnstile } from '../turnstile.ts';
 import type { IconNode } from '../icons.ts';
@@ -112,10 +112,13 @@ export interface ReportFormOptions {
   /** Editing started or ended, so the sheet can retitle itself. */
   readonly onEditingChange: (editing: boolean) => void;
   readonly editLinkUrl: (link: EditLink) => string;
-  readonly share: (url: string, title: string) => Promise<ShareOutcome>;
+  /** The public permalink of a report, which anyone can open read-only. */
+  readonly reportUrl: (id: string) => string;
+  readonly copy: (url: string) => Promise<CopyOutcome>;
+  /** Confirms a copy in the page-wide toast. */
+  readonly notify: (message: string) => void;
   /** window.confirm in the page; a test answers for the reader. */
   readonly confirm: (message: string) => boolean;
-  readonly feedbackMs?: number;
   /**
    * Whether the aiming instructions start unfolded when this browser has no
    * remembered choice; defaults to true.
@@ -150,9 +153,6 @@ export interface ReportForm {
   startCreate(): void;
   isEditing(): boolean;
 }
-
-/** How long a copied confirmation stays beside the edit link. */
-export const EDIT_LINK_FEEDBACK_MS = 4000;
 
 /** The form's draft for a report read back from the Worker. */
 export function draftFromReport(report: EditableReport): ReportDraft {
@@ -339,6 +339,10 @@ function tagGroup(
 /**
  * The safety notice, with the button that puts it away.
  *
+ * Only the paragraphs marked `safety-brief` in the safety fragment are shown
+ * here, so a first-time reporter is not met by a wall of text; the full
+ * notice stays in the information panel.
+ *
  * Acknowledging it hides the whole section and records that in storage, so a
  * returning reporter goes straight to the fields. Where storage is refused
  * the notice simply comes back on the next visit.
@@ -352,14 +356,12 @@ function safetySection(storage: StorageLike): HTMLElement {
     return section;
   }
 
-  const heading = document.createElement('h3');
-  heading.textContent = safety.title;
-  section.append(heading);
-
   // A build time fragment from web/src/content, never user input.
+  const full = document.createElement('template');
+  full.innerHTML = safety.html;
   const body = document.createElement('div');
   body.className = 'section-body';
-  body.innerHTML = safety.html;
+  body.append(...full.content.querySelectorAll('.safety-brief'));
   section.append(body);
 
   const dismiss = document.createElement('button');
@@ -771,6 +773,25 @@ export function createReportForm(
   setIconLabel(againButton, MapPinPlus, strings.form.successAgain);
 
   /**
+   * The public permalink of the report just sent or edited, for handing to
+   * other people. Unlike the edit link it grants nothing, so it needs no box.
+   */
+  const shareLinkRow = document.createElement('div');
+  shareLinkRow.className = 'form-share-link';
+  shareLinkRow.hidden = true;
+  const shareLinkCopy = document.createElement('button');
+  shareLinkCopy.type = 'button';
+  shareLinkCopy.className = 'form-secondary';
+  setIconLabel(shareLinkCopy, Link, strings.form.shareLinkCopy);
+  const shareLinkFeedback = document.createElement('p');
+  shareLinkFeedback.className = 'card-share-feedback';
+  shareLinkFeedback.hidden = true;
+  const shareLinkUrl = document.createElement('p');
+  shareLinkUrl.className = 'card-share-url';
+  shareLinkUrl.hidden = true;
+  shareLinkRow.append(shareLinkCopy, shareLinkFeedback, shareLinkUrl);
+
+  /**
    * The edit link of a report just created. This is the only moment the
    * token exists anywhere but in this browser's storage, so it is shown with
    * what it grants and where it is kept.
@@ -796,7 +817,7 @@ export function createReportForm(
   editLinkUrl.hidden = true;
   editLinkBox.append(editLinkTitle, editLinkHint, editLinkCopy, editLinkFeedback, editLinkUrl);
 
-  successPanel.append(successMessage, successBody, editLinkBox, againButton);
+  successPanel.append(successMessage, successBody, shareLinkRow, editLinkBox, againButton);
 
   container.replaceChildren(picker, form, successPanel);
 
@@ -1238,40 +1259,46 @@ export function createReportForm(
     render();
   });
 
+  let shownShareLink: string | null = null;
   let shownEditLink: string | null = null;
-  let editLinkTimer: ReturnType<typeof setTimeout> | null = null;
 
-  function clearEditLinkFeedback(): void {
-    if (editLinkTimer !== null) {
-      clearTimeout(editLinkTimer);
-      editLinkTimer = null;
+  function clearCopyFeedback(): void {
+    for (const line of [shareLinkFeedback, shareLinkUrl, editLinkFeedback, editLinkUrl]) {
+      line.hidden = true;
+      line.textContent = '';
     }
-    editLinkFeedback.hidden = true;
-    editLinkUrl.hidden = true;
-    editLinkUrl.textContent = '';
   }
 
-  editLinkCopy.addEventListener('click', () => {
-    const url = shownEditLink;
-    if (url === null) {
-      return;
-    }
-    clearEditLinkFeedback();
-    void options.share(url, strings.app.title).then((outcome) => {
+  /** Copy, then confirm in the toast or show the address to copy by hand. */
+  function copyWithFeedback(
+    url: string,
+    copiedMessage: string,
+    feedback: HTMLElement,
+    manualUrl: HTMLElement,
+  ): void {
+    clearCopyFeedback();
+    void options.copy(url).then((outcome) => {
       if (outcome === 'copied') {
-        editLinkFeedback.hidden = false;
-        editLinkFeedback.textContent = strings.form.editLinkCopied;
-        editLinkTimer = setTimeout(
-          clearEditLinkFeedback,
-          options.feedbackMs ?? EDIT_LINK_FEEDBACK_MS,
-        );
-      } else if (outcome === 'manual') {
-        editLinkFeedback.hidden = false;
-        editLinkFeedback.textContent = strings.form.editLinkManual;
-        editLinkUrl.hidden = false;
-        editLinkUrl.textContent = url;
+        options.notify(copiedMessage);
+      } else {
+        feedback.hidden = false;
+        feedback.textContent = strings.form.copyManual;
+        manualUrl.hidden = false;
+        manualUrl.textContent = url;
       }
     });
+  }
+
+  shareLinkCopy.addEventListener('click', () => {
+    if (shownShareLink !== null) {
+      copyWithFeedback(shownShareLink, strings.form.shareLinkCopied, shareLinkFeedback, shareLinkUrl);
+    }
+  });
+
+  editLinkCopy.addEventListener('click', () => {
+    if (shownEditLink !== null) {
+      copyWithFeedback(shownEditLink, strings.form.editLinkCopied, editLinkFeedback, editLinkUrl);
+    }
   });
 
   type SuccessKind = 'created' | 'edited' | 'withdrawn';
@@ -1286,7 +1313,9 @@ export function createReportForm(
     successBody.replaceChildren(
       ...(kind === 'withdrawn' ? [] : reportRows(toReportRecord(entry))),
     );
-    clearEditLinkFeedback();
+    clearCopyFeedback();
+    shownShareLink = kind === 'withdrawn' ? null : options.reportUrl(entry.id);
+    shareLinkRow.hidden = shownShareLink === null;
     shownEditLink = kind === 'created' && link !== null ? options.editLinkUrl(link) : null;
     editLinkBox.hidden = shownEditLink === null;
     successPanel.hidden = false;
@@ -1301,9 +1330,11 @@ export function createReportForm(
   function hideSuccess(): void {
     successPanel.hidden = true;
     successBody.replaceChildren();
+    shownShareLink = null;
+    shareLinkRow.hidden = true;
     shownEditLink = null;
     editLinkBox.hidden = true;
-    clearEditLinkFeedback();
+    clearCopyFeedback();
     picker.hidden = false;
     guideToggle.hidden = false;
   }

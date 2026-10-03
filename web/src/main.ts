@@ -43,7 +43,7 @@ import {
 } from './report/edit-links.ts';
 import type { PendingReport, StorageLike } from './report/pending.ts';
 import { addPending, prunePending, readPending, toReportRecord } from './report/pending.ts';
-import { browserShareCapabilities, sharePermalink } from './share.ts';
+import { browserWriteText, copyLink } from './copy-link.ts';
 import strings from './ui-strings.json';
 import { watchDeviceColorScheme } from './theme.ts';
 import { createCrosshair } from './ui/crosshair.ts';
@@ -59,6 +59,7 @@ import { createPlaceLookup } from './ui/place-lookup.ts';
 import { createReportForm } from './ui/report-form.ts';
 import { createReportSheet } from './ui/report-sheet.ts';
 import { createStatusBar } from './ui/status-bar.ts';
+import { createToast } from './ui/toast.ts';
 
 /** Close enough to read a single tree crown, which is what a permalink promises. */
 const PERMALINK_ZOOM = 17;
@@ -125,12 +126,16 @@ function addressFor(target: PermalinkTarget | null): void {
   );
 }
 
-const shareUrl = (url: string, title: string) =>
-  sharePermalink(url, title, browserShareCapabilities(navigator));
+const copyUrl = (url: string) => copyLink(url, browserWriteText(navigator));
+const toast = createToast(required('#toast'));
+const notify = (message: string): void => {
+  toast.show(message);
+};
 
 const detailCard = createDetailCard(required('#detail-card'), {
   permalinkUrl: (target) => permalinkUrl(target, window.location.href),
-  share: shareUrl,
+  copy: copyUrl,
+  notify,
   canEdit: (id) => findEditLink(editLinks, id) !== undefined,
   onEdit(id) {
     const link = findEditLink(editLinks, id);
@@ -163,7 +168,8 @@ const minePanel = createMyReportsPanel(required('#mine-panel'), {
     void beginEdit(link);
   },
   editLinkUrl: (link) => editLinkUrl(link, window.location.href),
-  share: shareUrl,
+  copy: copyUrl,
+  notify,
 });
 minePanel.onOpenChange((open) => {
   mineToggle.setAttribute('aria-expanded', String(open));
@@ -628,7 +634,9 @@ async function start(): Promise<void> {
       reportSheet.setEditing(editing);
     },
     editLinkUrl: (link) => editLinkUrl(link, window.location.href),
-    share: shareUrl,
+    reportUrl: (id) => permalinkUrl({ kind: 'report', id }, window.location.href),
+    copy: copyUrl,
+    notify,
     confirm: (message) => window.confirm(message),
     // Matches the desktop breakpoint in style.css, where the sheet is a side
     // column and has room for the instructions.

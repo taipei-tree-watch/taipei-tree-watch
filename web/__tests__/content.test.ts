@@ -73,3 +73,9 @@ describe('web/src/content fragments', () => {
     expect(attributionHtml).toContain(MAP_ATTRIBUTION);
   });
 });
+
+describe('safety brief', () => {
+  it('marks the two paragraphs the report form shows', () => {
+    expect(fragments.safety?.match(/class="safety-brief"/g)).toHaveLength(2);
+  });
+});

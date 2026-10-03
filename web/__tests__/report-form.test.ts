@@ -34,7 +34,9 @@ function options(overrides: Partial<ReportFormOptions> = {}): ReportFormOptions 
     onEditLinkGone: vi.fn(),
     onEditingChange: vi.fn(),
     editLinkUrl: () => 'https://example.test/?edit=x',
-    share: () => Promise.resolve('copied'),
+    reportUrl: (id) => `https://example.test/?report=${id}`,
+    copy: () => Promise.resolve('copied'),
+    notify: vi.fn(),
     confirm: () => true,
     ...overrides,
   };
@@ -383,5 +385,19 @@ describe('reason block', () => {
     pickEvidence(container, 5);
 
     expect(causeGroup(container).hidden).toBe(false);
+  });
+});
+
+describe('safety notice', () => {
+  it('shows only the brief paragraphs, leaving the full notice to the information panel', () => {
+    const container = document.createElement('div');
+    createReportForm(container, options());
+
+    const notice = container.querySelector<HTMLElement>('.form-safety');
+    expect(notice).not.toBeNull();
+    const paragraphs = [...(notice?.querySelectorAll('.section-body p') ?? [])];
+    expect(paragraphs).toHaveLength(2);
+    expect(paragraphs.every((paragraph) => paragraph.classList.contains('safety-brief'))).toBe(true);
+    expect(notice?.querySelector('h3, blockquote, ul')).toBeNull();
   });
 });

@@ -7,20 +7,18 @@
  */
 import { formatTemplate } from '../format.ts';
 import type { StoredEditLink } from '../report/edit-links.ts';
-import type { ShareOutcome } from '../share.ts';
+import type { CopyOutcome } from '../copy-link.ts';
 import type { IconNode } from '../icons.ts';
 import { Copy, MapIcon, Pencil, setIconLabel, setIconOnly, X } from '../icons.ts';
 import strings from '../ui-strings.json';
-
-/** How long a copied confirmation stays beside an entry. */
-export const MINE_FEEDBACK_MS = 4000;
 
 export interface MyReportsPanelOptions {
   readonly onShow: (link: StoredEditLink) => void;
   readonly onEdit: (link: StoredEditLink) => void;
   readonly editLinkUrl: (link: StoredEditLink) => string;
-  readonly share: (url: string, title: string) => Promise<ShareOutcome>;
-  readonly feedbackMs?: number;
+  readonly copy: (url: string) => Promise<CopyOutcome>;
+  /** Confirms a copy in the page-wide toast. */
+  readonly notify: (message: string) => void;
 }
 
 export interface MyReportsPanel {
@@ -114,12 +112,7 @@ export function createMyReportsPanel(
     manual.className = 'card-share-url';
     manual.hidden = true;
 
-    let timer: ReturnType<typeof setTimeout> | null = null;
     const clear = (): void => {
-      if (timer !== null) {
-        clearTimeout(timer);
-        timer = null;
-      }
       feedback.hidden = true;
       manual.hidden = true;
       manual.textContent = '';
@@ -137,12 +130,10 @@ export function createMyReportsPanel(
       button(Copy, strings.mine.copy, () => {
         const url = options.editLinkUrl(link);
         clear();
-        void options.share(url, strings.app.title).then((outcome) => {
+        void options.copy(url).then((outcome) => {
           if (outcome === 'copied') {
-            feedback.hidden = false;
-            feedback.textContent = strings.mine.copied;
-            timer = setTimeout(clear, options.feedbackMs ?? MINE_FEEDBACK_MS);
-          } else if (outcome === 'manual') {
+            options.notify(strings.mine.copied);
+          } else {
             feedback.hidden = false;
             feedback.textContent = strings.mine.copyManual;
             manual.hidden = false;

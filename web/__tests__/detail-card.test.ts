@@ -7,7 +7,7 @@ import type { ReportRecord } from '../src/data/snapshot.ts';
 import type { ProtectedTree } from '../src/data/trees.ts';
 import type { PermalinkTarget } from '../src/permalink.ts';
 import { permalinkUrl } from '../src/permalink.ts';
-import type { ShareOutcome } from '../src/share.ts';
+import type { CopyOutcome } from '../src/copy-link.ts';
 import type { DetailCardOptions } from '../src/ui/detail-card.ts';
 import { createDetailCard } from '../src/ui/detail-card.ts';
 import strings from '../src/ui-strings.json';
@@ -47,25 +47,30 @@ const TREE: ProtectedTree = {
 interface Harness {
   readonly element: HTMLElement;
   readonly targets: (PermalinkTarget | null)[];
-  readonly shared: { url: string; title: string }[];
+  readonly copied: string[];
+  readonly notices: string[];
   readonly button: HTMLButtonElement;
   readonly feedback: HTMLElement;
   readonly manual: HTMLElement;
 }
 
-function harness(outcome: ShareOutcome, overrides: Partial<DetailCardOptions> = {}) {
+function harness(outcome: CopyOutcome, overrides: Partial<DetailCardOptions> = {}) {
   const element = document.createElement('div');
   element.hidden = true;
   document.body.replaceChildren(element);
 
   const targets: (PermalinkTarget | null)[] = [];
-  const shared: { url: string; title: string }[] = [];
+  const copied: string[] = [];
+  const notices: string[] = [];
 
   const card = createDetailCard(element, {
     permalinkUrl: (target) => permalinkUrl(target, PAGE),
-    share: (url, title) => {
-      shared.push({ url, title });
+    copy: (url) => {
+      copied.push(url);
       return Promise.resolve(outcome);
+    },
+    notify: (message) => {
+      notices.push(message);
     },
     onTargetChange: (target) => {
       targets.push(target);
@@ -79,7 +84,8 @@ function harness(outcome: ShareOutcome, overrides: Partial<DetailCardOptions> = 
   const parts: Harness = {
     element,
     targets,
-    shared,
+    copied,
+    notices,
     button: element.querySelector('.card-share .form-secondary') as HTMLButtonElement,
     feedback: element.querySelector('.card-share-feedback') as HTMLElement,
     manual: element.querySelector('.card-share-url') as HTMLElement,
@@ -122,65 +128,51 @@ describe('detail card permalink', () => {
     expect(targets.at(-1)).toBeNull();
   });
 
-  it('shares the permalink of the card that is open', async () => {
-    const { card, shared } = harness('shared');
+  it('copies the permalink of the card that is open', async () => {
+    const { card, copied } = harness('copied');
     card.showTree(TREE);
-    await card.shareCurrent();
-    expect(shared).toEqual([{ url: `${PAGE}?tree=768`, title: strings.app.title }]);
+    await card.copyCurrent();
+    expect(copied).toEqual([`${PAGE}?tree=768`]);
   });
 
-  it('confirms a copy and takes the confirmation back down', async () => {
-    vi.useFakeTimers();
-    try {
-      const { card, feedback } = harness('copied', { feedbackMs: 1000 });
-      card.showReport(REPORT);
-      await card.shareCurrent();
-      expect(feedback.hidden).toBe(false);
-      expect(feedback.textContent).toBe(strings.card.copied);
-
-      vi.advanceTimersByTime(1000);
-      expect(feedback.hidden).toBe(true);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it('shows the address to copy by hand when nothing automatic worked', async () => {
-    const { card, feedback, manual } = harness('manual');
+  it('confirms a copy in the toast and leaves the card as it was', async () => {
+    const { card, feedback, notices } = harness('copied');
     card.showReport(REPORT);
-    await card.shareCurrent();
+    await card.copyCurrent();
+    expect(notices).toEqual([strings.card.copied]);
+    expect(feedback.hidden).toBe(true);
+  });
+
+  it('shows the address to copy by hand when the clipboard refused', async () => {
+    const { card, feedback, manual, notices } = harness('manual');
+    card.showReport(REPORT);
+    await card.copyCurrent();
+    expect(notices).toEqual([]);
     expect(feedback.textContent).toBe(strings.card.copyManual);
     expect(manual.hidden).toBe(false);
     expect(manual.textContent).toBe(`${PAGE}?report=${ULID}`);
   });
 
-  it('says nothing when the reader closed the share sheet', async () => {
-    const { card, feedback, manual } = harness('dismissed');
+  it('leaves no stale manual address on the next card', async () => {
+    const { card, feedback, manual } = harness('manual');
     card.showReport(REPORT);
-    await card.shareCurrent();
+    await card.copyCurrent();
+    card.showTree(TREE);
     expect(feedback.hidden).toBe(true);
     expect(manual.hidden).toBe(true);
   });
 
-  it('leaves no stale confirmation on the next card', async () => {
-    const { card, feedback } = harness('copied');
-    card.showReport(REPORT);
-    await card.shareCurrent();
-    card.showTree(TREE);
-    expect(feedback.hidden).toBe(true);
+  it('copies nothing while no card is open', async () => {
+    const { card, copied } = harness('copied');
+    await card.copyCurrent();
+    expect(copied).toEqual([]);
   });
 
-  it('shares nothing while no card is open', async () => {
-    const { card, shared } = harness('copied');
-    await card.shareCurrent();
-    expect(shared).toEqual([]);
-  });
-
-  it('shares from the button as well', () => {
-    const { card, button, shared } = harness('copied');
+  it('copies from the button as well', () => {
+    const { card, button, copied } = harness('copied');
     card.showReport(REPORT);
     button.click();
-    expect(shared).toHaveLength(1);
+    expect(copied).toHaveLength(1);
   });
 });
 

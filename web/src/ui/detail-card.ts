@@ -10,18 +10,17 @@ import type { ReportRecord } from '../data/snapshot.ts';
 import type { ProtectedTree } from '../data/trees.ts';
 import { formatTemplate } from '../format.ts';
 import type { PermalinkTarget } from '../permalink.ts';
-import type { ShareOutcome } from '../share.ts';
+import type { CopyOutcome } from '../copy-link.ts';
 import { reportRows } from './report-rows.ts';
 import { Link, MapPin, Pencil, setIconLabel, setIconOnly, X } from '../icons.ts';
 import strings from '../ui-strings.json';
 
-/** How long the copied confirmation stays on the card. */
-export const SHARE_FEEDBACK_MS = 4000;
-
 export interface DetailCardOptions {
-  /** The address to share for the card that is open. */
+  /** The address to copy for the card that is open. */
   readonly permalinkUrl: (target: PermalinkTarget) => string;
-  readonly share: (url: string, title: string) => Promise<ShareOutcome>;
+  readonly copy: (url: string) => Promise<CopyOutcome>;
+  /** Confirms a copy in the page-wide toast. */
+  readonly notify: (message: string) => void;
   /**
    * The card that is now open, or null when it closed. The page turns this
    * into the address bar, so every way of opening a card updates the URL.
@@ -32,7 +31,6 @@ export interface DetailCardOptions {
   readonly onEdit: (id: string) => void;
   /** Start a report about the protected tree whose card is open. */
   readonly onReportTree: (tree: ProtectedTree) => void;
-  readonly feedbackMs?: number;
 }
 
 export interface DetailCard {
@@ -40,10 +38,10 @@ export interface DetailCard {
   showTree(tree: ProtectedTree): void;
   hide(): void;
   /**
-   * Share or copy the open card's permalink. The share button calls this; a
-   * test can call it directly and await the outcome.
+   * Copy the open card's permalink. The copy button calls this; a test can
+   * call it directly and await the outcome.
    */
-  shareCurrent(): Promise<void>;
+  copyCurrent(): Promise<void>;
 }
 
 /** A row of the protected tree card; a report's rows come from report-rows. */
@@ -108,8 +106,8 @@ export function createDetailCard(element: HTMLElement, options: DetailCardOption
   feedback.className = 'card-share-feedback';
   feedback.hidden = true;
 
-  // Shown only when neither the share sheet nor the clipboard worked, so the
-  // reader still has the address in front of them to copy by hand.
+  // Shown only when the clipboard refused, so the reader still has the
+  // address in front of them to copy by hand.
   const manualUrl = document.createElement('p');
   manualUrl.className = 'card-share-url';
   manualUrl.hidden = true;
@@ -135,13 +133,8 @@ export function createDetailCard(element: HTMLElement, options: DetailCardOption
 
   let target: PermalinkTarget | null = null;
   let openTree: ProtectedTree | null = null;
-  let feedbackTimer: ReturnType<typeof setTimeout> | null = null;
 
   const clearFeedback = (): void => {
-    if (feedbackTimer !== null) {
-      clearTimeout(feedbackTimer);
-      feedbackTimer = null;
-    }
     feedback.hidden = true;
     feedback.textContent = '';
     manualUrl.hidden = true;
@@ -159,17 +152,15 @@ export function createDetailCard(element: HTMLElement, options: DetailCardOption
 
   close.addEventListener('click', hide);
 
-  const shareCurrent = async (): Promise<void> => {
+  const copyCurrent = async (): Promise<void> => {
     if (target === null) {
       return;
     }
     const url = options.permalinkUrl(target);
     clearFeedback();
-    const outcome = await options.share(url, strings.app.title);
+    const outcome = await options.copy(url);
     if (outcome === 'copied') {
-      feedback.hidden = false;
-      feedback.textContent = strings.card.copied;
-      feedbackTimer = setTimeout(clearFeedback, options.feedbackMs ?? SHARE_FEEDBACK_MS);
+      options.notify(strings.card.copied);
       return;
     }
     if (outcome === 'manual') {
@@ -181,7 +172,7 @@ export function createDetailCard(element: HTMLElement, options: DetailCardOption
   };
 
   shareButton.addEventListener('click', () => {
-    void shareCurrent();
+    void copyCurrent();
   });
 
   editButton.addEventListener('click', () => {
@@ -235,6 +226,6 @@ export function createDetailCard(element: HTMLElement, options: DetailCardOption
       ]);
     },
     hide,
-    shareCurrent,
+    copyCurrent,
   };
 }
