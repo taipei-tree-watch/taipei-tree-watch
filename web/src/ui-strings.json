@@ -20,14 +20,15 @@
     "dispositions": "處置",
     "evidence": "參考來源",
     "sources": "資料來源",
-    "plannedHint": "預設只顯示使用者回報。勾選「公園處移除計畫書」會加上計畫書列出的樹，地圖上畫成空心圓，只代表計畫要移除或移植，不代表已經動工。「計畫書座標」的位置是計畫書寫的；「清冊定位」是計畫書沒寫座標，依樹籤編號從公園處清冊查到的位置。",
+    "plannedHint": "預設只顯示使用者回報。勾選「公園處移除計畫書」會加上計畫書列出的樹：有逐株位置的畫成空心圓，只寫到地點的整個地點畫成一個虛線菱形。都只代表計畫要移除或移植，不代表已經動工。「計畫書座標」的位置是計畫書寫的；「清冊定位」是計畫書沒寫座標，依樹籤編號從公園處清冊查到的位置。只寫到地點的菱形，勾任一個都會出現。",
     "observed": "發現日期",
     "observedFrom": "起",
     "observedTo": "迄",
     "noCause": "未記載原因",
     "reportSummary": "回報 {shown} ／ {total} 筆",
     "treeSummary": "受保護樹木 {count} 株",
-    "observedHint": "設定日期範圍後，沒有填發現日期的回報不會顯示。"
+    "observedHint": "設定日期範圍後，沒有填發現日期的回報不會顯示。",
+    "siteSummary": "計畫地點 {sites} 處（{trees} 株）"
   },
   "card": {
     "close": "關閉",
@@ -131,7 +132,8 @@
     "treeMissing": "找不到這棵受保護樹木，可能已解列或資料已更新。",
     "editLoading": "正在讀取要修改的回報……",
     "editMissing": "這個編輯連結已經失效：回報可能已撤回或被移除，已從「我的回報」拿掉。",
-    "editFailed": "讀不到要修改的回報，請再試一次。"
+    "editFailed": "讀不到要修改的回報，請再試一次。",
+    "siteMissing": "找不到這個計畫地點，資料可能已更新。"
   },
   "form": {
     "guideToggle": "說明",
@@ -308,5 +310,35 @@
       "network": "送出失敗，填的內容都還在，請再試一次。",
       "revisions": "讀不到這筆回報目前的版本，請稍後再試。"
     }
+  },
+  "site": {
+    "title": "公園處計畫地點",
+    "caveat": "這個點標的是計畫書寫的地點，不是某一棵樹的位置。計畫書沒有逐株位置，所以整個地點只畫一個點，也不代表已經動工。",
+    "headlineRemove": "此地點計畫移除 {count} 株",
+    "headlineTransplant": "此地點計畫移植 {count} 株",
+    "headlineBoth": "此地點計畫移除 {remove} 株、移植 {transplant} 株",
+    "inventoryGone": "其中 {count} 株的樹籤編號已不在公園處行道樹及公園樹清冊（{date} 版）。這只是訊號，可能是已移除，也可能是重編號或資料修正。",
+    "location": "地點",
+    "species": "樹種",
+    "speciesItem": "{name} {count} 株",
+    "speciesUnnamed": "未記載樹種",
+    "speciesOther": "其他 {kinds} 種 {count} 株",
+    "causes": "計畫書記載的原因",
+    "causeItem": "{label} {count} 株",
+    "point": "點位",
+    "via": {
+      "park-centroid": "取在公園中央，代表整個公園",
+      "school-centroid": "取在校區中央，代表整個校區",
+      "site-centroid": "取在基地中央，代表整個基地",
+      "placed-trees": "取在同一地點已有位置的計畫樹中間，代表這一段",
+      "road-segment": "取在這段路的中間，代表這一段路",
+      "intersection": "取在路口，代表路口一帶",
+      "address": "取在門牌位置，代表門牌前一帶",
+      "site-plan": "依計畫書的配置圖量出，代表這一區施工範圍"
+    },
+    "placed": "同一地點另有 {count} 株有逐株位置，以空心圓另外畫在地圖上。",
+    "sameSpot": "同一個點還有其他計畫：",
+    "sameSpotItem": "{title}（{count} 株）",
+    "source": "公園處移除計畫書"
   }
 }

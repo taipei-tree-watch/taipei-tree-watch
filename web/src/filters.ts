@@ -6,8 +6,18 @@
  * dimensions. Nothing here touches the DOM, so the rules are testable on
  * their own and the panel only has to hand over a state object.
  */
-import { USER_REPORT_SOURCE_CODE } from '../../shared/tags.ts';
+import { REMOVAL_PLAN_SOURCE_CODES, USER_REPORT_SOURCE_CODE } from '../../shared/tags.ts';
 import type { ReportRecord } from './data/snapshot.ts';
+
+/**
+ * What the filters read. A report has these fields, and so does a plan site
+ * summary point, which the data source, cause and date filters treat like the
+ * plan trees it stands for.
+ */
+export type Filterable = Pick<
+  ReportRecord,
+  'causes' | 'dispositions' | 'evidence' | 'source' | 'observedAt'
+>;
 
 /**
  * Pseudo code for "no cause recorded". It is not a tag and is never stored:
@@ -57,7 +67,7 @@ export function isFilterActive(state: FilterState): boolean {
   );
 }
 
-function matchesCauses(report: ReportRecord, selected: ReadonlySet<number>): boolean {
+function matchesCauses(report: Filterable, selected: ReadonlySet<number>): boolean {
   if (selected.size === 0) {
     return true;
   }
@@ -86,7 +96,7 @@ function matchesSingle(code: number | null, selected: ReadonlySet<number>): bool
  * A report with no observation date cannot be placed on the timeline, so an
  * active bound excludes it; the panel says so next to the inputs.
  */
-function matchesObserved(report: ReportRecord, state: FilterState): boolean {
+function matchesObserved(report: Filterable, state: FilterState): boolean {
   if (state.observedFrom === null && state.observedTo === null) {
     return true;
   }
@@ -102,7 +112,7 @@ function matchesObserved(report: ReportRecord, state: FilterState): boolean {
   return true;
 }
 
-export function matchesFilters(report: ReportRecord, state: FilterState): boolean {
+export function matchesFilters(report: Filterable, state: FilterState): boolean {
   return (
     matchesCauses(report, state.causes) &&
     matchesAny(report.dispositions, state.dispositions) &&
@@ -112,10 +122,26 @@ export function matchesFilters(report: ReportRecord, state: FilterState): boolea
   );
 }
 
-export function applyFilters(
-  reports: readonly ReportRecord[],
+/**
+ * Plan sites under the filters. A site stands for plan trees that have no
+ * point, so it belongs to neither plan source: the data source filter lets it
+ * through whenever either of them is ticked, and every other dimension applies
+ * as it does to the plan trees.
+ */
+export function applySiteFilters<T extends Filterable>(
+  sites: readonly T[],
   state: FilterState,
-): readonly ReportRecord[] {
+): readonly T[] {
+  if (state.sources.size > 0 && !REMOVAL_PLAN_SOURCE_CODES.some((code) => state.sources.has(code))) {
+    return [];
+  }
+  return applyFilters(sites, { ...state, sources: new Set() });
+}
+
+export function applyFilters<T extends Filterable>(
+  reports: readonly T[],
+  state: FilterState,
+): readonly T[] {
   if (!isFilterActive(state)) {
     return reports;
   }

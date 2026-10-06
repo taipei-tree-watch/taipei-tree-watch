@@ -16,7 +16,16 @@ import strings from '../ui-strings.json';
 
 export interface FilterPanel {
   getState(): FilterState;
-  setSummary(shown: number, total: number, trees: number): void;
+  /**
+   * `sites` counts the plan site points the filter shows and the trees they
+   * stand for; the line is left out while none is shown.
+   */
+  setSummary(
+    shown: number,
+    total: number,
+    trees: number,
+    sites?: { readonly count: number; readonly trees: number },
+  ): void;
   /** Report count next to each data source option; a missing code reads 0. */
   setSourceCounts(counts: ReadonlyMap<number, number>): void;
   setOpen(open: boolean): void;
@@ -304,12 +313,21 @@ export function createFilterPanel(
 
   return {
     getState: readState,
-    setSummary(shown, total, trees) {
+    setSummary(shown, total, trees, sites) {
       const reportLine = document.createElement('span');
       reportLine.textContent = formatTemplate(strings.filters.reportSummary, { shown, total });
       const treeLine = document.createElement('span');
       treeLine.textContent = formatTemplate(strings.filters.treeSummary, { count: trees });
-      summary.replaceChildren(reportLine, treeLine);
+      const lines = [reportLine];
+      if (sites !== undefined && sites.count > 0) {
+        const siteLine = document.createElement('span');
+        siteLine.textContent = formatTemplate(strings.filters.siteSummary, {
+          sites: sites.count,
+          trees: sites.trees,
+        });
+        lines.push(siteLine);
+      }
+      summary.replaceChildren(...lines, treeLine);
     },
     setSourceCounts(counts) {
       for (const [code, element] of sourceCounts) {

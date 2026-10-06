@@ -12,6 +12,9 @@ extracted by hand into a CSV kept outside the repo. This module has two steps:
   web app loads to name the plan on the card. A tree without one goes to
   `pending.json`, keyed by the same external_ref, so a later coordinate source
   can place it by writing `coordinates.json` and running `build` again.
+  A pending tree whose location is one of the hand-picked sites in
+  `sites.json` is drawn as part of that site's summary point instead
+  (`plan_sites`), and `pending.json` names the site.
 
 Every report carries a deterministic id and external_ref, so a rerun writes
 the same bytes and a repeated import inserts nothing twice.
@@ -31,6 +34,7 @@ from typing import Any
 
 from pyproj import Transformer
 
+from ttw_pipelines import plan_sites
 from ttw_pipelines.protected_trees import dumps
 from ttw_pipelines.shared import (
     REPO_ROOT,
@@ -87,6 +91,9 @@ PENDING_COLUMNS = [
     "location",
     "why",
 ]
+
+# pending.json adds the site a pending tree is summarised under, or null.
+PENDING_FILE_COLUMNS = [*PENDING_COLUMNS, "site"]
 
 # inventory_gone: the inventory date when the tree's tag is no longer in the
 # Parks Office inventory, else null. A signal for the card, never a status.
@@ -156,7 +163,7 @@ CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 
 _TWD97_TO_WGS84 = Transformer.from_crs("EPSG:3826", "EPSG:4326", always_xy=True)
 
-_LINE_PER_ITEM_KEYS = frozenset({"cases", "rows", "shared_coordinates", "covered"})
+_LINE_PER_ITEM_KEYS = frozenset({"cases", "rows", "shared_coordinates", "covered", "sites"})
 
 
 # ---------------------------------------------------------------------------
@@ -439,6 +446,7 @@ def build(plans: dict, coordinates: dict[str, Placement] | None = None) -> dict[
 
     placed: list[tuple[dict[str, str], str, Placement]] = []
     pending = []
+    plan_trees = []
     for tree, ref in zip(kept, refs, strict=True):
         why, point = _plan_coordinate(tree)
         placement = Placement(point[0], point[1], None) if point is not None else None
@@ -446,6 +454,17 @@ def build(plans: dict, coordinates: dict[str, Placement] | None = None) -> dict[
             placement = coordinates[ref]
         if placement is not None and not in_bbox(placement.lat, placement.lng, bbox):
             why, placement = PENDING_OUTSIDE_BBOX, None
+        plan_trees.append(
+            plan_sites.PlanTree(
+                external_ref=ref,
+                case=tree["case"],
+                location=tree["location"] or None,
+                species=tree["species"] or None,
+                action=tree["action"],
+                causes=tuple(causes_for(tree["reason"], cases[tree["case"]]["title"])),
+                placed=placement is not None,
+            )
+        )
         if placement is None:
             pending.append(
                 [
@@ -518,7 +537,13 @@ def build(plans: dict, coordinates: dict[str, Placement] | None = None) -> dict[
         )
     reports.sort(key=lambda report: report.id)
 
-    return {"reports": reports, "pending": pending, "shared": shared, "covered": covered}
+    return {
+        "reports": reports,
+        "pending": pending,
+        "shared": shared,
+        "covered": covered,
+        "trees": plan_trees,
+    }
 
 
 def _sql_text(value: str | None) -> str:
@@ -608,11 +633,20 @@ def _load_inventory_missing(path: Path) -> dict[str, str]:
 
 
 def index_document(
-    plans: dict, reports: list[Report], missing: dict[str, str] | None = None
+    plans: dict,
+    reports: list[Report],
+    missing: dict[str, str] | None = None,
+    sites: list[list[Any]] | None = None,
 ) -> dict[str, Any]:
-    """What the web app needs to name a plan on the card, keyed by report id."""
+    """What the web app needs to name a plan on the card, keyed by report id.
+
+    `sites` are the summary points of trees without a point of their own, in
+    `plan_sites.SITE_COLUMNS` order; their cases are named like the reports'.
+    """
     missing = missing or {}
-    used = {report.case for report in reports}
+    sites = sites or []
+    case_column = plan_sites.SITE_COLUMNS.index("case")
+    used = {report.case for report in reports} | {site[case_column] for site in sites}
     return {
         "schema": SCHEMA,
         "source": SOURCE,
@@ -631,6 +665,8 @@ def index_document(
             [report.id, report.case, report.action, missing.get(report.external_ref)]
             for report in reports
         ],
+        "site_columns": list(plan_sites.SITE_COLUMNS),
+        "sites": sites,
     }
 
 
@@ -653,11 +689,25 @@ def run(
 
     result = build(plans, _load_coordinates(out_dir / COORDINATES_FILENAME))
     reports: list[Report] = result["reports"]
+    missing = _load_inventory_missing(out_dir / INVENTORY_FILENAME)
+    sites = plan_sites.group(
+        plan_sites.load_sites(out_dir / plan_sites.SITES_FILENAME),
+        result["trees"],
+        known_cases={entry["case"] for entry in plans["cases"]},
+        bbox=load_bbox(),
+        missing=missing,
+    )
+    membership: dict[str, str] = sites["membership"]
 
     (out_dir / IMPORT_FILENAME).write_text(import_sql(reports), encoding="utf-8")
     (out_dir / INDEX_FILENAME).write_text(
         dumps(
-            index_document(plans, reports, _load_inventory_missing(out_dir / INVENTORY_FILENAME)),
+            index_document(
+                plans,
+                reports,
+                missing,
+                sites["rows"],
+            ),
             _LINE_PER_ITEM_KEYS,
         ),
         encoding="utf-8",
@@ -671,8 +721,9 @@ def run(
                 "schema": SCHEMA,
                 "count": len(result["pending"]),
                 "by_reason": dict(sorted(pending_counts.items())),
-                "columns": list(PENDING_COLUMNS),
-                "rows": result["pending"],
+                "on_site": len(membership),
+                "columns": list(PENDING_FILE_COLUMNS),
+                "rows": [[*row, membership.get(row[0])] for row in result["pending"]],
             },
             _LINE_PER_ITEM_KEYS,
         ),
@@ -695,6 +746,8 @@ def run(
         "imported": len(reports),
         "pending": len(result["pending"]),
         "pending_by_reason": pending_counts,
+        "sites": len(sites["rows"]),
+        "on_site": len(membership),
         "covered": len(result["covered"]),
         "shared_coordinates": len(result["shared"]),
     }

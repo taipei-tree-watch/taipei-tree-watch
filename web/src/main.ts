@@ -15,13 +15,15 @@
 import './style.css';
 
 import { REPORT_BBOX } from './config.ts';
+import type { PlanSite } from './data/plan-sites.ts';
+import { siteTreeCount } from './data/plan-sites.ts';
 import type { ReportRecord } from './data/snapshot.ts';
 import type { ProtectedTree } from './data/trees.ts';
 import { loadMapData } from './data/load.ts';
 import { attachPlans } from './data/removal-plans.ts';
 import { createRevisionsLoader } from './data/revisions.ts';
 import type { FilterState } from './filters.ts';
-import { applyFilters, countBySource, defaultFilterState } from './filters.ts';
+import { applyFilters, applySiteFilters, countBySource, defaultFilterState } from './filters.ts';
 import { Funnel, Info, Layers, List, LocateFixed, MapPin, Search, setIconLabel } from './icons.ts';
 import type { MapController } from './map/index.ts';
 import type { EditLink, PermalinkTarget } from './permalink.ts';
@@ -46,6 +48,7 @@ import type { PendingReport, StorageLike } from './report/pending.ts';
 import { addPending, prunePending, readPending, toReportRecord } from './report/pending.ts';
 import { browserWriteText, copyLink } from './copy-link.ts';
 import { sameTreeReports } from './report/same-tree.ts';
+import { sitesAtSamePoint } from './report/site-summary.ts';
 import strings from './ui-strings.json';
 import { watchDeviceColorScheme } from './theme.ts';
 import { createCrosshair } from './ui/crosshair.ts';
@@ -116,6 +119,8 @@ const statusBar = createStatusBar(required('#status-bar'));
  * already added, after filtering rather than through it.
  */
 let pinnedReportId: string | null = null;
+/** The same exception for a permalinked plan site. */
+let pinnedSiteId: string | null = null;
 
 function addressFor(target: PermalinkTarget | null): void {
   const search = permalinkSearch(target, window.location.search);
@@ -150,8 +155,9 @@ const detailCard = createDetailCard(required('#detail-card'), {
   },
   onTargetChange(target) {
     addressFor(target);
-    if (target === null && pinnedReportId !== null) {
+    if (target === null && (pinnedReportId !== null || pinnedSiteId !== null)) {
       pinnedReportId = null;
+      pinnedSiteId = null;
       refresh(filterPanel?.getState() ?? defaultFilterState());
     }
   },
@@ -172,6 +178,10 @@ const detailCard = createDetailCard(required('#detail-card'), {
     const shown = findReport(report.id) ?? report;
     focusOn(shown.lat, shown.lng);
     detailCard.showReport(shown);
+  },
+  sameSpotSites: (site) => sitesAtSamePoint(site, planSites),
+  onShowSite(site) {
+    detailCard.showSite(site);
   },
 });
 const infoPanel = createInfoPanel(required('#info-panel'));
@@ -209,6 +219,8 @@ let crosshair: Crosshair | null = null;
 let reports: readonly ReportRecord[] = [];
 let trees: readonly ProtectedTree[] = [];
 const reportsById = new Map<string, ReportRecord>();
+let planSites: readonly PlanSite[] = [];
+const sitesById = new Map<string, PlanSite>();
 /**
  * Pending points drawn on the map, keyed by id. They are not in the snapshot
  * index, so a tap on one would otherwise find nothing and open no card.
@@ -317,10 +329,20 @@ function refresh(state: FilterState): void {
   }
   const pinned = pinnedReport(visible);
   mapController?.setReports([...visible, ...extra, ...pinned]);
+  const shownSites = applySiteFilters(planSites, state);
+  const pinnedSite = pinnedSiteId === null ? undefined : sitesById.get(pinnedSiteId);
+  mapController?.setSites(
+    pinnedSite === undefined || shownSites.includes(pinnedSite)
+      ? shownSites
+      : [...shownSites, pinnedSite],
+  );
   // The nearby notice is about what has been reported here, not about what
   // the active filter happens to show, so it reads the whole set.
   reportForm?.setReports([...base, ...extra]);
-  filterPanel?.setSummary(visible.length, reports.length, trees.length);
+  filterPanel?.setSummary(visible.length, reports.length, trees.length, {
+    count: shownSites.length,
+    trees: shownSites.reduce((sum, site) => sum + siteTreeCount(site), 0),
+  });
   filterPanel?.setSourceCounts(countBySource(base, state));
 }
 
@@ -548,6 +570,25 @@ function openInitialTarget(quiet: boolean): void {
     return;
   }
 
+  if (initialTarget.kind === 'site') {
+    if (!plansLoaded) {
+      return;
+    }
+    initialTargetHandled = true;
+    const site = sitesById.get(initialTarget.id);
+    if (site === undefined) {
+      if (quiet) {
+        statusBar.showNotice(strings.status.siteMissing);
+      }
+      return;
+    }
+    pinnedSiteId = site.id;
+    refresh(filterPanel?.getState() ?? defaultFilterState());
+    focusOn(site.lat, site.lng);
+    detailCard.showSite(site);
+    return;
+  }
+
   if (!treesLoaded) {
     return;
   }
@@ -573,6 +614,8 @@ function focusOn(lat: number, lng: number): void {
 
 let snapshotLoaded = false;
 let treesLoaded = false;
+/** The plan file is answered once, whether or not it loaded. */
+let plansLoaded = false;
 
 async function load(): Promise<void> {
   statusBar.showLoading();
@@ -591,6 +634,13 @@ async function load(): Promise<void> {
       { ids: new Set(reportsById.keys()), generatedAt: result.snapshot.generatedAt },
       new Date(),
     );
+  }
+
+  plansLoaded = true;
+  planSites = result.planSites;
+  sitesById.clear();
+  for (const site of planSites) {
+    sitesById.set(site.id, site);
   }
 
   if (result.trees !== null) {
@@ -711,6 +761,13 @@ async function start(): Promise<void> {
     const report = findReport(id);
     if (report !== undefined) {
       detailCard.showReport(report);
+    }
+  });
+
+  mapController.onSiteClick((id) => {
+    const site = sitesById.get(id);
+    if (site !== undefined) {
+      detailCard.showSite(site);
     }
   });
 

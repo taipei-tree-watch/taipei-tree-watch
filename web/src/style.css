@@ -545,6 +545,12 @@ body {
   border-left-color: var(--ink-muted);
 }
 
+.card-headline {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
 .card-row {
   display: grid;
   grid-template-columns: 5.5rem 1fr;

@@ -58,3 +58,14 @@ describe('filter panel data source group', () => {
     expect(countOf(REMOVAL_PLAN_SOURCE_CODE)).toBe('0');
   });
 });
+
+describe('filter panel summary', () => {
+  it('counts the plan sites on the map only while some are shown', () => {
+    const element = document.body.appendChild(document.createElement('div'));
+    const panel = createFilterPanel(element, () => undefined);
+    panel.setSummary(3, 10, 3874, { count: 0, trees: 0 });
+    expect(element.textContent).not.toContain('計畫地點');
+    panel.setSummary(3, 10, 3874, { count: 45, trees: 843 });
+    expect(element.textContent).toContain('計畫地點 45 處（843 株）');
+  });
+});

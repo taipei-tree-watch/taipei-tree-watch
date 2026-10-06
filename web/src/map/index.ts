@@ -1,5 +1,6 @@
 /**
- * The map surface: basemap, orthophoto, protected tree layer and report layer.
+ * The map surface: basemap, orthophoto, protected tree layer, plan site layer
+ * and report layer.
  *
  * The controller owns the MapLibre instance and is the only module that talks
  * to it. Everything the rest of the page needs goes through the returned
@@ -23,10 +24,12 @@ import type { Feature, FeatureCollection, Point } from 'geojson';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 
 import { ACTIVE_ORTHO, BASE_MAP, INITIAL_VIEW, MAP_ATTRIBUTION } from '../basemaps.ts';
+import type { PlanSite } from '../data/plan-sites.ts';
+import { siteTreeCount } from '../data/plan-sites.ts';
 import type { ReportRecord } from '../data/snapshot.ts';
 import { isRemovalPlanSource } from '../../../shared/tags.ts';
 import type { ProtectedTree } from '../data/trees.ts';
-import type { MapPalette } from './colors.ts';
+import type { CauseBucket, MapPalette } from './colors.ts';
 import { bucketForCauses, paletteFor } from './colors.ts';
 import type { ColorScheme } from '../theme.ts';
 import { TAP_RADIUS_PX, pickHit } from './hit.ts';
@@ -35,11 +38,13 @@ setWorkerUrl(workerUrl);
 
 const REPORTS_SOURCE = 'reports';
 const TREES_SOURCE = 'trees';
+const SITES_SOURCE = 'plan-sites';
 
 export const LAYER_IDS = {
   basemap: 'basemap-raster',
   ortho: 'ortho-raster',
   trees: 'trees-points',
+  sites: 'plan-sites-points',
   clusters: 'reports-clusters',
   pendingRing: 'reports-pending-ring',
   reports: 'reports-points',
@@ -59,7 +64,9 @@ export interface MapController {
   onMove(listener: (view: MapView) => void): () => void;
   onReportClick(listener: (id: string) => void): () => void;
   onTreeClick(listener: (id: string) => void): () => void;
+  onSiteClick(listener: (id: string) => void): () => void;
   setReports(reports: readonly ReportRecord[]): void;
+  setSites(sites: readonly PlanSite[]): void;
   setTrees(trees: readonly ProtectedTree[]): void;
   setOrthoVisible(visible: boolean): void;
   /** Repaint the basemap and every point layer in the given colour scheme. */
@@ -169,6 +176,67 @@ function reportRadiusExpression(extra = 0): ExpressionSpecification {
   ];
 }
 
+/**
+ * A plan site is a dashed diamond: the shape says "an area", unlike the
+ * circles that each stand for one tree, and the broken edge says its extent
+ * is not known. Inside is a faint wash of the cause colour. The icon is drawn
+ * once per cause bucket and redrawn on a scheme change.
+ */
+const SITE_BUCKETS: readonly CauseBucket[] = ['brown-root-rot', 'other-disease', 'construction', 'none'];
+const SITE_ICON_PX = 30;
+const SITE_ICON_RATIO = 2;
+
+function siteIconId(bucket: CauseBucket): string {
+  return `plan-site-${bucket}`;
+}
+
+function drawSiteIcon(color: string, halo: string): ImageData | null {
+  const side = SITE_ICON_PX * SITE_ICON_RATIO;
+  const canvas = document.createElement('canvas');
+  canvas.width = side;
+  canvas.height = side;
+  const context = canvas.getContext('2d');
+  if (context === null) {
+    return null;
+  }
+  const mid = side / 2;
+  const reach = mid - 4 * SITE_ICON_RATIO;
+  const diamond = (): void => {
+    context.beginPath();
+    context.moveTo(mid, mid - reach);
+    context.lineTo(mid + reach, mid);
+    context.lineTo(mid, mid + reach);
+    context.lineTo(mid - reach, mid);
+    context.closePath();
+  };
+  diamond();
+  context.globalAlpha = 0.28;
+  context.fillStyle = color;
+  context.fill();
+  context.globalAlpha = 1;
+  context.lineJoin = 'round';
+  // A solid halo under the dashes keeps the edge readable on any basemap.
+  context.strokeStyle = halo;
+  context.lineWidth = 5 * SITE_ICON_RATIO;
+  context.stroke();
+  context.setLineDash([4 * SITE_ICON_RATIO, 2.5 * SITE_ICON_RATIO]);
+  context.strokeStyle = color;
+  context.lineWidth = 2.5 * SITE_ICON_RATIO;
+  context.stroke();
+  return context.getImageData(0, 0, side, side);
+}
+
+/** Bigger for a site that stands for more trees, and smaller zoomed out. */
+const SITE_ICON_SIZE: ExpressionSpecification = [
+  'interpolate',
+  ['linear'],
+  ['zoom'],
+  10,
+  ['step', ['get', 'trees'], 0.55, 10, 0.7, 50, 0.85],
+  16,
+  ['step', ['get', 'trees'], 0.85, 10, 1.05, 50, 1.3],
+];
+
 function clusterColorExpression(palette: MapPalette): ExpressionSpecification {
   return ['case', ['>', ['get', 'alert'], 0], palette.clusterAlert, palette.cluster];
 }
@@ -194,6 +262,7 @@ function buildStyle(scheme: ColorScheme): StyleSpecification {
         ...(ACTIVE_ORTHO.bounds === undefined ? {} : { bounds: [...ACTIVE_ORTHO.bounds] }),
       },
       [TREES_SOURCE]: { type: 'geojson', data: emptyCollection() },
+      [SITES_SOURCE]: { type: 'geojson', data: emptyCollection() },
       [REPORTS_SOURCE]: {
         type: 'geojson',
         data: emptyCollection(),
@@ -237,6 +306,20 @@ function buildStyle(scheme: ColorScheme): StyleSpecification {
             18,
             5,
           ],
+        },
+      },
+      // Under the report points: where a site's own trees are drawn one by
+      // one, each of them stays tappable.
+      {
+        id: LAYER_IDS.sites,
+        type: 'symbol',
+        source: SITES_SOURCE,
+        layout: {
+          'icon-image': ['concat', 'plan-site-', ['get', 'bucket']],
+          'icon-size': SITE_ICON_SIZE,
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+          'symbol-sort-key': ['-', 0, ['get', 'trees']],
         },
       },
       {
@@ -299,6 +382,14 @@ function reportFeature(report: ReportRecord): Feature<Point> {
   };
 }
 
+function siteFeature(site: PlanSite): Feature<Point> {
+  return {
+    type: 'Feature',
+    geometry: { type: 'Point', coordinates: [site.lng, site.lat] },
+    properties: { id: site.id, bucket: bucketForCauses(site.causes), trees: siteTreeCount(site) },
+  };
+}
+
 function treeFeature(tree: ProtectedTree): Feature<Point> {
   return {
     type: 'Feature',
@@ -345,7 +436,24 @@ export function createMapController(
     geojson?.setData(data);
   };
 
+  const drawSiteIcons = (current: ColorScheme): void => {
+    const palette = paletteFor(current);
+    for (const bucket of SITE_BUCKETS) {
+      const image = drawSiteIcon(palette.buckets[bucket], palette.halo);
+      if (image === null) {
+        continue;
+      }
+      const id = siteIconId(bucket);
+      if (map.hasImage(id)) {
+        map.updateImage(id, image);
+      } else {
+        map.addImage(id, image, { pixelRatio: SITE_ICON_RATIO });
+      }
+    }
+  };
+
   map.on('load', () => {
+    drawSiteIcons(scheme);
     loaded = true;
     for (const [source, data] of pending) {
       const geojson = map.getSource(source) as GeoJSONSource | undefined;
@@ -358,7 +466,7 @@ export function createMapController(
    * Tap targets, most specific first. A tap is resolved against all three at
    * once so that overlapping layers cannot each claim the same tap.
    */
-  const pointerLayers = [LAYER_IDS.reports, LAYER_IDS.clusters, LAYER_IDS.trees];
+  const pointerLayers = [LAYER_IDS.reports, LAYER_IDS.sites, LAYER_IDS.clusters, LAYER_IDS.trees];
   for (const layer of pointerLayers) {
     map.on('mouseenter', layer, () => {
       map.getCanvas().style.cursor = 'pointer';
@@ -370,6 +478,7 @@ export function createMapController(
 
   const reportListeners = new Set<(id: string) => void>();
   const treeListeners = new Set<(id: string) => void>();
+  const siteListeners = new Set<(id: string) => void>();
 
   const expandCluster = (clusterId: number, center: LngLatLike): void => {
     const source = map.getSource(REPORTS_SOURCE) as GeoJSONSource | undefined;
@@ -424,7 +533,12 @@ export function createMapController(
     if (id === null) {
       return;
     }
-    const listeners = hit.layerId === LAYER_IDS.reports ? reportListeners : treeListeners;
+    const listeners =
+      hit.layerId === LAYER_IDS.reports
+        ? reportListeners
+        : hit.layerId === LAYER_IDS.sites
+          ? siteListeners
+          : treeListeners;
     for (const listener of listeners) {
       listener(id);
     }
@@ -459,10 +573,20 @@ export function createMapController(
       treeListeners.add(listener);
       return () => treeListeners.delete(listener);
     },
+    onSiteClick(listener) {
+      siteListeners.add(listener);
+      return () => siteListeners.delete(listener);
+    },
     setReports(reports) {
       applyData(REPORTS_SOURCE, {
         type: 'FeatureCollection',
         features: reports.map(reportFeature),
+      });
+    },
+    setSites(sites) {
+      applyData(SITES_SOURCE, {
+        type: 'FeatureCollection',
+        features: sites.map(siteFeature),
       });
     },
     setTrees(trees) {
@@ -495,6 +619,7 @@ export function createMapController(
         map.setPaintProperty(LAYER_IDS.reports, 'circle-color', reportFillExpression(palette));
         map.setPaintProperty(LAYER_IDS.reports, 'circle-stroke-color', strokeColorExpression(palette));
         map.setPaintProperty(LAYER_IDS.pendingRing, 'circle-stroke-color', palette.pendingStroke);
+        drawSiteIcons(next);
       };
       if (loaded) {
         apply();

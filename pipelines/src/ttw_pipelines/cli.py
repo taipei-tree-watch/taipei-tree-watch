@@ -43,6 +43,11 @@ def _run_removal_plans(args: argparse.Namespace) -> int:
     )
     for reason, count in sorted(summary["pending_by_reason"].items()):
         print(f"pending {reason}: {count}")
+    if summary["sites"]:
+        print(
+            f"sites: {summary['sites']} summary points cover {summary['on_site']} "
+            f"of the {summary['pending']} pending trees (sites.json)"
+        )
     if summary["shared_coordinates"]:
         print(f"points shared by more than one tree: {summary['shared_coordinates']} (review.json)")
     return 0

@@ -58,6 +58,32 @@ describe('parsePermalink', () => {
   });
 });
 
+describe('plan site permalinks', () => {
+  it('reads a site id and folds it to lower case', () => {
+    expect(parsePermalink('?site=cf720-ruiguang-park')).toEqual({ kind: 'site', id: 'cf720-ruiguang-park' });
+    expect(parsePermalink('?site=CF720-Park')).toEqual({ kind: 'site', id: 'cf720-park' });
+  });
+
+  it('rejects a site id of the wrong shape', () => {
+    expect(parsePermalink('?site=-park')).toBeNull();
+    expect(parsePermalink('?site=a%20park')).toBeNull();
+    expect(parsePermalink(`?site=${'a'.repeat(49)}`)).toBeNull();
+  });
+
+  it('answers with the report or tree when a link also names one', () => {
+    expect(parsePermalink(`?site=a-park&report=${ULID}`)).toEqual({ kind: 'report', id: ULID });
+    expect(parsePermalink('?site=a-park&tree=768')).toEqual({ kind: 'tree', id: '768' });
+  });
+
+  it('writes and clears the site parameter', () => {
+    expect(permalinkSearch({ kind: 'site', id: 'a-park' }, `?report=${ULID}&ortho=1`)).toBe(
+      '?ortho=1&site=a-park',
+    );
+    expect(permalinkSearch({ kind: 'tree', id: '768' }, '?site=a-park')).toBe('?tree=768');
+    expect(permalinkSearch(null, '?site=a-park')).toBe('');
+  });
+});
+
 describe('permalinkSearch', () => {
   it('adds the report parameter', () => {
     expect(permalinkSearch({ kind: 'report', id: ULID }, '')).toBe(`?report=${ULID}`);

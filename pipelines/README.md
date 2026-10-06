@@ -34,8 +34,20 @@ The build writes, all byte-stable for identical input:
 
 - `import.sql`: one `INSERT OR IGNORE` per tree with a usable point, `evidence` = official document and `source` = removal plan, split by where the point comes from: `removal-plan` (the plan's own coordinate) or `removal-plan-inventory` (the inventory entry of the tree's tag). One `UPDATE` per source at the end moves rows already imported to the right source when their point source changed; it only touches removal-plan rows. Run it with `wrangler d1 execute --remote --file` after deploying (docs/DEPLOY.md section 4.1); rows already imported are skipped through the unique index on `external_ref`.
 - `index.json`: case title, status and page per report id, shipped as `/removal-plans.json` for the detail card. Its `inventory_gone` column holds the inventory version date when the tree's tag is no longer in the Parks Office inventory, read from `inventory.json`.
-- `pending.json`: trees without a usable point, columns `external_ref, case, plan_no, tree_tag, species, action, location, why`; `why` is `no-coordinate`, `placeholder-coordinate` or `outside-bbox`.
+- `pending.json`: trees without a usable point, columns `external_ref, case, plan_no, tree_tag, species, action, location, why, site`; `why` is `no-coordinate`, `placeholder-coordinate` or `outside-bbox`, and `site` is the plan site the tree is summarised under (see below) or null. `on_site` counts the trees that have one.
 - `review.json`: trees of one case sharing the exact same point, and trees listed by two plans (only one of each pair is imported).
+
+### Plan sites
+
+Most pending trees have a site-level location only (a park, a works compound, a road stretch). Rather than invent a point per tree, `sites.json` next to the other files lists one hand-picked point per site:
+
+```json
+{"schema": 1, "sites": [{"id": "cf720-ruiguang-park", "case": "removal_46B5198DD00B117C",
+  "locations": ["內湖區瑞光公園"], "lat": 25.07208, "lng": 121.57881, "via": "site-plan",
+  "how": "Median of the inventory trees in the strip the plan marks as the Y33 work area"}]}
+```
+
+A pending tree of that case whose `location` equals one of `locations` becomes a member; trees of the same case and location that already have a point are counted as `placed` instead. `via` is one of `site-plan`, `placed-trees`, `park-centroid`, `school-centroid`, `site-centroid`, `road-segment`, `intersection`, `address`, and the card says which; `how` is for maintainers. The build writes the sites into `index.json` (`site_columns`, `sites`: counts by action, species and cause counts, `placed`, and the inventory-gone signal) and fails when a site names an unknown case, lies outside the `BBOX`, has no pending member, or claims a location another site already claims. Members are never written to `import.sql`; the sites ship with the web build, so no D1 import is involved. After editing `sites.json`, rerun the build and commit it with `index.json` and `pending.json`.
 
 `external_ref` is `pkl:<case>:<pdf index>:<plan number>`, and the report id is a ULID derived from it and the posting date, so reruns and re-imports never duplicate a tree. TWD97 coordinates (EPSG:3826) are converted with pyproj and rounded to 5 decimals; points outside the `BBOX` in `wrangler.toml` are not placed.
 

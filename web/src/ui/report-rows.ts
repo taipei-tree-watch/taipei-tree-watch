@@ -7,6 +7,7 @@
  * find it in later.
  */
 import type { ReportRecord } from '../data/snapshot.ts';
+import type { SummaryRow } from '../report/summary.ts';
 import { reportSummary } from '../report/summary.ts';
 import strings from '../ui-strings.json';
 
@@ -36,6 +37,11 @@ function anchor(href: string, text: string): HTMLAnchorElement {
   return element;
 }
 
+/** One summary row, linking its value when the row names a page. */
+export function summaryRow(entry: SummaryRow): HTMLDivElement {
+  return row(entry.label, entry.href === undefined ? entry.value : anchor(entry.href, entry.value));
+}
+
 export function reportRows(report: ReportRecord): HTMLElement[] {
   const summary = reportSummary(report);
   const parts: HTMLElement[] = [];
@@ -62,7 +68,7 @@ export function reportRows(report: ReportRecord): HTMLElement[] {
   }
 
   for (const entry of summary.rows) {
-    parts.push(row(entry.label, entry.href === undefined ? entry.value : anchor(entry.href, entry.value)));
+    parts.push(summaryRow(entry));
   }
 
   if (summary.link !== null) {

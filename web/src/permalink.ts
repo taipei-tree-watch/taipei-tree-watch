@@ -1,5 +1,5 @@
 /**
- * Permalinks for a single report or a single protected tree.
+ * Permalinks for a single report, a single protected tree or a plan site.
  *
  * The address is a query parameter rather than a path so that the static
  * assets keep answering every URL on their own: `/?report=<ULID>` and
@@ -19,11 +19,19 @@ import { isEditToken } from '../../shared/validation.ts';
 
 export const REPORT_PARAM = 'report';
 export const TREE_PARAM = 'tree';
+export const SITE_PARAM = 'site';
 export const EDIT_PARAM = 'edit';
 
 export type PermalinkTarget =
   | { readonly kind: 'report'; readonly id: string }
-  | { readonly kind: 'tree'; readonly id: string };
+  | { readonly kind: 'tree'; readonly id: string }
+  | { readonly kind: 'site'; readonly id: string };
+
+const PARAM_BY_KIND: Readonly<Record<PermalinkTarget['kind'], string>> = {
+  report: REPORT_PARAM,
+  tree: TREE_PARAM,
+  site: SITE_PARAM,
+};
 
 /**
  * Crockford base32 without I, L, O and U, 26 characters: the shape produced by
@@ -35,6 +43,9 @@ const ULID = /^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{26}$/;
 /** Protected tree numbers are digits, matching the shared report validation. */
 const TREE_ID = /^[0-9]{1,10}$/;
 
+/** Plan site ids as the pipeline writes them. */
+const SITE_ID = /^[a-z0-9][a-z0-9-]{0,47}$/;
+
 function reportId(raw: string): string | null {
   const id = raw.trim().toUpperCase();
   return ULID.test(id) ? id : null;
@@ -45,11 +56,17 @@ function treeId(raw: string): string | null {
   return TREE_ID.test(id) ? id : null;
 }
 
+function siteId(raw: string): string | null {
+  const id = raw.trim().toLowerCase();
+  return SITE_ID.test(id) ? id : null;
+}
+
 /**
  * The target a query string names, or null when it names none.
  *
- * A URL carrying both parameters is answered with the report: a report is the
- * more specific thing to point at, and a card can only show one of them.
+ * A URL carrying more than one is answered with the report, then the tree,
+ * then the site: the more specific thing to point at wins, and a card can
+ * only show one of them.
  */
 export function parsePermalink(search: string): PermalinkTarget | null {
   const params = new URLSearchParams(search);
@@ -70,6 +87,14 @@ export function parsePermalink(search: string): PermalinkTarget | null {
     }
   }
 
+  const site = params.get(SITE_PARAM);
+  if (site !== null) {
+    const id = siteId(site);
+    if (id !== null) {
+      return { kind: 'site', id };
+    }
+  }
+
   return null;
 }
 
@@ -82,9 +107,10 @@ export function permalinkSearch(target: PermalinkTarget | null, search: string):
   const params = new URLSearchParams(search);
   params.delete(REPORT_PARAM);
   params.delete(TREE_PARAM);
+  params.delete(SITE_PARAM);
   params.delete(EDIT_PARAM);
   if (target !== null) {
-    params.set(target.kind === 'report' ? REPORT_PARAM : TREE_PARAM, target.id);
+    params.set(PARAM_BY_KIND[target.kind], target.id);
   }
   const query = params.toString();
   return query === '' ? '' : `?${query}`;

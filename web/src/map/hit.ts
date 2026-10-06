@@ -8,8 +8,9 @@
  * protected tree it is drawn on top of.
  *
  * Priority runs from the most specific answer to the least. A report is what
- * the reporter asked about, a cluster only says where to zoom next, and the
- * protected tree layer is reference material sitting behind both.
+ * the reporter asked about, a plan site stands for a whole area and may sit
+ * under its own trees' points, a cluster only says where to zoom next, and
+ * the protected tree layer is reference material sitting behind them all.
  */
 
 /** Half the side of the square queried around the tap, in screen pixels. */

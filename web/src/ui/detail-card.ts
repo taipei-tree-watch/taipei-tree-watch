@@ -10,8 +10,12 @@
  * follow-up, correct what it says, or leave it. It shows how often it was
  * corrected, loading the list of corrections only when asked, and links the
  * other reports of the same tree.
+ *
+ * A plan site's card says first that its point marks a site, not a tree, then
+ * how many trees the plan lists there and of which species.
  */
 import { taipeiDate } from '../../../shared/validation.ts';
+import type { PlanSite } from '../data/plan-sites.ts';
 import type { RevisionEntry, RevisionsLoader } from '../data/revisions.ts';
 import type { ReportRecord } from '../data/snapshot.ts';
 import type { ProtectedTree } from '../data/trees.ts';
@@ -19,7 +23,8 @@ import { formatTemplate, linkHostname } from '../format.ts';
 import type { PermalinkTarget } from '../permalink.ts';
 import type { CopyOutcome } from '../copy-link.ts';
 import { describeRevision } from '../report/correction.ts';
-import { reportRows } from './report-rows.ts';
+import { sameSpotItem, siteSummary } from '../report/site-summary.ts';
+import { reportRows, summaryRow } from './report-rows.ts';
 import {
   CirclePlus,
   Ellipsis,
@@ -60,11 +65,16 @@ export interface DetailCardOptions {
   readonly onCorrect: (report: ReportRecord) => void;
   /** Open another report's card, as its permalink would. */
   readonly onShowReport: (report: ReportRecord) => void;
+  /** Other plan sites drawn on exactly the same point. */
+  readonly sameSpotSites: (site: PlanSite) => readonly PlanSite[];
+  /** Open another plan site's card. */
+  readonly onShowSite: (site: PlanSite) => void;
 }
 
 export interface DetailCard {
   showReport(report: ReportRecord): void;
   showTree(tree: ProtectedTree): void;
+  showSite(site: PlanSite): void;
   hide(): void;
   /**
    * Copy the open card's permalink. The copy button calls this; a test can
@@ -378,6 +388,65 @@ export function createDetailCard(element: HTMLElement, options: DetailCardOption
     return section;
   };
 
+  /** Sites a tap on this point could not tell apart, each opening its own card. */
+  const sameSpotSection = (site: PlanSite): HTMLElement | null => {
+    const others = options.sameSpotSites(site);
+    if (others.length === 0) {
+      return null;
+    }
+    const section = document.createElement('section');
+    section.className = 'card-same-tree';
+    const heading = document.createElement('p');
+    heading.className = 'form-hint';
+    heading.textContent = strings.site.sameSpot;
+    const list = document.createElement('ul');
+    list.className = 'card-same-tree-list';
+    for (const other of others) {
+      const item = document.createElement('li');
+      const anchor = document.createElement('a');
+      anchor.href = options.permalinkUrl({ kind: 'site', id: other.id });
+      anchor.textContent = sameSpotItem(other);
+      anchor.addEventListener('click', (event) => {
+        event.preventDefault();
+        options.onShowSite(other);
+      });
+      item.append(anchor);
+      list.append(item);
+    }
+    section.append(heading, list);
+    return section;
+  };
+
+  const siteParts = (site: PlanSite): (Node | null)[] => {
+    const summary = siteSummary(site);
+    const caveat = document.createElement('p');
+    caveat.className = 'card-notice card-planned';
+    caveat.textContent = summary.caveat;
+    const headline = document.createElement('p');
+    headline.className = 'card-headline';
+    headline.textContent = summary.headline;
+    let inventory: HTMLParagraphElement | null = null;
+    if (summary.inventory !== null) {
+      inventory = document.createElement('p');
+      inventory.className = 'card-notice';
+      inventory.textContent = summary.inventory;
+    }
+    let placed: HTMLParagraphElement | null = null;
+    if (summary.placed !== null) {
+      placed = document.createElement('p');
+      placed.className = 'form-hint';
+      placed.textContent = summary.placed;
+    }
+    return [
+      caveat,
+      headline,
+      inventory,
+      ...summary.rows.map(summaryRow),
+      placed,
+      sameSpotSection(site),
+    ];
+  };
+
   const clearFeedback = (): void => {
     feedback.hidden = true;
     feedback.textContent = '';
@@ -476,6 +545,14 @@ export function createDetailCard(element: HTMLElement, options: DetailCardOption
         textRow(strings.card.address, tree.address),
         textRow(strings.card.manager, tree.manager),
       ]);
+    },
+    showSite(site) {
+      openTree = null;
+      openReport = null;
+      aboutButton.hidden = true;
+      setAboutOpen(false);
+      reportTreeButton.hidden = true;
+      render(strings.site.title, { kind: 'site', id: site.id }, siteParts(site));
     },
     hide,
     copyCurrent,

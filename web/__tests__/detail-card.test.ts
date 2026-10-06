@@ -3,6 +3,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { PlanSite } from '../src/data/plan-sites.ts';
 import type { ReportRecord } from '../src/data/snapshot.ts';
 import type { ProtectedTree } from '../src/data/trees.ts';
 import type { PermalinkTarget } from '../src/permalink.ts';
@@ -83,6 +84,8 @@ function harness(outcome: CopyOutcome, overrides: Partial<DetailCardOptions> = {
     onFollowUp: vi.fn(),
     onCorrect: vi.fn(),
     onShowReport: vi.fn(),
+    sameSpotSites: () => [],
+    onShowSite: vi.fn(),
     ...overrides,
   });
 
@@ -376,5 +379,72 @@ describe('detail card corrections and same tree', () => {
     expect(anchor?.getAttribute('href')).toContain(earlier.id);
     anchor?.click();
     expect(onShowReport).toHaveBeenCalledWith(earlier);
+  });
+});
+
+const SITE: PlanSite = {
+  id: 'cf720-ruiguang-park',
+  lat: 25.07065,
+  lng: 121.57833,
+  via: 'park-centroid',
+  locations: ['內湖區瑞光公園'],
+  remove: 174,
+  transplant: 0,
+  species: [{ name: '榕樹', count: 80 }],
+  placed: 0,
+  inventoryGone: null,
+  title: '臺北捷運環狀線東環段CF720區段標樹木移除計畫',
+  status: 'under_review',
+  url: 'https://pkl.gov.taipei/News_Content.aspx?n=1&s=2',
+  causes: [20],
+  causeCounts: [{ code: 20, count: 174 }],
+  dispositions: [],
+  evidence: 3,
+  source: 3,
+  observedAt: '2026-09-23',
+};
+
+describe('plan site card', () => {
+  it('says the point marks the site, then how many trees the plan lists there', () => {
+    const { card, element, targets } = harness('copied');
+    card.showSite(SITE);
+    expect(element.hidden).toBe(false);
+    expect(element.querySelector('h2')?.textContent).toBe('公園處計畫地點');
+    const caveat = element.querySelector('.card-planned');
+    expect(caveat?.textContent).toContain('不是某一棵樹的位置');
+    expect(element.querySelector('.card-headline')?.textContent).toBe('此地點計畫移除 174 株');
+    expect(element.textContent).toContain('榕樹 80 株');
+    expect(element.textContent).toContain('審查中');
+    const plan = element.querySelector<HTMLAnchorElement>('.card-row a');
+    expect(plan?.href).toBe(SITE.url);
+    expect(plan?.rel).toBe('nofollow noopener');
+    expect(targets).toEqual([{ kind: 'site', id: SITE.id }]);
+  });
+
+  it('offers no report actions on a site', () => {
+    const { card, element } = harness('copied');
+    card.showSite(SITE);
+    const shown = [...element.querySelectorAll<HTMLButtonElement>('.card-share button')]
+      .filter((button) => button.closest('[hidden]') === null)
+      .map((button) => button.textContent);
+    expect(shown).toEqual([strings.card.copyLink]);
+  });
+
+  it('copies the site permalink', async () => {
+    const { card, copied } = harness('copied');
+    card.showSite(SITE);
+    await card.copyCurrent();
+    expect(copied).toEqual([`${PAGE}?site=${SITE.id}`]);
+  });
+
+  it('links other sites on the same point to their own cards', () => {
+    const other: PlanSite = { ...SITE, id: 'other', title: '移植計畫', remove: 0, transplant: 18 };
+    const onShowSite = vi.fn();
+    const { card, element } = harness('copied', { sameSpotSites: () => [other], onShowSite });
+    card.showSite(SITE);
+    const anchor = element.querySelector<HTMLAnchorElement>('.card-same-tree a');
+    expect(anchor?.textContent).toBe('移植計畫（18 株）');
+    anchor?.click();
+    expect(onShowSite).toHaveBeenCalledWith(other);
   });
 });
