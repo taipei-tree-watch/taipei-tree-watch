@@ -72,6 +72,7 @@ uv run ttw-pipelines removal-plans --inventory .cache
 The inventory (data.taipei 臺北市行道樹及公園樹木分布圖, about 160k trees) is downloaded with curl because of the data.taipei TLS issue; the CSVs stay in the gitignored cache. `--inventory` matches every plan tree's Parks Office tag (two letters and ten digits, any case) exactly, then:
 
 - writes `coordinates.json` entries with `via` = `inventory` for trees the plan gives no usable point, replacing earlier inventory entries and keeping those from other sources. A tag is not used when the inventory species disagrees with the plan's (`species-mismatch`; 台/臺 and 艷/豔 spellings, a name ending the other such as 臺灣海棗/海棗, and a few common-name pairs count as agreeing) or when two plan trees carry the same tag (`shared-tag`);
+- skips the trees listed in `removal_plans.DOUBTFUL_TAGS` (`doubtful-tag`), each with its reason: tags whose inventory entry evidently is another tree. The build also ignores any inventory coordinate left for them, and `import.sql` ends with an `UPDATE ... SET status = 1` that hides a row imported earlier for one of them;
 - writes `inventory.json`: for every tagged plan tree, placed or pending, whether its tag is in the inventory, plus the `rejected` list above. The inventory version date is the newest `UpdDate` across the two files. A tag missing from the inventory is only a signal (removal, renumbering or a data correction); it never changes an imported row.
 
 The build then runs as usual. Commit `coordinates.json`, `inventory.json` and the rebuilt files.

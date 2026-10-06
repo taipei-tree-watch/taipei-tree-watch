@@ -1,8 +1,8 @@
 {
  "schema": 1,
- "count": 843,
- "by_reason": {"no-coordinate": 842, "placeholder-coordinate": 1},
- "on_site": 843,
+ "count": 847,
+ "by_reason": {"no-coordinate": 846, "placeholder-coordinate": 1},
+ "on_site": 847,
  "columns": ["external_ref", "case", "plan_no", "tree_tag", "species", "action", "location", "why", "site"],
  "rows": [
   ["pkl:removal_46B5198DD00B117C:0:Y33-100","removal_46B5198DD00B117C","Y33-100",null,"榕樹","remove","內湖區瑞光公園","no-coordinate","cf720-ruiguang-park"],
@@ -394,6 +394,10 @@
   ["pkl:transplant_545556494CAD7667:0:Y34-6","transplant_545556494CAD7667","Y34-6",null,"欖仁","transplant","內湖區舊宗路二段1 號","no-coordinate","cf720-jiuzong-y34-transplant"],
   ["pkl:transplant_545556494CAD7667:0:Y34-63","transplant_545556494CAD7667","Y34-63",null,"刺蔥","transplant","內湖區舊宗路二段1 號","no-coordinate","cf720-jiuzong-y34-transplant"],
   ["pkl:transplant_545556494CAD7667:0:Y34-66","transplant_545556494CAD7667","Y34-66",null,"龍眼","transplant","內湖區舊宗路二段1 號","no-coordinate","cf720-jiuzong-y34-transplant"],
+  ["pkl:transplant_545556494CAD7667:0:Y34-71","transplant_545556494CAD7667","Y34-71","NH0820211031","榕樹","transplant","內湖區舊宗路二段1 號","no-coordinate","cf720-jiuzong-y34-transplant"],
+  ["pkl:transplant_545556494CAD7667:0:Y34-75","transplant_545556494CAD7667","Y34-75","NH0820211027","榕樹","transplant","內湖區舊宗路二段1 號","no-coordinate","cf720-jiuzong-y34-transplant"],
+  ["pkl:transplant_545556494CAD7667:0:Y34-76","transplant_545556494CAD7667","Y34-76","NH0820211026","榕樹","transplant","內湖區舊宗路二段1 號","no-coordinate","cf720-jiuzong-y34-transplant"],
+  ["pkl:transplant_545556494CAD7667:0:Y34-81","transplant_545556494CAD7667","Y34-81","NH0820211021","榕樹","transplant","內湖區舊宗路二段1 號","no-coordinate","cf720-jiuzong-y34-transplant"],
   ["pkl:transplant_55EA5184698EB8EA:0:01","transplant_55EA5184698EB8EA","01",null,"羅漢松","transplant","民權西路102巷4弄","no-coordinate","shuanglian-elementary"],
   ["pkl:transplant_55EA5184698EB8EA:0:02","transplant_55EA5184698EB8EA","02",null,"羅漢松","transplant","民權西路102巷4弄","no-coordinate","shuanglian-elementary"],
   ["pkl:transplant_55EA5184698EB8EA:0:03","transplant_55EA5184698EB8EA","03",null,"羅漢松","transplant","民權西路102巷4弄","no-coordinate","shuanglian-elementary"],

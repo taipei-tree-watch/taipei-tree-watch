@@ -339,3 +339,25 @@ def test_run_is_byte_stable(tmp_path: Path) -> None:
     assert set(first) == {"plans.json", "import.sql", "index.json", "pending.json", "review.json"}
     pending = json.loads(first["pending.json"])
     assert pending["count"] == len(pending["rows"])
+
+
+def test_an_inventory_point_of_a_doubtful_tag_is_not_used(plans, monkeypatch) -> None:
+    pending_ref = "pkl:removal_AAAA:0:A11"
+    point = {pending_ref: Placement(25.03, 121.56, "inventory")}
+    assert pending_ref in by_ref(build(plans, point))
+    monkeypatch.setitem(removal_plans.DOUBTFUL_TAGS, pending_ref, "inventory point is elsewhere")
+    result = build(plans, point)
+    assert pending_ref not in by_ref(result)
+    assert pending_by_ref(result)[pending_ref]["why"] == "no-coordinate"
+
+
+def test_import_hides_rows_of_withdrawn_trees_only_when_no_longer_placed(plans) -> None:
+    reports = build(plans)["reports"]
+    placed = reports[0].external_ref
+    sql = import_sql(reports, ["pkl:removal_AAAA:0:A11", placed])
+    hide = [line for line in sql.splitlines() if line.startswith("UPDATE reports SET status = 1")]
+    assert len(hide) == 1
+    assert "'pkl:removal_AAAA:0:A11'" in hide[0]
+    assert f"'{placed}'" not in hide[0]
+    assert "status = 0 AND source IN (3, 4)" in hide[0]
+    assert "status = 1" not in import_sql(reports)

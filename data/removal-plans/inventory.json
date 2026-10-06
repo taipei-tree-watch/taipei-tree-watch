@@ -1028,11 +1028,15 @@
  ],
  "rejected_columns": ["external_ref", "tree_tag", "why", "plan_species", "inventory_species"],
  "rejected": [
-  ["pkl:removal_9F2D1317CA6577E2:2:Y32-127","WH1220141006","species-mismatch","小葉欖仁","紫薇"],
+  ["pkl:removal_9F2D1317CA6577E2:2:Y32-127","WH1220141006","doubtful-tag","小葉欖仁","紫薇"],
   ["pkl:removal_D3BB0AD389D1F53B:0:C220","SY1680011116","shared-tag","杜英","杜英"],
   ["pkl:transplant_545556494CAD7667:0:Y33-103","NH0815000122","shared-tag","臺灣海棗","海棗"],
   ["pkl:transplant_545556494CAD7667:0:Y33-104","NH0815000114","species-mismatch","羅漢松","海棗"],
   ["pkl:transplant_545556494CAD7667:0:Y33-133","NH0815000122","shared-tag","臺灣海棗","海棗"],
+  ["pkl:transplant_545556494CAD7667:0:Y34-71","NH0820211031","doubtful-tag","榕樹","榕樹"],
+  ["pkl:transplant_545556494CAD7667:0:Y34-75","NH0820211027","doubtful-tag","榕樹","榕樹"],
+  ["pkl:transplant_545556494CAD7667:0:Y34-76","NH0820211026","doubtful-tag","榕樹","榕樹"],
+  ["pkl:transplant_545556494CAD7667:0:Y34-81","NH0820211021","doubtful-tag","榕樹","榕樹"],
   ["pkl:transplant_5CDA5B4814D3E8C6:0:C-141","SY1480021011","species-mismatch","鐵刀木","盾柱木"],
   ["pkl:transplant_5CDA5B4814D3E8C6:0:C-220","SY1680011116","shared-tag","杜英","杜英"]
  ]

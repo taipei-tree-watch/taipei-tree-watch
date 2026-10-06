@@ -115,6 +115,27 @@ COVERED_BY = {
     ("transplant_23FDA7AE92260DD3", "remove"): ("removal_D3BB0AD389D1F53B", 2),
 }
 
+# Plan tags that the inventory join must not place, with why. Each of these
+# trees stays pending and is drawn as part of its plan site. A row imported
+# earlier from one of them is hidden by import.sql (status 1).
+DOUBTFUL_TAGS = {
+    "pkl:transplant_545556494CAD7667:0:Y34-71": (
+        "inventory point is on the 舊宗路二段 median, about 35 m west of the plan's Y34 lot"
+    ),
+    "pkl:transplant_545556494CAD7667:0:Y34-75": (
+        "inventory point is on the 舊宗路二段 median, about 35 m west of the plan's Y34 lot"
+    ),
+    "pkl:transplant_545556494CAD7667:0:Y34-76": (
+        "inventory point is on the 舊宗路二段 median, about 35 m west of the plan's Y34 lot"
+    ),
+    "pkl:transplant_545556494CAD7667:0:Y34-81": (
+        "inventory point is on the 舊宗路二段 median, about 35 m west of the plan's Y34 lot"
+    ),
+    "pkl:removal_9F2D1317CA6577E2:2:Y32-127": (
+        "the tag is a 西園路一段 tree in the inventory; the plan most likely miscopied it"
+    ),
+}
+
 # Keywords that let a cause be read off the plan's own reason text, in cause
 # slug order. Nothing is inferred beyond the words themselves.
 REASON_KEYWORDS: tuple[tuple[str, str], ...] = (
@@ -451,7 +472,9 @@ def build(plans: dict, coordinates: dict[str, Placement] | None = None) -> dict[
         why, point = _plan_coordinate(tree)
         placement = Placement(point[0], point[1], None) if point is not None else None
         if placement is None and ref in coordinates:
-            placement = coordinates[ref]
+            entry = coordinates[ref]
+            if not (entry.via == "inventory" and ref in DOUBTFUL_TAGS):
+                placement = entry
         if placement is not None and not in_bbox(placement.lat, placement.lng, bbox):
             why, placement = PENDING_OUTSIDE_BBOX, None
         plan_trees.append(
@@ -556,13 +579,15 @@ def _sql_number(value: float) -> str:
     return repr(float(value))
 
 
-def import_sql(reports: list[Report]) -> str:
+def import_sql(reports: list[Report], withdrawn: list[str] | None = None) -> str:
     """One INSERT OR IGNORE per report, then the data source of rows already imported.
 
     external_ref's unique index skips known rows, so an INSERT never changes a
     row in place. A tree whose point source changed since its import (a plan
     coordinate replacing an inventory one, say) is brought in line by the
-    UPDATE lines, which touch removal-plan rows only.
+    UPDATE lines, which touch removal-plan rows only. `withdrawn` names trees
+    that are no longer placed (DOUBTFUL_TAGS); a row imported earlier for one
+    of them is hidden rather than left on the map.
     """
     evidence = code_for_slug("evidence", "official-document")
     plan_sources = sorted({code_for_slug("sources", slug) for slug in SOURCE_SLUGS.values()})
@@ -609,6 +634,15 @@ def import_sql(reports: list[Report]) -> str:
             f"UPDATE reports SET source = {code} WHERE source IN "
             f"({', '.join(str(entry) for entry in plan_sources)}) AND source <> {code} "
             f"AND external_ref IN ({listed});"
+        )
+    placed = {report.external_ref for report in reports}
+    hidden = sorted(ref for ref in withdrawn or [] if ref not in placed)
+    if hidden:
+        lines.append("-- Trees whose earlier inventory point was withdrawn; see DOUBTFUL_TAGS.")
+        lines.append(
+            "UPDATE reports SET status = 1 WHERE status = 0 AND source IN "
+            f"({', '.join(str(entry) for entry in plan_sources)}) "
+            f"AND external_ref IN ({', '.join(_sql_text(ref) for ref in hidden)});"
         )
     return "\n".join(lines) + "\n"
 
@@ -699,7 +733,9 @@ def run(
     )
     membership: dict[str, str] = sites["membership"]
 
-    (out_dir / IMPORT_FILENAME).write_text(import_sql(reports), encoding="utf-8")
+    (out_dir / IMPORT_FILENAME).write_text(
+        import_sql(reports, sorted(DOUBTFUL_TAGS)), encoding="utf-8"
+    )
     (out_dir / INDEX_FILENAME).write_text(
         dumps(
             index_document(

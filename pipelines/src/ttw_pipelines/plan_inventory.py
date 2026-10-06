@@ -12,8 +12,9 @@ the same tag, which gives two things:
   tree may be gone, renumbered, or the record corrected.
 
 A tag is used for a coordinate only when the inventory's species agrees with
-the plan's and no other plan tree claims the same tag; the rest stay pending
-and are listed under `rejected`.
+the plan's, no other plan tree claims the same tag, and the tree is not in
+`removal_plans.DOUBTFUL_TAGS`; the rest stay pending and are listed under
+`rejected`.
 
 The raw CSVs are about 19 MB and are not committed. data.taipei's certificate
 chain fails Python's strict X.509 check, so they are downloaded with curl and
@@ -43,6 +44,7 @@ REJECTED_COLUMNS = ["external_ref", "tree_tag", "why", "plan_species", "inventor
 
 REJECT_SPECIES = "species-mismatch"
 REJECT_SHARED_TAG = "shared-tag"
+REJECT_DOUBTFUL = "doubtful-tag"
 
 # Pending reasons a coordinate from the inventory may resolve. A plan point
 # outside the BBOX is the plan's own coordinate and is not overridden.
@@ -153,7 +155,9 @@ def join(plans: dict, inventory: Inventory) -> dict[str, Any]:
         if found is None or ref not in fillable:
             continue
         why = None
-        if claims[tag] > 1:
+        if ref in removal_plans.DOUBTFUL_TAGS:
+            why = REJECT_DOUBTFUL
+        elif claims[tag] > 1:
             why = REJECT_SHARED_TAG
         elif not species_agree(species, found.species):
             why = REJECT_SPECIES

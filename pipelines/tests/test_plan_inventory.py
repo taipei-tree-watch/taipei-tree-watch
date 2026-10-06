@@ -5,6 +5,7 @@ import pytest
 
 from ttw_pipelines import plan_inventory, removal_plans
 from ttw_pipelines.plan_inventory import (
+    REJECT_DOUBTFUL,
     REJECT_SHARED_TAG,
     REJECT_SPECIES,
     Inventory,
@@ -252,3 +253,21 @@ def test_without_an_inventory_check_no_tree_is_marked_missing(tmp_path: Path, pl
     removal_plans.run(out_dir=tmp_path)
     index = json.loads((tmp_path / removal_plans.INDEX_FILENAME).read_text(encoding="utf-8"))
     assert {row[3] for row in index["rows"]} == {None}
+
+
+def test_a_doubtful_tag_is_not_placed_and_is_listed(plans, monkeypatch) -> None:
+    monkeypatch.setitem(removal_plans.DOUBTFUL_TAGS, ref("P1"), "inventory point is elsewhere")
+    result = join(plans, INVENTORY)
+    assert ref("P1") not in result["coordinates"]
+    rejected = {row[0]: row for row in result["rejected"]}
+    assert rejected[ref("P1")] == [ref("P1"), GOOD, REJECT_DOUBTFUL, "臺灣海棗", "海棗"]
+
+
+def test_doubtful_tags_name_known_plan_trees_and_say_why() -> None:
+    plans = json.loads(
+        (removal_plans.DEFAULT_OUT_DIR / removal_plans.PLANS_FILENAME).read_text(encoding="utf-8")
+    )
+    refs = {removal_plans.external_ref(row[0], row[1], row[2]) for row in plans["rows"]}
+    for doubtful, why in removal_plans.DOUBTFUL_TAGS.items():
+        assert doubtful in refs
+        assert why.strip()
