@@ -121,3 +121,20 @@ export function applyFilters(
   }
   return reports.filter((report) => matchesFilters(report, state));
 }
+
+/**
+ * Reports per data source under every active dimension except the data source
+ * itself, so each source option tells how many reports ticking it would add.
+ */
+export function countBySource(
+  reports: readonly ReportRecord[],
+  state: FilterState,
+): ReadonlyMap<number, number> {
+  const counts = new Map<number, number>();
+  for (const report of applyFilters(reports, { ...state, sources: new Set() })) {
+    if (report.source !== null) {
+      counts.set(report.source, (counts.get(report.source) ?? 0) + 1);
+    }
+  }
+  return counts;
+}

@@ -454,6 +454,11 @@ body {
   background: var(--surface-muted);
 }
 
+.filter-count {
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .filter-swatch {
   width: 0.625rem;
   height: 0.625rem;

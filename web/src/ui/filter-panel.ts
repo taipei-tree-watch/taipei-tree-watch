@@ -17,6 +17,8 @@ import strings from '../ui-strings.json';
 export interface FilterPanel {
   getState(): FilterState;
   setSummary(shown: number, total: number, trees: number): void;
+  /** Report count next to each data source option; a missing code reads 0. */
+  setSourceCounts(counts: ReadonlyMap<number, number>): void;
   setOpen(open: boolean): void;
   isOpen(): boolean;
   /** Fires whoever opened or closed it, including its own close button. */
@@ -210,6 +212,14 @@ export function createFilterPanel(
   sourceGroup.append(sourceHint);
   body.append(sourceGroup);
 
+  const sourceCounts = new Map<number, HTMLSpanElement>();
+  for (const input of sourceGroup.querySelectorAll<HTMLInputElement>('input[name=source]')) {
+    const count = document.createElement('span');
+    count.className = 'filter-count';
+    input.parentElement?.append(count);
+    sourceCounts.set(Number(input.value), count);
+  }
+
   const dateGroup = document.createElement('fieldset');
   dateGroup.className = 'filter-group';
   const dateLegend = document.createElement('legend');
@@ -300,6 +310,11 @@ export function createFilterPanel(
       const treeLine = document.createElement('span');
       treeLine.textContent = formatTemplate(strings.filters.treeSummary, { count: trees });
       summary.replaceChildren(reportLine, treeLine);
+    },
+    setSourceCounts(counts) {
+      for (const [code, element] of sourceCounts) {
+        element.textContent = String(counts.get(code) ?? 0);
+      }
     },
     setOpen(open) {
       setOpen(open);

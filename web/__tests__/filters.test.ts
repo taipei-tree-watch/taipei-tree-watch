@@ -5,6 +5,7 @@ import type { FilterState } from '../src/filters.ts';
 import {
   NO_CAUSE_CODE,
   applyFilters,
+  countBySource,
   defaultFilterState,
   emptyFilterState,
   isFilterActive,
@@ -128,5 +129,22 @@ describe('applyFilters', () => {
     const kept = applyFilters(reports, state({ causes: new Set([21]) }));
 
     expect(kept.map((entry) => entry.id)).toEqual(['b']);
+  });
+});
+
+describe('countBySource', () => {
+  it('counts each source under the other dimensions, ignoring the source selection', () => {
+    const reports = [
+      report({ id: 'a', source: 1, causes: [1] }),
+      report({ id: 'b', source: 1, causes: [21] }),
+      report({ id: 'c', source: 3, causes: [1] }),
+      report({ id: 'd', source: null, causes: [1] }),
+    ];
+    const counts = countBySource(reports, state({ causes: new Set([1]), sources: new Set([1]) }));
+
+    expect([...counts].sort()).toEqual([
+      [1, 1],
+      [3, 1],
+    ]);
   });
 });

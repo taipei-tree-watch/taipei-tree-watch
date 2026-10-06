@@ -21,7 +21,7 @@ import { loadMapData } from './data/load.ts';
 import { attachPlans } from './data/removal-plans.ts';
 import { createRevisionsLoader } from './data/revisions.ts';
 import type { FilterState } from './filters.ts';
-import { applyFilters, defaultFilterState } from './filters.ts';
+import { applyFilters, countBySource, defaultFilterState } from './filters.ts';
 import { Funnel, Info, Layers, List, LocateFixed, MapPin, Search, setIconLabel } from './icons.ts';
 import type { MapController } from './map/index.ts';
 import type { EditLink, PermalinkTarget } from './permalink.ts';
@@ -321,6 +321,7 @@ function refresh(state: FilterState): void {
   // the active filter happens to show, so it reads the whole set.
   reportForm?.setReports([...base, ...extra]);
   filterPanel?.setSummary(visible.length, reports.length, trees.length);
+  filterPanel?.setSourceCounts(countBySource(base, state));
 }
 
 filtersToggle.addEventListener('click', () => {
