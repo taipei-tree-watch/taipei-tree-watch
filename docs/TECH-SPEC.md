@@ -296,7 +296,7 @@ Python 與 uv（版本與套件見 `TECH-STACK.md` 第 5 節），在本機執�
 
 | 欄位 | 值 |
 |---|---|
-| `source` / `evidence` | 3 公園處移除計畫書（計畫書座標）或 5 公園處移除計畫書（清冊定位），依座標來源而定 / 3 機關官網公告或計畫書 |
+| `source` / `evidence` | 3 公園處移除計畫書（計畫書座標）或 4 公園處移除計畫書（清冊定位），依座標來源而定 / 3 機關官網公告或計畫書 |
 | `lat` / `lng` | 計畫書的 TWD97（EPSG:3826）以 pyproj 轉 WGS84，或計畫書本身的經緯度；四捨五入到 5 位 |
 | `species` | 照抄 |
 | `inventory_tree_id` | 樹籤編號，只收公園處格式（兩個英文字母加十位數字，轉大寫）；學校自編的樹籍號不填 |
@@ -318,7 +318,7 @@ Python 與 uv（版本與套件見 `TECH-STACK.md` 第 5 節），在本機執�
 
 輸出（都在 `data/removal-plans/`，全部 commit）：
 
-- `import.sql`：每筆一行 `INSERT OR IGNORE`，以 `external_ref` 的 unique index 去重，執行方式見 `DEPLOY.md`。已匯入的列重跑不會更新，唯一例外是資料來源：檔尾每種資料來源一行 UPDATE，把座標來源改變過的已匯入列改成對的資料來源，只動資料來源為 3 或 5 的列。其他欄位要改既有列得另寫 UPDATE。
+- `import.sql`：每筆一行 `INSERT OR IGNORE`，以 `external_ref` 的 unique index 去重，執行方式見 `DEPLOY.md`。已匯入的列重跑不會更新，唯一例外是資料來源：檔尾每種資料來源一行 UPDATE，把座標來源改變過的已匯入列改成對的資料來源，只動資料來源為 3 或 4 的列。其他欄位要改既有列得另寫 UPDATE。
 - `index.json`：前端的 `/removal-plans.json`（第 3.6 節）。
 - `pending.json`：還沒有座標的樹，欄位 `external_ref, case, plan_no, tree_tag, species, action, location, why`，`why` 為 `no-coordinate`、`placeholder-coordinate` 或 `outside-bbox`。2026 年的 23 案整理後為 1,834 株、29 株是重複列；計畫書本身有座標的 291 株，加上依樹籤從清冊補上的 671 株，共 962 株上圖，843 株待定位（其中 1 株為樣板座標）。待定位的 843 株裡，686 株沒有公園處樹籤（CF710、CF720 移除案多數如此），150 株的樹籤不在清冊，7 株因樹種不符或樹籤重複而不補。
 - `coordinates.json`：後來補上的座標，見下方「補座標的路徑」。
@@ -352,7 +352,7 @@ Python 與 uv（版本與套件見 `TECH-STACK.md` 第 5 節），在本機執�
 
 ## 5. 共用定義 `shared/`
 
-`tags.ts` 是 tag 的唯一 source of truth。每個值有永不重用的整數 `code` 與字串 `slug`；只能新增，不能重排或回收。
+`tags.ts` 是 tag 的唯一 source of truth。每個值有永不重用的整數 `code` 與字串 `slug`；只能新增，不能重排或回收。唯一的例外是 `sources` 的 4 與 5 在 2026-10-06 對調過一次：當時 4（清冊消失偵測）從未有資料，5 只有剛匯入的 671 株清冊定位計畫樹，一併在 D1 改成 4，讓兩種公園處計畫書並排。
 
 ```ts
 export const causes = [

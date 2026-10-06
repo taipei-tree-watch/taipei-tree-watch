@@ -56,8 +56,8 @@ export const sources = [
   { code: 1, slug: 'user-report', label: '使用者回報' },
   { code: 2, slug: 'delisting-record', label: '樹保會解除列管紀錄' },
   { code: 3, slug: 'removal-plan', label: '公園處移除計畫書（計畫書座標）' },
-  { code: 4, slug: 'inventory-disappearance', label: '清冊消失偵測' },
-  { code: 5, slug: 'removal-plan-inventory', label: '公園處移除計畫書（清冊定位）' },
+  { code: 4, slug: 'removal-plan-inventory', label: '公園處移除計畫書（清冊定位）' },
+  { code: 5, slug: 'inventory-disappearance', label: '清冊消失偵測' },
 ] as const satisfies readonly Tag[];
 
 export type Cause = (typeof causes)[number];
@@ -87,7 +87,7 @@ export const USER_REPORT_SOURCE_CODE = 1 satisfies SourceCode;
  * by where the point comes from: the plan's own coordinate, or the Parks
  * Office inventory entry of the tree's tag. Both are plan trees on the map.
  */
-export const REMOVAL_PLAN_SOURCE_CODES = [3, 5] as const satisfies readonly SourceCode[];
+export const REMOVAL_PLAN_SOURCE_CODES = [3, 4] as const satisfies readonly SourceCode[];
 
 export function isRemovalPlanSource(code: number | null): boolean {
   return code !== null && (REMOVAL_PLAN_SOURCE_CODES as readonly number[]).includes(code);
