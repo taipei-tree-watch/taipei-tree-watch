@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   EVIDENCE_CODES_WITHOUT_CAUSES,
-  REMOVAL_PLAN_SOURCE_CODE,
+  REMOVAL_PLAN_SOURCE_CODES,
   USER_REPORT_SOURCE_CODE,
   causes,
   sources,
@@ -17,6 +17,7 @@ import strings from '../src/ui-strings.json';
 /** An on-site notice: a reference source a cause can be read off. */
 const SITE_NOTICE = 1;
 const [SIGHTING_ONLY] = EVIDENCE_CODES_WITHOUT_CAUSES;
+const [REMOVAL_PLAN_SOURCE_CODE, INVENTORY_PLAN_SOURCE_CODE] = REMOVAL_PLAN_SOURCE_CODES;
 const BROWN_ROOT_ROT = 1;
 const ROOTS_ONLY = 3;
 
@@ -138,6 +139,18 @@ describe('reportSummary', () => {
       expect(reportSummary(planTree({ plan: { ...PLAN, action: 'transplant' } })).caveat).toBe(
         strings.card.plannedTransplant,
       );
+    });
+
+    it('treats a plan tree placed through the inventory as a plan tree', () => {
+      const summary = reportSummary(planTree({ source: INVENTORY_PLAN_SOURCE_CODE }));
+      expect(summary.caveat).toBe(strings.card.plannedRemove);
+      expect(summary.rows.find((entry) => entry.label === strings.card.source)?.value).toBe(
+        formatTemplate(strings.card.sourcePlanValue, {
+          source: labelOf(sources, INVENTORY_PLAN_SOURCE_CODE),
+          title: PLAN.title,
+        }),
+      );
+      expect(labels(planTree({ source: INVENTORY_PLAN_SOURCE_CODE }))).toContain(strings.card.postedAt);
     });
 
     it('keeps the caveat when the plan file did not load', () => {

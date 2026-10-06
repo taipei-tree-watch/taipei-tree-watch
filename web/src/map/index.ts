@@ -24,7 +24,7 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 
 import { ACTIVE_ORTHO, BASE_MAP, INITIAL_VIEW, MAP_ATTRIBUTION } from '../basemaps.ts';
 import type { ReportRecord } from '../data/snapshot.ts';
-import { REMOVAL_PLAN_SOURCE_CODE } from '../../../shared/tags.ts';
+import { isRemovalPlanSource } from '../../../shared/tags.ts';
 import type { ProtectedTree } from '../data/trees.ts';
 import type { MapPalette } from './colors.ts';
 import { bucketForCauses, paletteFor } from './colors.ts';
@@ -294,7 +294,7 @@ function reportFeature(report: ReportRecord): Feature<Point> {
       id: report.id,
       bucket,
       pending: report.pending === true,
-      planned: report.source === REMOVAL_PLAN_SOURCE_CODE,
+      planned: isRemovalPlanSource(report.source),
     },
   };
 }

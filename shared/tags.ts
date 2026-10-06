@@ -55,8 +55,9 @@ export const evidence = [
 export const sources = [
   { code: 1, slug: 'user-report', label: '使用者回報' },
   { code: 2, slug: 'delisting-record', label: '樹保會解除列管紀錄' },
-  { code: 3, slug: 'removal-plan', label: '公園處移除計畫書' },
+  { code: 3, slug: 'removal-plan', label: '公園處移除計畫書（計畫書座標）' },
   { code: 4, slug: 'inventory-disappearance', label: '清冊消失偵測' },
+  { code: 5, slug: 'removal-plan-inventory', label: '公園處移除計畫書（清冊定位）' },
 ] as const satisfies readonly Tag[];
 
 export type Cause = (typeof causes)[number];
@@ -81,8 +82,16 @@ export const DEFAULT_EVIDENCE_CODE = 6 satisfies EvidenceCode;
 /** Every report created through the public API carries this source; the server enforces it. */
 export const USER_REPORT_SOURCE_CODE = 1 satisfies SourceCode;
 
-/** Reports imported from the Parks Office removal and transplant plans. */
-export const REMOVAL_PLAN_SOURCE_CODE = 3 satisfies SourceCode;
+/**
+ * Reports imported from the Parks Office removal and transplant plans, split
+ * by where the point comes from: the plan's own coordinate, or the Parks
+ * Office inventory entry of the tree's tag. Both are plan trees on the map.
+ */
+export const REMOVAL_PLAN_SOURCE_CODES = [3, 5] as const satisfies readonly SourceCode[];
+
+export function isRemovalPlanSource(code: number | null): boolean {
+  return code !== null && (REMOVAL_PLAN_SOURCE_CODES as readonly number[]).includes(code);
+}
 
 /** Evidence codes under which causes must stay empty: nothing on site states a cause. */
 export const EVIDENCE_CODES_WITHOUT_CAUSES = [6] as const satisfies readonly EvidenceCode[];

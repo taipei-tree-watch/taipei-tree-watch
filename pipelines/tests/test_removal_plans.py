@@ -259,6 +259,13 @@ def test_later_coordinates_place_a_pending_tree_and_say_how(plans) -> None:
     assert ref not in pending_by_ref(result)
 
 
+def test_the_data_source_says_where_the_point_comes_from(plans) -> None:
+    ref = "pkl:removal_AAAA:0:A11"
+    reports = by_ref(build(plans, {ref: Placement(25.03, 121.56, "inventory")}))
+    assert reports[ref].source == "removal-plan-inventory"
+    assert reports["pkl:removal_AAAA:0:A10"].source == "removal-plan"
+
+
 def test_the_plans_own_coordinate_wins_over_a_later_one(plans) -> None:
     ref = "pkl:removal_AAAA:0:A10"
     result = build(plans, {ref: Placement(25.0, 121.5, "geocode")})
@@ -288,6 +295,22 @@ def test_import_sql_is_one_idempotent_insert_per_report(plans) -> None:
     source = code_for_slug("sources", "removal-plan")
     assert f"'[]', {evidence}, {source}, " in inserts[0]
     assert "'pkl:" in inserts[0]
+
+
+def test_import_sql_brings_the_source_of_imported_rows_in_line(plans) -> None:
+    ref = "pkl:removal_AAAA:0:A11"
+    reports = build(plans, {ref: Placement(25.03, 121.56, "inventory")})["reports"]
+    updates = [line for line in import_sql(reports).splitlines() if line.startswith("UPDATE")]
+    plan_code = code_for_slug("sources", "removal-plan")
+    inventory_code = code_for_slug("sources", "removal-plan-inventory")
+    plan_sources = f"({', '.join(str(code) for code in sorted([plan_code, inventory_code]))})"
+    by_code = {int(line.split("SET source = ")[1].split(" ")[0]): line for line in updates}
+    assert set(by_code) == {plan_code, inventory_code}
+    assert (
+        f"WHERE source IN {plan_sources} AND source <> {inventory_code} " in by_code[inventory_code]
+    )
+    assert by_code[inventory_code].endswith(f"external_ref IN ('{ref}');")
+    assert "'pkl:removal_AAAA:0:A10'" in by_code[plan_code]
 
 
 def test_import_sql_escapes_single_quotes(plans) -> None:

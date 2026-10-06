@@ -154,12 +154,17 @@
     {
       "code": 3,
       "slug": "removal-plan",
-      "label": "公園處移除計畫書"
+      "label": "公園處移除計畫書（計畫書座標）"
     },
     {
       "code": 4,
       "slug": "inventory-disappearance",
       "label": "清冊消失偵測"
+    },
+    {
+      "code": 5,
+      "slug": "removal-plan-inventory",
+      "label": "公園處移除計畫書（清冊定位）"
     }
   ],
   "defaults": {

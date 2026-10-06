@@ -32,7 +32,7 @@ Turns the Parks Office tree removal and transplant plans (pkl.gov.taipei review 
 
 The build writes, all byte-stable for identical input:
 
-- `import.sql`: one `INSERT OR IGNORE` per tree with a usable point, `source` = removal plan, `evidence` = official document. Run it with `wrangler d1 execute --remote --file` after deploying (docs/DEPLOY.md section 4.1); rows already imported are skipped through the unique index on `external_ref`.
+- `import.sql`: one `INSERT OR IGNORE` per tree with a usable point, `evidence` = official document and `source` = removal plan, split by where the point comes from: `removal-plan` (the plan's own coordinate) or `removal-plan-inventory` (the inventory entry of the tree's tag). One `UPDATE` per source at the end moves rows already imported to the right source when their point source changed; it only touches removal-plan rows. Run it with `wrangler d1 execute --remote --file` after deploying (docs/DEPLOY.md section 4.1); rows already imported are skipped through the unique index on `external_ref`.
 - `index.json`: case title, status and page per report id, shipped as `/removal-plans.json` for the detail card. Its `inventory_gone` column holds the inventory version date when the tree's tag is no longer in the Parks Office inventory, read from `inventory.json`.
 - `pending.json`: trees without a usable point, columns `external_ref, case, plan_no, tree_tag, species, action, location, why`; `why` is `no-coordinate`, `placeholder-coordinate` or `outside-bbox`.
 - `review.json`: trees of one case sharing the exact same point, and trees listed by two plans (only one of each pair is imported).

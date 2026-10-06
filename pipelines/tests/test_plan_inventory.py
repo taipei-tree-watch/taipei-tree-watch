@@ -15,6 +15,7 @@ from ttw_pipelines.plan_inventory import (
     species_agree,
 )
 from ttw_pipelines.removal_plans import curate, twd97_to_wgs84
+from ttw_pipelines.shared import code_for_slug
 
 FIXTURES = Path(__file__).parent / "fixtures" / "removal-plans"
 
@@ -238,6 +239,8 @@ def test_run_places_by_tag_and_marks_missing_tags_on_the_index(tmp_path: Path, p
     p1_line = next(line for line in sql.splitlines() if ref("P1") in line)
     assert removal_plans.NOTE_COORDINATE_VIA["inventory"] in p1_line
     assert f"'{GOOD}'" in p1_line
+    inventory_source = code_for_slug("sources", "removal-plan-inventory")
+    assert f"'[]', 3, {inventory_source}, " in p1_line
 
     plan_inventory.run(inventory_dir=tmp_path / "cache", out_dir=out)
     assert (out / removal_plans.COORDINATES_FILENAME).read_text(encoding="utf-8") == first

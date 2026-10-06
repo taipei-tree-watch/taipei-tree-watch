@@ -9,10 +9,10 @@
  */
 import {
   EVIDENCE_CODES_WITHOUT_CAUSES,
-  REMOVAL_PLAN_SOURCE_CODE,
   causes,
   dispositions,
   evidence,
+  isRemovalPlanSource,
   sources,
 } from '../../../shared/tags.ts';
 import type { Tag } from '../../../shared/tags.ts';
@@ -72,12 +72,12 @@ function noticeSentence(report: ReportRecord): string | null {
     return null;
   }
   const template =
-    report.source === REMOVAL_PLAN_SOURCE_CODE ? strings.card.planReason : strings.card.noticeReason;
+    isRemovalPlanSource(report.source) ? strings.card.planReason : strings.card.noticeReason;
   return formatTemplate(template, { causes: labels });
 }
 
 function planCaveat(report: ReportRecord): string | null {
-  if (report.source !== REMOVAL_PLAN_SOURCE_CODE) {
+  if (!isRemovalPlanSource(report.source)) {
     return null;
   }
   // Without the plan file the action is unknown, and a transplant must not be
@@ -128,7 +128,7 @@ function textRow(label: string, value: string | null): SummaryRow | null {
 
 export function reportSummary(report: ReportRecord): ReportSummary {
   const plan = report.plan;
-  const isPlan = report.source === REMOVAL_PLAN_SOURCE_CODE;
+  const isPlan = isRemovalPlanSource(report.source);
   const candidates: readonly (SummaryRow | null)[] = [
     textRow(strings.card.species, report.species),
     textRow(strings.card.causes, joined(causes, report.causes)),

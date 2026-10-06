@@ -3,7 +3,9 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { REMOVAL_PLAN_SOURCE_CODE, USER_REPORT_SOURCE_CODE } from '../../shared/tags.ts';
+import { REMOVAL_PLAN_SOURCE_CODES, USER_REPORT_SOURCE_CODE } from '../../shared/tags.ts';
+
+const [REMOVAL_PLAN_SOURCE_CODE] = REMOVAL_PLAN_SOURCE_CODES;
 import type { FilterState } from '../src/filters.ts';
 import { createFilterPanel } from '../src/ui/filter-panel.ts';
 
