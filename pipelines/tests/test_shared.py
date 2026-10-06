@@ -27,5 +27,5 @@ def test_every_dimension_has_unique_codes_and_slugs() -> None:
 def test_link_domains_and_snapshot_layout_load() -> None:
     assert "threads.net" in load_link_domains()
     layout = load_snapshot_layout()
-    assert layout["schema"] == 1
+    assert layout["schema"] == 2
     assert layout["columns"][0] == "id"

@@ -117,6 +117,7 @@ describe('reportSummary', () => {
       status: 'under_review',
       url: 'https://pkl.gov.taipei/News_Content.aspx?n=1&s=2',
       action: 'remove',
+      inventoryGone: null,
     };
     const OFFICIAL_DOCUMENT = 3;
     const MRT_WORKS = 20;
@@ -181,6 +182,27 @@ describe('reportSummary', () => {
       expect(reportSummary(planTree({ causes: [MRT_WORKS] })).notice).toBe(
         formatTemplate(strings.card.planReason, { causes: labelOf(causes, MRT_WORKS) }),
       );
+    });
+
+    it('says when the tag has left the inventory, naming the tag and version', () => {
+      const summary = reportSummary(
+        planTree({
+          inventoryTreeId: 'SY1680021119',
+          plan: { ...PLAN, inventoryGone: '2026-10-05' },
+        }),
+      );
+      expect(summary.inventory).toBe(
+        formatTemplate(strings.card.inventoryGone, { id: 'SY1680021119', date: '2026-10-05' }),
+      );
+      expect(summary.caveat).toBe(strings.card.plannedRemove);
+    });
+
+    it('says nothing about the inventory while the tag is still listed or unknown', () => {
+      expect(reportSummary(planTree({ inventoryTreeId: 'SY1680021119' })).inventory).toBeNull();
+      expect(
+        reportSummary(planTree({ plan: { ...PLAN, inventoryGone: '2026-10-05' } })).inventory,
+      ).toBeNull();
+      expect(reportSummary(planTree({ plan: undefined })).inventory).toBeNull();
     });
   });
 });

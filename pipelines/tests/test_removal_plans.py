@@ -300,7 +300,7 @@ def test_import_sql_escapes_single_quotes(plans) -> None:
 def test_index_names_each_report_plan_and_action(plans) -> None:
     reports = build(plans)["reports"]
     index = index_document(plans, reports)
-    assert index["columns"] == ["id", "case", "action"]
+    assert index["columns"] == ["id", "case", "action", "inventory_gone"]
     assert len(index["rows"]) == len(reports)
     case = index["cases"]["transplant_BBBB"]
     assert case["status"] == "approved"

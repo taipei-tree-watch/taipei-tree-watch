@@ -7,6 +7,10 @@
  * transplanted, arrive in this separate file keyed by report id, and are
  * attached to the report records once both have loaded. A report the file
  * does not name keeps working; its card simply cannot name the plan.
+ *
+ * The optional `inventory_gone` column holds the inventory date when the
+ * tree's tag is no longer in the Parks Office inventory. An index without
+ * the column decodes as if no tag were missing.
  */
 import type { ReportRecord } from './snapshot.ts';
 import type { Row } from './columns.ts';
@@ -27,6 +31,11 @@ export interface RemovalPlanRef {
   /** The case page on pkl.gov.taipei. */
   readonly url: string;
   readonly action: PlanAction;
+  /**
+   * The inventory version the tree's tag was found missing from, or null.
+   * Only a signal: the tree may be gone, renumbered, or the record corrected.
+   */
+  readonly inventoryGone: string | null;
 }
 
 export type RemovalPlanIndex = ReadonlyMap<string, RemovalPlanRef>;
@@ -84,7 +93,8 @@ export function decodeRemovalPlans(payload: unknown): RemovalPlanIndex {
     if (id === null || plan === undefined || !isOneOf(PLAN_ACTIONS, action)) {
       continue;
     }
-    plans.set(id, { ...plan, action });
+    const inventoryGone = asText(cell(row, index, 'inventory_gone'));
+    plans.set(id, { ...plan, action, inventoryGone });
   }
   return plans;
 }

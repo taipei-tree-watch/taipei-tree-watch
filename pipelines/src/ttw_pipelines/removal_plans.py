@@ -48,6 +48,7 @@ IMPORT_FILENAME = "import.sql"
 INDEX_FILENAME = "index.json"
 PENDING_FILENAME = "pending.json"
 REVIEW_FILENAME = "review.json"
+INVENTORY_FILENAME = "inventory.json"
 
 TREES_CSV = "trees_2026.csv"
 CASES_CSV = "cases_2026.csv"
@@ -87,7 +88,9 @@ PENDING_COLUMNS = [
     "why",
 ]
 
-INDEX_COLUMNS = ["id", "case", "action"]
+# inventory_gone: the inventory date when the tree's tag is no longer in the
+# Parks Office inventory, else null. A signal for the card, never a status.
+INDEX_COLUMNS = ["id", "case", "action", "inventory_gone"]
 
 # Why a tree is on the pending list rather than on the map.
 PENDING_NO_COORDINATE = "no-coordinate"
@@ -561,8 +564,30 @@ def import_sql(reports: list[Report]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def index_document(plans: dict, reports: list[Report]) -> dict[str, Any]:
+def _load_inventory_missing(path: Path) -> dict[str, str]:
+    """external_ref -> inventory date, for tagged plan trees missing from the inventory.
+
+    `inventory.json` is written by the plan-inventory join; without it no tree
+    is reported missing.
+    """
+    if not path.exists():
+        return {}
+    document = json.loads(path.read_text(encoding="utf-8"))
+    columns = document["columns"]
+    date = document["inventory_date"]
+    missing = {}
+    for row in document["rows"]:
+        entry = dict(zip(columns, row, strict=True))
+        if not entry["in_inventory"]:
+            missing[entry["external_ref"]] = date
+    return missing
+
+
+def index_document(
+    plans: dict, reports: list[Report], missing: dict[str, str] | None = None
+) -> dict[str, Any]:
     """What the web app needs to name a plan on the card, keyed by report id."""
+    missing = missing or {}
     used = {report.case for report in reports}
     return {
         "schema": SCHEMA,
@@ -578,7 +603,10 @@ def index_document(plans: dict, reports: list[Report]) -> dict[str, Any]:
             if entry["case"] in used
         },
         "columns": list(INDEX_COLUMNS),
-        "rows": [[report.id, report.case, report.action] for report in reports],
+        "rows": [
+            [report.id, report.case, report.action, missing.get(report.external_ref)]
+            for report in reports
+        ],
     }
 
 
@@ -604,7 +632,11 @@ def run(
 
     (out_dir / IMPORT_FILENAME).write_text(import_sql(reports), encoding="utf-8")
     (out_dir / INDEX_FILENAME).write_text(
-        dumps(index_document(plans, reports), _LINE_PER_ITEM_KEYS), encoding="utf-8"
+        dumps(
+            index_document(plans, reports, _load_inventory_missing(out_dir / INVENTORY_FILENAME)),
+            _LINE_PER_ITEM_KEYS,
+        ),
+        encoding="utf-8",
     )
     pending_counts: dict[str, int] = {}
     for row in result["pending"]:

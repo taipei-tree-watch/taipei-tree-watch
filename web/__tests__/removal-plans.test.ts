@@ -46,7 +46,21 @@ describe('decodeRemovalPlans', () => {
       status: 'approved',
       url: URL,
       action: 'transplant',
+      inventoryGone: null,
     });
+  });
+
+  it('reads the inventory date of a tag that left the inventory', () => {
+    const plans = decodeRemovalPlans({
+      ...(payload([]) as object),
+      columns: ['id', 'case', 'action', 'inventory_gone'],
+      rows: [
+        ['R1', 'removal_A', 'remove', '2026-10-05'],
+        ['R2', 'removal_A', 'remove', null],
+      ],
+    });
+    expect(plans.get('R1')?.inventoryGone).toBe('2026-10-05');
+    expect(plans.get('R2')?.inventoryGone).toBeNull();
   });
 
   it('reads rows by column name', () => {
@@ -84,6 +98,7 @@ describe('decodeRemovalPlans', () => {
     expect(plans.size).toBeGreaterThan(0);
     for (const plan of plans.values()) {
       expect(plan.url.startsWith('https://pkl.gov.taipei/')).toBe(true);
+      expect(plan.inventoryGone === null || /^\d{4}-\d{2}-\d{2}$/.test(plan.inventoryGone)).toBe(true);
     }
   });
 });

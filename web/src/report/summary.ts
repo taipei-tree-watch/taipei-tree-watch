@@ -39,6 +39,8 @@ export interface ReportSummary {
    * card must not read as a record of a removal.
    */
   readonly caveat: string | null;
+  /** A plan tree whose tag has left the Parks Office inventory: a signal only. */
+  readonly inventory: string | null;
   /** The cause sentence, when the report is entitled to one. */
   readonly notice: string | null;
   readonly rows: readonly SummaryRow[];
@@ -86,6 +88,14 @@ function planCaveat(report: ReportRecord): string | null {
   return report.plan.action === 'transplant'
     ? strings.card.plannedTransplant
     : strings.card.plannedRemove;
+}
+
+function inventorySentence(report: ReportRecord): string | null {
+  const date = report.plan?.inventoryGone ?? null;
+  if (date === null || report.inventoryTreeId === null) {
+    return null;
+  }
+  return formatTemplate(strings.card.inventoryGone, { id: report.inventoryTreeId, date });
 }
 
 /** The data source, naming the plan and linking to its page when it is known. */
@@ -144,6 +154,7 @@ export function reportSummary(report: ReportRecord): ReportSummary {
 
   return {
     caveat: planCaveat(report),
+    inventory: inventorySentence(report),
     notice: noticeSentence(report),
     rows: candidates.filter((entry): entry is SummaryRow => entry !== null),
     link: link(linkValue),

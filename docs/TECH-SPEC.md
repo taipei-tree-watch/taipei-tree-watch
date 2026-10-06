@@ -84,7 +84,7 @@ taipei-tree-watch/
 - 啟動時載入兩個檔：`/api/snapshot`（回報）與 `/trees.json`（受保護樹木靜態資產）。兩者都是一次載入、全在記憶體篩選。
 - 圖層：底圖 raster（NLSC）、正射 raster（目前 NLSC `PHOTO2`，都發局待授權確認，見第 7 節；由地圖右上角的「顯示航照」浮動鈕切換（與「目前位置」鈕疊在一起；桌面開著回報側欄時移到側欄左側），選點時不自動切換）、受保護樹木（灰色小點）、回報點（依原因著色，褐根病最醒目）、清冊消失層（M3 之後）。
 - 篩選：原因、處置、參考來源、資料來源、發現日期範圍，全部在前端對快照做。資料來源選項取自 `shared/tags.ts` 的 `sources`，可以只看官方紀錄或只看使用者回報。開站時預設只勾「使用者回報」，匯入的官方紀錄要自己勾才出現，讓第一眼看到的都是有人到過現場的回報；「回到預設條件」也回到這個狀態，不是全部清空。該組底下一行小字說明預設值與空心圓的意思。permalink 指到的計畫樹照樣會被補畫出來（見 permalink 一節）。
-- 公園處計畫樹（資料來源＝公園處移除計畫書，第 4.2.1 節）畫成空心圓：原因色移到外圈（3 px），圓心填 halo 色。計畫書只說要移除或移植，沒有人看到樹已經不在，實心點則是有人看到的狀況，兩者不能讀成同一件事。卡片開頭另有一行「這棵樹列在公園處的移除（移植）計畫書上……不代表已經移除（移植）」，原因句改為「計畫書記載的原因為……」，日期欄標為「上網日期」。資料來源列寫「公園處移除計畫書 · <案名>」並連到公園處的案件頁，接著是「計畫狀態」（已核准／審查中／狀態不明）與「計畫處置」（計畫移除／計畫移植）；參考連結與案件頁相同時不再重複列出。案名、狀態與處置來自 `/removal-plans.json`（第 3.6 節），以回報 id 對應，載入後併進回報紀錄；這個檔載入失敗時卡片仍顯示開頭那行與參考連結，只是叫不出案名，不另外提示。
+- 公園處計畫樹（資料來源＝公園處移除計畫書，第 4.2.1 節）畫成空心圓：原因色移到外圈（3 px），圓心填 halo 色。計畫書只說要移除或移植，沒有人看到樹已經不在，實心點則是有人看到的狀況，兩者不能讀成同一件事。卡片開頭另有一行「這棵樹列在公園處的移除（移植）計畫書上……不代表已經移除（移植）」，原因句改為「計畫書記載的原因為……」，日期欄標為「上網日期」。資料來源列寫「公園處移除計畫書 · <案名>」並連到公園處的案件頁，接著是「計畫狀態」（已核准／審查中／狀態不明）與「計畫處置」（計畫移除／計畫移植）；參考連結與案件頁相同時不再重複列出。案名、狀態與處置來自 `/removal-plans.json`（第 3.6 節），以回報 id 對應，載入後併進回報紀錄；這個檔載入失敗時卡片仍顯示開頭那行與參考連結，只是叫不出案名，不另外提示。計畫樹的樹籤編號已不在公園處清冊時（第 4.2.1 節），開頭那行下面再加一行「樹籤編號 <編號> 已不在公園處行道樹及公園樹清冊（<清冊版本日期> 版）。這只是訊號，可能是已移除，也可能是重編號或資料修正。」；樹籤仍在清冊或沒有公園處樹籤時不顯示。這行只來自 `/removal-plans.json`，D1 的列不變，也不據此把樹當成已移除。
 - 選點流程（SPEC 第 6 節）：GPS 只用來 flyTo（由地圖上的「目前位置」浮動鈕觸發，回報 sheet 裡沒有另一顆），地圖中心固定準心，zoom 未達 18 或超出收件範圍時「開始填寫」停用；按下「開始填寫」就鎖定點位（表單改讀當下的中心點，地圖手勢、縮放鈕、點擊點位與「目前位置」鈕都暫停），手機上表單填滿頂列以下的畫面，要改位置得按「重新定位」回到選點。用編輯連結打開既有回報時，直接鎖在該筆存的座標，不看地圖飛行中途的中心點。正射圖層維持使用者原本的選擇，要看樹冠就用地圖右上角的「顯示航照」鈕。頂列「回報」和「說明」一樣是開關，再按一次就收起 sheet。收起再打開時，填到一半的欄位原樣保留；送出成功（或修改、撤回完成）後再打開，則從空白表單的選點開始，不停在成功畫面。準心 20 公尺內有受保護樹木時，sheet 顯示「這是受保護樹木 #編號 樹種 嗎？」讓使用者一鍵關聯。準心 20 公尺內已有回報時，同一處以同樣的提示框列出最近那筆回報的內容（與地圖卡片同一套欄位），問「是同一棵樹嗎？」。答「不是」就照常回報；答「是」再給「對這筆回報」的三個選擇（見下方）。答案只對那一筆有效，準心移到另一筆或重開 sheet 就重問。同一棵樹的多筆回報仍各自獨立、不會合併。受保護樹木的資訊框有「回報這棵樹」按鈕：打開回報 sheet、先關聯這棵樹（樹種未填時帶入），地圖飛到該樹、縮放至少 18，點位仍由使用者對準，因為清冊座標可能差幾公尺。座標數字以小字顯示。選點時附近的受保護樹木與既有回報只以一行小字點名（距離與編號，或「已關聯」），上面兩種提示框與它們的按鈕要等按下「開始填寫」鎖定點位後才展開，免得選點時蓋住地圖。選點時的操作說明由 sheet 標題列的「說明」開關收合，收合狀態記在 localStorage（`ttw:picker-guide-open`）；沒有記錄時手機預設收合、桌面側欄預設展開。手機上選點時間距也收緊，讓 sheet 盡量矮、準心周圍的地圖盡量大。
 - 「對這筆回報」的三個選擇，選點流程的鄰近回報框與回報卡片各有一組按鈕，走同一套流程（卡片上的「對這筆回報」按鈕展開三個選擇，選點流程在答「是同一棵」之後出現）：
   - **樹況有變化，繼續回報**：帶入那筆的樹種與兩種樹木編號（只填空著的欄位，原因、處置、參考來源、說明、連結、日期不帶），切到填表，送出時帶 `follows_report_id`。從卡片進來時先開 sheet、flyTo 到那筆的位置，答案直接設成「樹況有變化」，回報者照常對準後按「開始填寫」。送出時若準心離那筆超過 20 公尺，以 confirm 問「還是同一棵樹嗎？」，按取消就改成一般回報再送出。
@@ -245,7 +245,7 @@ hostname 的期望值來自 var `TURNSTILE_HOSTNAME`，值為 `taipei-tree-watch
 
 - 匯入時丟棄緯度或經度非數值或小數少於 2 位的列（2026-09-19 為 5 筆：2 筆緯度為整數、3 筆經度只有 1 位小數，後者定位誤差約 1.1 公里），丟棄數量記在 `dropped` 欄位；`district` 從地址前綴「臺北市XX區」解析，解析不到為 null。`rows` 每列一行 compact JSON，讓 git diff 一列一行。
 - Cloudflare 自動 gzip/brotli，3,874 筆約 400 KB 壓後約 100 KB。
-- `removal-plans.json`：`data/removal-plans/index.json` 在 build 時複製進 `web/public/`。`cases` 以案件 id 為鍵，存案名、`status`（`approved`／`under_review`／`unclear`）、上網日期與案件頁網址；`rows` 是 `["id","case","action"]` 欄位陣列，`id` 是快照裡的回報 id，`action` 是 `remove` 或 `transplant`。目前 291 列約 22 KB。
+- `removal-plans.json`：`data/removal-plans/index.json` 在 build 時複製進 `web/public/`。`cases` 以案件 id 為鍵，存案名、`status`（`approved`／`under_review`／`unclear`）、上網日期與案件頁網址；`rows` 是 `["id","case","action","inventory_gone"]` 欄位陣列，`id` 是快照裡的回報 id，`action` 是 `remove` 或 `transplant`，`inventory_gone` 是樹籤已不在公園處清冊時的清冊版本日期、否則為 null（前端把這欄當選填，舊檔沒有這欄照常解碼）。目前 962 列約 83 KB。
 
 ### 3.7 資料管線 `pipelines/`
 
@@ -255,7 +255,7 @@ Python 與 uv（版本與套件見 `TECH-STACK.md` 第 5 節），在本機執�
 |---|---|---|---|
 | `protected-trees` | 第一版手動一次性（自動每週排程列為後續版本，見 TASKS） | data.taipei CSV | `data/protected-trees/trees.json`；與前版 diff 出 `changes/<date>.json`（新增／消失的編號，消失者標「疑似解列」） |
 | `delisting`（M2） | 每週 | 文化局樹保會列表頁 → 委員會議程／紀錄 PDF | `data/delisting/<meeting-id>.json`（可上圖的回報列）、`pending.json`（對不到座標的） |
-| `removal-plans` | 有新計畫書抽取結果時手動 | 公園處移除、移植計畫書的逐株抽取 CSV（不進 repo） | `data/removal-plans/plans.json`（整理後的輸入）、`import.sql`、`index.json`、`pending.json`、`review.json`，見第 4.2.1 節 |
+| `removal-plans` | 有新計畫書抽取結果或要更新清冊比對時手動 | 公園處移除、移植計畫書的逐株抽取 CSV（不進 repo）；`--inventory` 時加上公園處 `TaipeiTree.csv`、`TaipeiParkTree.csv`（不進 repo） | `data/removal-plans/plans.json`（整理後的輸入）、`import.sql`、`index.json`、`pending.json`、`review.json`、`coordinates.json`、`inventory.json`，見第 4.2.1 節 |
 | `inventory-diff`（M3） | 每日 | 公園處 `TaipeiTree.csv`、`TaipeiParkTree.csv` | `data/inventory/<date>.json`（消失與新增的樹籤編號） |
 | `snapshot-backup` | 每日 | `GET /api/snapshot` | `data/snapshots/latest.json`、`<date>.json` |
 | `d1-export` | 每週 | `wrangler d1 export` | 本機備份目錄（含 `reporter_hash`，不進 repo，保留 90 天） |
@@ -320,10 +320,20 @@ Python 與 uv（版本與套件見 `TECH-STACK.md` 第 5 節），在本機執�
 
 - `import.sql`：每筆一行 `INSERT OR IGNORE`，以 `external_ref` 的 unique index 去重，執行方式見 `DEPLOY.md`。已匯入的列重跑不會更新；要改既有列得另寫 UPDATE。
 - `index.json`：前端的 `/removal-plans.json`（第 3.6 節）。
-- `pending.json`：還沒有座標的樹，欄位 `external_ref, case, plan_no, tree_tag, species, action, location, why`，`why` 為 `no-coordinate`、`placeholder-coordinate` 或 `outside-bbox`。2026 年的 23 案整理後為 1,834 株，291 株上圖、1,514 株待定位（其中 1 株為樣板座標）、29 株是重複列。
+- `pending.json`：還沒有座標的樹，欄位 `external_ref, case, plan_no, tree_tag, species, action, location, why`，`why` 為 `no-coordinate`、`placeholder-coordinate` 或 `outside-bbox`。2026 年的 23 案整理後為 1,834 株、29 株是重複列；計畫書本身有座標的 291 株，加上依樹籤從清冊補上的 671 株，共 962 株上圖，843 株待定位（其中 1 株為樣板座標）。待定位的 843 株裡，686 株沒有公園處樹籤（CF710、CF720 移除案多數如此），150 株的樹籤不在清冊，7 株因樹種不符或樹籤重複而不補。
+- `coordinates.json`：後來補上的座標，見下方「補座標的路徑」。
+- `inventory.json`：每株帶公園處樹籤的計畫樹在不在目前的清冊，見下方「樹籤與清冊比對」。
 - `review.json`：共用座標與重複列，給人工複查。
 
-補座標的路徑：後續來源（先以 `tree_tag` 對公園處清冊 `TaipeiTree.csv`／`TaipeiParkTree.csv`，之後可能以地點文字定位）把結果寫成 `data/removal-plans/coordinates.json`：`{"schema": 1, "coordinates": {"<external_ref>": {"lat": …, "lng": …, "via": "inventory" | "geocode"}}}`，再跑一次建置。計畫書本身的座標永遠優先；由 `coordinates.json` 補上的點在 note 註明「座標依樹籤編號取自公園處清冊」或「座標依地點文字定位，可能有誤差」。新上圖的樹是新的 `external_ref`，照常由 `import.sql` 插入。
+補座標的路徑：後續來源（以 `tree_tag` 對公園處清冊，之後可能以地點文字定位）把結果寫成 `data/removal-plans/coordinates.json`：`{"schema": 1, "coordinates": {"<external_ref>": {"lat": …, "lng": …, "via": "inventory" | "geocode"}}}`，再跑一次建置。計畫書本身的座標永遠優先；由 `coordinates.json` 補上的點在 note 註明「座標依樹籤編號取自公園處清冊」或「座標依地點文字定位，可能有誤差」。新上圖的樹是新的 `external_ref`，照常由 `import.sql` 插入。
+
+樹籤與清冊比對（`removal-plans --inventory <目錄>`，`plan_inventory.py`）：
+
+- 清冊是 data.taipei「臺北市行道樹及公園樹木分布圖」的 `TaipeiTree.csv` 與 `TaipeiParkTree.csv`，兩檔合計約 16 萬株，以 curl 下載到 `pipelines/.cache/`（不進 repo；data.taipei 的憑證問題見第 12 節，實際檔案放在 Azure Blob `tppkl.blob.core.windows.net/blobfs/`）。清冊版本日期取兩檔 `UpdDate` 最新的一天：2026-10-06 下載時行道樹檔為 2026-10-05、公園樹檔為 2026-07-14。
+- 只比對公園處格式的樹籤（兩個英文字母加十位數字，不分大小寫），完全相符才算在清冊。清冊另有約 4,200 個帶 `-001` 這類尾碼的編號，不拿來對應。
+- 補座標只補計畫書沒有可用座標的樹（`no-coordinate`、`placeholder-coordinate`），清冊的 TWD97 照計畫書座標同樣以 pyproj 轉換、取 5 位小數。兩種情況不補，留在待定位清單並列在 `inventory.json` 的 `rejected`：樹種與清冊不符（`species-mismatch`；台／臺、艷／豔視為同字，一方是另一方的結尾如臺灣海棗／海棗視為相符，另有檬果／芒果、雞蛋花／緬梔花兩組俗名），以及同一個樹籤被兩株以上的計畫樹使用（`shared-tag`）。
+- 清冊消失訊號：`inventory.json` 對每株帶公園處樹籤的計畫樹（已上圖或待定位）記錄樹籤在不在清冊。2026-10-05 版清冊對 1,017 株帶樹籤的計畫樹，312 株已不在清冊，其中 162 株是已上圖的 CF760 移除案樹（該案帶樹籤的 189 株中的 162 株），150 株是待定位樹（DF120 移植案 157 株中的 129 株等）。依第 4.3 節與 `CONTEXT.md`「清冊消失」的定義，這只是訊號，可能是移除、重編號或資料修正：不改匯入列的資料來源與參考來源，也不把樹標成已移除，只在已上圖的計畫樹卡片加一行（第 3.1 節），日期是清冊版本日期，經由 `index.json` 的 `inventory_gone` 欄送到前端。
+- 計畫書可能在工程完成一個月後從 pkl.gov.taipei 下架（審查專區說明第 7 點），所以比對結果以 commit 的 `inventory.json` 為準；重跑 `--inventory` 會以新下載的清冊覆寫它與 `coordinates.json` 裡 `via` 為 `inventory` 的項目，其他來源的項目保留。
 
 連結白名單：匯入列的 `link` 是 pkl.gov.taipei，不在 `shared/domains.ts` 的白名單裡。白名單是擋使用者輸入的垃圾連結用的，只在 API 的寫入路徑檢查；匯入走 `wrangler d1 execute`，網址由管線從案件清單產生，不經使用者，所以直接略過白名單，白名單本身不擴大。前端顯示連結時本來就只看網域、加 `nofollow`，不看白名單。官方紀錄沒有編輯密鑰，編輯 API 碰不到它們。
 
@@ -336,7 +346,7 @@ Python 與 uv（版本與套件見 `TECH-STACK.md` 第 5 節），在本機執�
 
 ### 4.3 清冊消失（M3，離線階段）
 
-每日抓兩份 CSV，以樹籤編號集合 diff 前一日，輸出消失與新增清單。連續數週後人工檢視：消失的編號多少比例在幾天內以新編號重現（重編號）、多少永久消失。誤判率可接受才進入「匯入為資料來源＝清冊消失偵測」的階段，屆時 `inventory_tree_id` 填樹籤編號、座標取自消失前最後一版清冊。
+每日抓兩份 CSV，以樹籤編號集合 diff 前一日，輸出消失與新增清單。連續數週後人工檢視：消失的編號多少比例在幾天內以新編號重現（重編號）、多少永久消失。誤判率可接受才進入「匯入為資料來源＝清冊消失偵測」的階段（計畫樹的樹籤比對是這個訊號第一個上卡片的用途，但只是一行說明，不是匯入，見第 4.2.1 節），屆時 `inventory_tree_id` 填樹籤編號、座標取自消失前最後一版清冊。
 
 ---
 

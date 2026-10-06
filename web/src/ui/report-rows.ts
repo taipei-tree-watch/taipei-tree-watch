@@ -47,6 +47,13 @@ export function reportRows(report: ReportRecord): HTMLElement[] {
     parts.push(caveat);
   }
 
+  if (summary.inventory !== null) {
+    const sentence = document.createElement('p');
+    sentence.className = 'card-notice';
+    sentence.textContent = summary.inventory;
+    parts.push(sentence);
+  }
+
   if (summary.notice !== null) {
     const sentence = document.createElement('p');
     sentence.className = 'card-notice';
