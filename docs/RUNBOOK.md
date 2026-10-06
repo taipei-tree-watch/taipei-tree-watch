@@ -305,6 +305,20 @@ curl -s "https://taipei-tree-watch.taipeitreewatch.workers.dev/api/revisions?cb=
 
 要復原就把 `status` 改回 0。
 
-### 演練
+### 2026-10-06 演練結果
 
-上線後尚未做。做的時候：送一筆測試回報、兩筆更正，退回其中一筆，再用「同一人全部版本」退回另一筆，每一步記下 cron 後的快照值，最後撤回測試回報。
+從線上網站送一筆測試回報（大安森林公園北側，樹種「榕」），等它進快照後用卡片的「內容有誤，提出更正」把樹種改成「樟」，再用上面的單一版本指令退回。
+
+| 時間（UTC） | 動作 | 觀察 |
+|---|---|---|
+| 14:08:09 | 送出測試回報 | 201，人機驗證自動通過 |
+| 14:15:02 | cron 重建 | 快照 schema 2，收進測試回報，`revision_count` 0 |
+| 14:19:50 | 從卡片送出更正 | 201；`report_revisions` 一列，`base_revision_id` 為 NULL，`reports` 那列的樹種仍是「榕」 |
+| 14:30:02 | cron 重建 | 快照樹種「樟」、`revision_count` 1；`/api/revisions` 列出這一版，`previous` 為 `{"species":"榕"}`；卡片顯示「已更正 1 次」與紀錄 |
+| 14:31:37 | `UPDATE … SET status = 1` | `changes` 為 1 |
+| 14:45:02 | cron 重建 | 快照樹種回到「榕」、`revision_count` 0、`revised_at` 為 null；`/api/revisions` 為空 |
+| 14:45:57 | 用編輯連結撤回測試回報 | `reports.status` 2；那一版維持 `status = 1` 留在資料庫 |
+
+退回後的值在下一次 cron（約 13 分鐘後）就從公開快照恢復。「同一人全部版本」的指令只在 Worker 測試裡驗過，這次沒有在遠端跑。
+
+另一個觀察：剛送出的回報在回報者自己的瀏覽器裡，要等瀏覽器快取的快照（`max-age=300`）過期、讀到收進它的那一份，才會從「尚未公開」變成可以更正。
