@@ -8,6 +8,10 @@
  * to `form` locks the point where it is and shows the fields; going back to
  * `picking` releases it.
  *
+ * A third mode, `correcting`, swaps both for the correction panel: someone
+ * who finds a report wrong, from the nearby report box or from its card,
+ * changes its fields there instead of filing a report of their own.
+ *
  * The same form edits an existing report when an edit link is opened: the
  * fields are filled from the Worker's copy, the point starts on the stored
  * location, submitting sends a PUT, and a withdraw button appears. A new
@@ -23,7 +27,7 @@ import {
   dispositions as dispositionTags,
   evidence as evidenceTags,
 } from '../../../shared/tags.ts';
-import type { EvidenceCode, Tag } from '../../../shared/tags.ts';
+import type { EvidenceCode } from '../../../shared/tags.ts';
 import type { Bbox } from '../../../shared/validation.ts';
 import {
   NOTE_MAX_CHARS,
@@ -33,13 +37,15 @@ import {
   taipeiDate,
 } from '../../../shared/validation.ts';
 import { sections } from '../content/index.ts';
+import type { RevisionsLoader } from '../data/revisions.ts';
 import type { ReportRecord } from '../data/snapshot.ts';
 import type { ProtectedTree } from '../data/trees.ts';
 import { formatTemplate } from '../format.ts';
-import type { Nearby } from '../geo.ts';
+import type { LatLng, Nearby } from '../geo.ts';
 import {
   NEARBY_REPORT_RADIUS_M,
   PROTECTED_TREE_RADIUS_M,
+  haversineMeters,
   nearestWithin,
 } from '../geo.ts';
 import type { EditLink } from '../permalink.ts';
@@ -64,6 +70,8 @@ import { dismissSafety, isSafetyDismissed } from '../report/safety.ts';
 import type { SameTreeCheck } from '../report/same-tree.ts';
 import { prefillFromReport, sameTreeStage } from '../report/same-tree.ts';
 import { reportRows } from './report-rows.ts';
+import { createCorrectionPanel } from './correction-panel.ts';
+import { hintCounter, labelled, tagGroup } from './form-controls.ts';
 import type { FetchLike } from '../report/submit.ts';
 import { submitReport } from '../report/submit.ts';
 import type { CopyOutcome } from '../copy-link.ts';
@@ -76,6 +84,7 @@ import {
   Copy,
   Crosshair,
   Equal,
+  FilePen,
   Info,
   Link,
   MapPinPlus,
@@ -91,7 +100,7 @@ import {
 } from '../icons.ts';
 import strings from '../ui-strings.json';
 
-export type PickerMode = 'picking' | 'form';
+export type PickerMode = 'picking' | 'form' | 'correcting';
 
 export interface ReportFormOptions {
   readonly getView: () => PickedView;
@@ -111,6 +120,12 @@ export interface ReportFormOptions {
   readonly onEditLinkGone: (id: string) => void;
   /** Editing started or ended, so the sheet can retitle itself. */
   readonly onEditingChange: (editing: boolean) => void;
+  /** A correction started or ended, so the sheet can retitle itself. */
+  readonly onCorrectingChange: (correcting: boolean) => void;
+  /** Revisions file, for the version a correction is based on. */
+  readonly loadRevisions: RevisionsLoader;
+  /** Move the camera so the crosshair lands on this point, close enough to aim. */
+  readonly flyTo: (point: LatLng) => void;
   readonly editLinkUrl: (link: EditLink) => string;
   /** The public permalink of a report, which anyone can open read-only. */
   readonly reportUrl: (id: string) => string;
@@ -151,6 +166,13 @@ export interface ReportForm {
    * still being filled in is left as it is.
    */
   startCreate(): void;
+  /**
+   * Report a change to this earlier report of the same tree: its identifying
+   * fields are carried over and the new report is sent as its follow-up.
+   */
+  startFollowUp(report: ReportRecord): void;
+  /** Open the correction panel on this report. */
+  startCorrection(report: ReportRecord): void;
   isEditing(): boolean;
 }
 
@@ -198,48 +220,6 @@ export function pendingFromBody(
 /** Coordinates are shown at the precision they are stored at. */
 const COORD_DIGITS = 5;
 
-function labelled(
-  labelText: string,
-  control: HTMLElement,
-  hintText: string,
-  optional: boolean,
-): { row: HTMLElement; hint: HTMLElement; error: HTMLElement } {
-  const row = document.createElement('div');
-  row.className = 'form-row';
-
-  const label = document.createElement('label');
-  label.className = 'form-label';
-  label.append(document.createTextNode(labelText));
-  if (optional) {
-    const badge = document.createElement('span');
-    badge.className = 'form-optional';
-    badge.textContent = strings.form.optional;
-    label.append(badge);
-  }
-  label.append(control);
-  row.append(label);
-
-  const hint = document.createElement('p');
-  hint.className = 'form-hint';
-  hint.textContent = hintText;
-  row.append(hint);
-
-  const error = document.createElement('p');
-  error.className = 'form-error';
-  error.hidden = true;
-  row.append(error);
-
-  return { row, hint, error };
-}
-
-/** Live character count appended to the end of a field's hint line. */
-function hintCounter(hint: HTMLElement): HTMLElement {
-  const counter = document.createElement('span');
-  counter.className = 'form-counter';
-  hint.append(' ', counter);
-  return counter;
-}
-
 /**
  * Info button for the link hint and the popover it opens, which lists every
  * accepted domain. The popover sits in the top layer, so the scrolling sheet
@@ -283,57 +263,6 @@ function linkDomainsInfo(): { button: HTMLButtonElement; popover: HTMLElement } 
   button.popoverTargetElement = popover;
 
   return { button, popover };
-}
-
-function tagGroup(
-  legendText: string,
-  hintText: string,
-  tags: readonly Tag[],
-  name: string,
-  onChange: (code: number, checked: boolean) => void,
-): { group: HTMLElement; options: HTMLElement; inputs: HTMLInputElement[]; error: HTMLElement } {
-  const group = document.createElement('fieldset');
-  group.className = 'form-group';
-
-  const legend = document.createElement('legend');
-  legend.textContent = legendText;
-  group.append(legend);
-
-  const hint = document.createElement('p');
-  hint.className = 'form-hint';
-  hint.textContent = hintText;
-  group.append(hint);
-
-  const options = document.createElement('div');
-  options.className = 'form-options';
-  const inputs: HTMLInputElement[] = [];
-
-  for (const tag of tags) {
-    const wrapper = document.createElement('label');
-    wrapper.className = 'form-option';
-
-    const input = document.createElement('input');
-    input.type = 'checkbox';
-    input.name = name;
-    input.value = String(tag.code);
-    input.addEventListener('change', () => {
-      onChange(tag.code, input.checked);
-    });
-    inputs.push(input);
-
-    const caption = document.createElement('span');
-    caption.textContent = tag.label;
-    wrapper.append(input, caption);
-    options.append(wrapper);
-  }
-  group.append(options);
-
-  const error = document.createElement('p');
-  error.className = 'form-error';
-  error.hidden = true;
-  group.append(error);
-
-  return { group, options, inputs, error };
 }
 
 /**
@@ -396,6 +325,10 @@ export function createReportForm(
   let nearby: Nearby<ProtectedTree> | null = null;
   let nearbyReportFound: Nearby<ReportRecord> | null = null;
   let sameTree: SameTreeCheck | null = null;
+  /** The earlier report this one is a follow-up of, once the reporter chose so. */
+  let following: ReportRecord | null = null;
+  /** Whether the correction panel is aiming, which shrinks the sheet like picking. */
+  let correctionAiming = false;
   /** The report whose rows are in the box, so a camera move does not rebuild them. */
   let shownReportId: string | null = null;
   let widget: TurnstileWidget | null = null;
@@ -531,6 +464,7 @@ export function createReportForm(
   const sameButton = secondaryButton(Check, strings.form.nearbyReportSame);
   const differentButton = secondaryButton(X, strings.form.nearbyReportDifferent);
   const updateButton = secondaryButton(CirclePlus, strings.form.nearbyReportUpdate);
+  const correctButton = secondaryButton(FilePen, strings.form.nearbyReportCorrect);
   const unchangedButton = secondaryButton(Equal, strings.form.nearbyReportUnchanged);
   const recheckButton = secondaryButton(RotateCcw, strings.form.nearbyReportRecheck);
   const nearbyReportActions = document.createElement('div');
@@ -539,6 +473,7 @@ export function createReportForm(
     sameButton,
     differentButton,
     updateButton,
+    correctButton,
     unchangedButton,
     recheckButton,
   );
@@ -819,7 +754,27 @@ export function createReportForm(
 
   successPanel.append(successMessage, successBody, shareLinkRow, editLinkBox, againButton);
 
-  container.replaceChildren(picker, form, successPanel);
+  const correction = createCorrectionPanel({
+    getView: () => options.getView(),
+    bbox: options.bbox,
+    fetchImpl: options.fetchImpl,
+    loadRevisions: options.loadRevisions,
+    flyTo: (point) => {
+      options.flyTo(point);
+    },
+    onAimingChange(aiming) {
+      correctionAiming = aiming;
+      if (mode === 'correcting') {
+        container.dataset.mode = aiming ? 'picking' : 'correcting';
+      }
+    },
+    onClose() {
+      leaveCorrection();
+      options.onDismiss();
+    },
+  });
+
+  container.replaceChildren(picker, form, successPanel, correction.element);
 
   /* Behaviour ------------------------------------------------------------- */
 
@@ -881,6 +836,9 @@ export function createReportForm(
   }
 
   function setMode(next: PickerMode): void {
+    if (mode === 'correcting' && next !== 'correcting') {
+      leaveCorrection();
+    }
     mode = next;
     // A point already locked (an edit's stored location) survives re-entry.
     lockedView = next === 'form' ? (lockedView ?? options.getView()) : null;
@@ -890,7 +848,7 @@ export function createReportForm(
     } else {
       setIconLabel(modeButton, Pencil, strings.form.toForm);
     }
-    container.dataset.mode = next;
+    container.dataset.mode = next === 'correcting' && correctionAiming ? 'picking' : next;
     options.onModeChange(next);
     if (next === 'form') {
       void ensureWidget();
@@ -955,6 +913,7 @@ export function createReportForm(
     sameButton.hidden = stage !== 'ask';
     differentButton.hidden = stage !== 'ask';
     updateButton.hidden = stage !== 'same';
+    correctButton.hidden = stage !== 'same' || !isCorrectable(found.item);
     unchangedButton.hidden = stage !== 'same';
     recheckButton.hidden = !settled && stage !== 'same';
   }
@@ -1213,12 +1172,20 @@ export function createReportForm(
 
   differentButton.addEventListener('click', () => {
     answerSameTree('different');
+    following = null;
     render();
   });
 
   recheckButton.addEventListener('click', () => {
     sameTree = null;
+    following = null;
     render();
+  });
+
+  correctButton.addEventListener('click', () => {
+    if (nearbyReportFound !== null) {
+      startCorrection(nearbyReportFound.item);
+    }
   });
 
   updateButton.addEventListener('click', () => {
@@ -1226,6 +1193,7 @@ export function createReportForm(
       return;
     }
     answerSameTree('update');
+    following = nearbyReportFound.item;
     draft = prefillFromReport(draft, nearbyReportFound.item);
     speciesInput.value = draft.species;
     protectedInput.value = draft.protectedTreeId;
@@ -1381,6 +1349,7 @@ export function createReportForm(
     withdrawing = false;
     draft = emptyDraft();
     sameTree = null;
+    following = null;
     apiErrors = new Map();
     generalError = null;
     turnstileMessage = null;
@@ -1406,6 +1375,40 @@ export function createReportForm(
     }
     widget?.reset();
     renderCounters();
+  }
+
+  /** Only a user report on the server has versions to correct. */
+  function isCorrectable(report: ReportRecord): boolean {
+    return report.pending !== true && (report.source === null || report.source === 1);
+  }
+
+  function startCorrection(report: ReportRecord): void {
+    if (!isCorrectable(report)) {
+      return;
+    }
+    if (editing !== null || !successPanel.hidden) {
+      resetForm();
+    }
+    picker.hidden = true;
+    guideToggle.hidden = true;
+    correctionAiming = false;
+    setMode('correcting');
+    correction.start(report);
+    options.onCorrectingChange(true);
+    options.flyTo(report);
+    render();
+  }
+
+  /** Put the correction panel away and bring back the picker it covered. */
+  function leaveCorrection(): void {
+    if (correction.element.hidden) {
+      return;
+    }
+    correction.stop();
+    correctionAiming = false;
+    picker.hidden = false;
+    guideToggle.hidden = false;
+    options.onCorrectingChange(false);
   }
 
   form.addEventListener('submit', (event) => {
@@ -1439,8 +1442,21 @@ export function createReportForm(
     turnstileMessage = null;
     render();
 
-    const body = buildRequestBody(draft, view, token);
     const target = editing;
+    // A follow-up aimed far from the report it follows may be another tree.
+    if (target === null && following !== null) {
+      if (
+        haversineMeters(view, following) > NEARBY_REPORT_RADIUS_M &&
+        !options.confirm(strings.form.followTooFar)
+      ) {
+        following = null;
+        sameTree = null;
+      }
+    }
+    const body: Record<string, unknown> = buildRequestBody(draft, view, token);
+    if (target === null && following !== null) {
+      body.follows_report_id = following.id;
+    }
     const outcome =
       target === null
         ? await submitReport(body, options.fetchImpl)
@@ -1565,10 +1581,17 @@ export function createReportForm(
       render();
     },
     update() {
+      if (mode === 'correcting') {
+        correction.update();
+        return;
+      }
       render();
     },
     setActive(active) {
       if (!active) {
+        if (mode === 'correcting') {
+          setMode('picking');
+        }
         return;
       }
       observedInput.max = taipeiDate(options.now());
@@ -1603,6 +1626,19 @@ export function createReportForm(
       setMode('picking');
       render();
     },
+    startFollowUp(report) {
+      if (editing !== null || !successPanel.hidden) {
+        resetForm();
+      }
+      setMode('picking');
+      sameTree = { reportId: report.id, answer: 'update' };
+      following = report;
+      draft = prefillFromReport(draft, report);
+      fillControls();
+      options.flyTo(report);
+      render();
+    },
+    startCorrection,
     isEditing() {
       return editing !== null;
     },

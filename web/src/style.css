@@ -590,6 +590,64 @@ body {
   user-select: all;
 }
 
+/* The three choices about a report, tucked under the share row. */
+.card-about {
+  margin-top: 0;
+}
+
+/* Corrections and other reports of the same tree, below the report rows. */
+.card-revisions,
+.card-same-tree {
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.card-revisions .form-hint,
+.card-same-tree .form-hint {
+  margin: 0 0 0.375rem;
+}
+
+.card-revision-list,
+.card-same-tree-list {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+}
+
+.card-revision {
+  padding: 0.375rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.card-revision:first-child {
+  border-top: 0;
+}
+
+.card-revision p {
+  margin: 0.125rem 0;
+  overflow-wrap: anywhere;
+}
+
+.card-revision-date {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+}
+
+.card-revision-change .card-label {
+  margin-right: 0.5rem;
+}
+
+.card-revision a,
+.card-same-tree-list a {
+  color: var(--accent);
+}
+
+.card-same-tree-list li {
+  padding: 0.125rem 0;
+}
+
 /* Crosshair --------------------------------------------------------------- */
 
 /*
@@ -824,6 +882,15 @@ body {
 .form-nearby .form-nearby-question + .form-nearby-question,
 .form-nearby-rows + .form-nearby-question {
   margin-top: 0.5rem;
+}
+
+/* Correction panel: the report sheet's third mode. */
+.correction > .form-hint:first-child {
+  margin-top: 0;
+}
+
+.correction .form-picker-actions:last-child {
+  margin-top: 0.875rem;
 }
 
 /* Report form ------------------------------------------------------------- */

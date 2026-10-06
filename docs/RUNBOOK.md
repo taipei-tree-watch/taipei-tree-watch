@@ -1,6 +1,6 @@
 # 維運手冊
 
-這份文件寫的是上線後會重複執行的操作：軟刪除一筆回報、把快照回滾到前一版、以及兩支本機備份工作的排程。每一節都是照著做就能完成的步驟，附上 2026-09-20 首次演練的實際觀察。
+這份文件寫的是上線後會重複執行的操作：軟刪除一筆回報、把快照回滾到前一版、退回更正、以及兩支本機備份工作的排程。每一節都是照著做就能完成的步驟，附上 2026-09-20 首次演練的實際觀察。
 
 設計背景與決策理由在 `TECH-SPEC.md`，部署步驟在 `DEPLOY.md`，這裡不重複。
 
@@ -269,3 +269,42 @@ npm run issue:edit-links -- --remote
 
 輸出檔裡的每一條都是可用的憑證。存進瀏覽器（或密碼管理工具）之後就刪掉，不要 commit、不要貼到任何地方。
 
+## 6. 退回更正
+
+更正直接生效，不經審核，所以遇到破壞就把那一版退回。退回是改 `report_revisions.status`，不刪列：0 是生效、1 是站方退回、2 是回報者用編輯連結改了同一欄位而被取代。下一次 cron 重建快照時，被退回的版本不再套用，其他版本照樣依序套上，也不再出現在 `/api/revisions`。
+
+### 步驟
+
+先看某一筆回報的所有版本，或最近送出的更正：
+
+```bash
+npx wrangler d1 execute taipei-tree-watch --remote --command "SELECT id, report_id, changes, reason, status, reporter_hash, created_at FROM report_revisions WHERE report_id = '<回報 id>' ORDER BY id"
+```
+
+```bash
+npx wrangler d1 execute taipei-tree-watch --remote --command "SELECT id, report_id, changes, reason, reporter_hash, created_at FROM report_revisions WHERE status = 0 ORDER BY id DESC LIMIT 20"
+```
+
+退回一版：
+
+```bash
+npx wrangler d1 execute taipei-tree-watch --remote --command "UPDATE report_revisions SET status = 1 WHERE id = '<版本 id>'"
+```
+
+同一個人連續破壞時，依那一版的 IP 雜湊退回他全部生效中的版本（先用上面的查詢確認 `reporter_hash` 相同的都是破壞）：
+
+```bash
+npx wrangler d1 execute taipei-tree-watch --remote --command "UPDATE report_revisions SET status = 1 WHERE reporter_hash = (SELECT reporter_hash FROM report_revisions WHERE id = '<版本 id>') AND status = 0"
+```
+
+回應的 `changes` 是退回的版數，0 代表 id 打錯。等下一次 cron 後，確認那筆回報恢復成套上其他版本的值、版本檔裡沒有被退回的版本：
+
+```bash
+curl -s "https://taipei-tree-watch.taipeitreewatch.workers.dev/api/revisions?cb=$(date +%s)" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['generated_at'], [r[0] for r in d['rows'] if r[1] == '<回報 id>'])"
+```
+
+要復原就把 `status` 改回 0。
+
+### 演練
+
+上線後尚未做。做的時候：送一筆測試回報、兩筆更正，退回其中一筆，再用「同一人全部版本」退回另一筆，每一步記下 cron 後的快照值，最後撤回測試回報。

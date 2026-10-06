@@ -5,12 +5,19 @@
  * Rows are positional arrays; `SNAPSHOT_COLUMNS` fixes the order and
  * `SnapshotRow` fixes the type of each position. Bump `SNAPSHOT_SCHEMA`
  * whenever the column list or a column type changes.
+ *
+ * Every field that a correction can change holds the current value: the
+ * report row with its active revisions applied.
  */
 import type { CauseCode, DispositionCode, EvidenceCode, SourceCode } from './tags.ts';
 
-export const SNAPSHOT_SCHEMA = 1;
+export const SNAPSHOT_SCHEMA = 2;
 
-export const SNAPSHOT_COLUMNS = [
+/**
+ * The columns every schema has carried. A reader requires only these, so a
+ * schema 1 snapshot restored from history still loads.
+ */
+export const SNAPSHOT_BASE_COLUMNS = [
   'id',
   'lat',
   'lng',
@@ -25,6 +32,13 @@ export const SNAPSHOT_COLUMNS = [
   'protected_tree_id',
   'inventory_tree_id',
   'created_at',
+] as const;
+
+export const SNAPSHOT_COLUMNS = [
+  ...SNAPSHOT_BASE_COLUMNS,
+  'follows_report_id',
+  'revision_count',
+  'revised_at',
 ] as const;
 
 export type SnapshotColumn = (typeof SNAPSHOT_COLUMNS)[number];
@@ -44,6 +58,12 @@ export type SnapshotRow = readonly [
   protected_tree_id: string | null,
   inventory_tree_id: string | null,
   created_at: string,
+  /** Earlier report of the same tree, which may no longer be visible. */
+  follows_report_id: string | null,
+  /** Active revisions applied to this row. */
+  revision_count: number,
+  /** `created_at` of the latest active revision; null when there is none. */
+  revised_at: string | null,
 ];
 
 /** Compile-time guard: the row tuple must have exactly one slot per column. */

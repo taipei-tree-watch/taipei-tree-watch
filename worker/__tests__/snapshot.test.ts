@@ -148,6 +148,9 @@ describe('snapshot cron', () => {
       '1525',
       null,
       '2026-09-18T07:02:11.000Z',
+      null,
+      0,
+      null,
     ]);
     expect(snapshot.rows[1]).toEqual([
       '01B',
@@ -164,6 +167,9 @@ describe('snapshot cron', () => {
       null,
       null,
       '2026-09-18T07:02:11.000Z',
+      null,
+      0,
+      null,
     ]);
   });
 

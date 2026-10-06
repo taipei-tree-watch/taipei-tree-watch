@@ -5,14 +5,34 @@
  * rather than asserting a diagnosis, and it is left out entirely when the
  * reporter had no document to go on. External links are rendered as their
  * hostname only, with nofollow so link spam has nothing to gain.
+ *
+ * A user report's card also offers what to do about it: report a change as a
+ * follow-up, correct what it says, or leave it. It shows how often it was
+ * corrected, loading the list of corrections only when asked, and links the
+ * other reports of the same tree.
  */
+import { taipeiDate } from '../../../shared/validation.ts';
+import type { RevisionEntry, RevisionsLoader } from '../data/revisions.ts';
 import type { ReportRecord } from '../data/snapshot.ts';
 import type { ProtectedTree } from '../data/trees.ts';
-import { formatTemplate } from '../format.ts';
+import { formatTemplate, linkHostname } from '../format.ts';
 import type { PermalinkTarget } from '../permalink.ts';
 import type { CopyOutcome } from '../copy-link.ts';
+import { describeRevision } from '../report/correction.ts';
 import { reportRows } from './report-rows.ts';
-import { Link, MapPin, Pencil, setIconLabel, setIconOnly, X } from '../icons.ts';
+import {
+  CirclePlus,
+  Ellipsis,
+  Equal,
+  FilePen,
+  Link,
+  List,
+  MapPin,
+  Pencil,
+  setIconLabel,
+  setIconOnly,
+  X,
+} from '../icons.ts';
 import strings from '../ui-strings.json';
 
 export interface DetailCardOptions {
@@ -31,6 +51,15 @@ export interface DetailCardOptions {
   readonly onEdit: (id: string) => void;
   /** Start a report about the protected tree whose card is open. */
   readonly onReportTree: (tree: ProtectedTree) => void;
+  /** Other reports of the same tree, oldest first. */
+  readonly sameTreeReports: (report: ReportRecord) => readonly ReportRecord[];
+  readonly loadRevisions: RevisionsLoader;
+  /** The tree has changed since this report: file a follow-up. */
+  readonly onFollowUp: (report: ReportRecord) => void;
+  /** This report says something wrong: correct it. */
+  readonly onCorrect: (report: ReportRecord) => void;
+  /** Open another report's card, as its permalink would. */
+  readonly onShowReport: (report: ReportRecord) => void;
 }
 
 export interface DetailCard {
@@ -74,6 +103,62 @@ function pendingNotice(): HTMLParagraphElement {
   notice.className = 'card-notice card-pending';
   notice.textContent = strings.card.pending;
   return notice;
+}
+
+/** Follow-ups and corrections concern reports held on the server by users. */
+function acceptsFollowUps(report: ReportRecord): boolean {
+  return report.pending !== true && (report.source === null || report.source === 1);
+}
+
+function dateOf(iso: string | null | undefined): string | null {
+  if (iso === null || iso === undefined) {
+    return null;
+  }
+  const time = Date.parse(iso);
+  return Number.isNaN(time) ? null : taipeiDate(new Date(time));
+}
+
+function revisionItem(entry: RevisionEntry): HTMLLIElement {
+  const item = document.createElement('li');
+  item.className = 'card-revision';
+
+  const date = dateOf(entry.createdAt);
+  if (date !== null) {
+    const heading = document.createElement('p');
+    heading.className = 'card-revision-date';
+    heading.textContent = date;
+    item.append(heading);
+  }
+  for (const line of describeRevision(entry.changes, entry.previous)) {
+    const row = document.createElement('p');
+    row.className = 'card-revision-change';
+    const label = document.createElement('span');
+    label.className = 'card-label';
+    label.textContent = line.label;
+    row.append(
+      label,
+      document.createTextNode(formatTemplate(strings.revisions.arrow, { from: line.from, to: line.to })),
+    );
+    item.append(row);
+  }
+  const reason = document.createElement('p');
+  reason.className = 'card-revision-reason';
+  reason.textContent = formatTemplate(strings.revisions.reason, { reason: entry.reason });
+  item.append(reason);
+
+  const hostname = entry.link === null ? null : linkHostname(entry.link);
+  if (entry.link !== null && hostname !== null) {
+    const line = document.createElement('p');
+    line.className = 'card-revision-reason';
+    const anchor = document.createElement('a');
+    anchor.href = entry.link;
+    anchor.textContent = hostname;
+    anchor.rel = 'nofollow noopener';
+    anchor.target = '_blank';
+    line.append(strings.revisions.link, anchor);
+    item.append(line);
+  }
+  return item;
 }
 
 export function createDetailCard(element: HTMLElement, options: DetailCardOptions): DetailCard {
@@ -127,12 +212,171 @@ export function createDetailCard(element: HTMLElement, options: DetailCardOption
   setIconLabel(reportTreeButton, MapPin, strings.card.reportTree);
   reportTreeButton.hidden = true;
 
-  share.append(reportTreeButton, shareButton, editButton, feedback, manualUrl);
+  // What to do about a user report: the same three choices the report sheet
+  // offers when its crosshair finds this report nearby.
+  const aboutButton = document.createElement('button');
+  aboutButton.type = 'button';
+  aboutButton.className = 'form-secondary';
+  setIconLabel(aboutButton, Ellipsis, strings.card.about);
+  aboutButton.setAttribute('aria-expanded', 'false');
+  aboutButton.hidden = true;
+
+  const aboutBox = document.createElement('div');
+  aboutBox.className = 'form-nearby card-about';
+  aboutBox.id = 'card-about';
+  aboutBox.hidden = true;
+  aboutButton.setAttribute('aria-controls', aboutBox.id);
+  const aboutHint = document.createElement('p');
+  aboutHint.className = 'form-nearby-question';
+  aboutHint.textContent = strings.card.aboutHint;
+  const aboutActions = document.createElement('div');
+  aboutActions.className = 'form-picker-actions';
+  const choice = (icon: Parameters<typeof setIconLabel>[1], label: string): HTMLButtonElement => {
+    const element = document.createElement('button');
+    element.type = 'button';
+    element.className = 'form-secondary';
+    setIconLabel(element, icon, label);
+    aboutActions.append(element);
+    return element;
+  };
+  const followUpButton = choice(CirclePlus, strings.card.followUp);
+  const correctButton = choice(FilePen, strings.card.correct);
+  const unchangedButton = choice(Equal, strings.card.unchanged);
+  aboutBox.append(aboutHint, aboutActions);
+
+  share.append(
+    reportTreeButton,
+    shareButton,
+    editButton,
+    aboutButton,
+    aboutBox,
+    feedback,
+    manualUrl,
+  );
 
   element.replaceChildren(header, body, share);
 
   let target: PermalinkTarget | null = null;
   let openTree: ProtectedTree | null = null;
+  let openReport: ReportRecord | null = null;
+
+  const setAboutOpen = (open: boolean): void => {
+    aboutBox.hidden = !open;
+    aboutButton.setAttribute('aria-expanded', String(open));
+  };
+
+  aboutButton.addEventListener('click', () => {
+    setAboutOpen(aboutButton.getAttribute('aria-expanded') !== 'true');
+  });
+  followUpButton.addEventListener('click', () => {
+    if (openReport !== null) {
+      options.onFollowUp(openReport);
+    }
+  });
+  correctButton.addEventListener('click', () => {
+    if (openReport !== null) {
+      options.onCorrect(openReport);
+    }
+  });
+  unchangedButton.addEventListener('click', () => {
+    setAboutOpen(false);
+  });
+
+  /** "Corrected N times", with the list of corrections behind a button. */
+  const revisionsSection = (report: ReportRecord): HTMLElement | null => {
+    const count = report.revisionCount ?? 0;
+    if (count === 0) {
+      return null;
+    }
+    const section = document.createElement('section');
+    section.className = 'card-revisions';
+    const summary = document.createElement('p');
+    summary.className = 'form-hint';
+    summary.textContent = formatTemplate(strings.card.revised, {
+      count,
+      date: dateOf(report.revisedAt) ?? '',
+    });
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'form-secondary';
+    setIconLabel(toggle, List, strings.card.showRevisions);
+    toggle.setAttribute('aria-expanded', 'false');
+    const list = document.createElement('ol');
+    list.className = 'card-revision-list';
+    list.hidden = true;
+    const status = document.createElement('p');
+    status.className = 'form-hint';
+    status.hidden = true;
+
+    let loaded = false;
+    toggle.addEventListener('click', () => {
+      const open = toggle.getAttribute('aria-expanded') !== 'true';
+      toggle.setAttribute('aria-expanded', String(open));
+      setIconLabel(toggle, List, open ? strings.card.hideRevisions : strings.card.showRevisions);
+      if (!open) {
+        list.hidden = true;
+        status.hidden = true;
+        return;
+      }
+      if (loaded) {
+        list.hidden = false;
+        return;
+      }
+      status.hidden = false;
+      status.textContent = strings.card.revisionsLoading;
+      options
+        .loadRevisions()
+        .then((revisions) => {
+          const entries = revisions.get(report.id) ?? [];
+          if (entries.length === 0) {
+            status.textContent = strings.card.revisionsStale;
+            return;
+          }
+          loaded = true;
+          list.replaceChildren(...[...entries].reverse().map(revisionItem));
+          status.hidden = true;
+          list.hidden = toggle.getAttribute('aria-expanded') !== 'true';
+        })
+        .catch((error: unknown) => {
+          console.error('revisions failed to load', error);
+          status.textContent = strings.card.revisionsFailed;
+        });
+    });
+
+    section.append(summary, toggle, status, list);
+    return section;
+  };
+
+  /** Other reports of the same tree, each opening its own card. */
+  const sameTreeSection = (report: ReportRecord): HTMLElement | null => {
+    const others = options.sameTreeReports(report);
+    if (others.length === 0) {
+      return null;
+    }
+    const section = document.createElement('section');
+    section.className = 'card-same-tree';
+    const heading = document.createElement('p');
+    heading.className = 'form-hint';
+    heading.textContent = formatTemplate(strings.card.sameTree, { count: others.length });
+    const list = document.createElement('ul');
+    list.className = 'card-same-tree-list';
+    for (const other of others) {
+      const item = document.createElement('li');
+      const anchor = document.createElement('a');
+      anchor.href = options.permalinkUrl({ kind: 'report', id: other.id });
+      const date = other.observedAt ?? dateOf(other.createdAt);
+      anchor.textContent =
+        date === null ? strings.card.sameTreeUndated : formatTemplate(strings.card.sameTreeItem, { date });
+      anchor.addEventListener('click', (event) => {
+        event.preventDefault();
+        options.onShowReport(other);
+      });
+      item.append(anchor);
+      list.append(item);
+    }
+    section.append(heading, list);
+    return section;
+  };
 
   const clearFeedback = (): void => {
     feedback.hidden = true;
@@ -205,14 +449,22 @@ export function createDetailCard(element: HTMLElement, options: DetailCardOption
   return {
     showReport(report) {
       openTree = null;
+      openReport = report;
       reportTreeButton.hidden = true;
+      aboutButton.hidden = !acceptsFollowUps(report);
+      setAboutOpen(false);
       render(strings.card.reportTitle, { kind: 'report', id: report.id }, [
         report.pending === true ? pendingNotice() : null,
         ...reportRows(report),
+        revisionsSection(report),
+        sameTreeSection(report),
       ]);
     },
     showTree(tree) {
       openTree = tree;
+      openReport = null;
+      aboutButton.hidden = true;
+      setAboutOpen(false);
       reportTreeButton.hidden = false;
       render(strings.card.treeTitle, { kind: 'tree', id: tree.id }, [
         textRow(strings.card.treeId, tree.id),

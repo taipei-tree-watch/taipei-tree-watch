@@ -5,6 +5,8 @@
  * - GET reads the current row, so the form is filled from the database rather
  *   than from a snapshot that can be a quarter of an hour old.
  * - PUT replaces every user-supplied field, through the same checks as POST.
+ *   A field the reporter changes wins over earlier corrections of it: those
+ *   revisions are marked superseded, the later write taking effect.
  * - DELETE withdraws the report (status 2); it stays in D1, hidden.
  *
  * A missing token, a wrong token, an unknown id, an official record and a
@@ -13,6 +15,9 @@
  * be brought back or rewritten by whoever holds its link.
  */
 import type { Env } from '../index.ts';
+import type { CorrectableField } from '../../../shared/revisions.ts';
+import { REVISION_ACTIVE, REVISION_SUPERSEDED, sameFieldValue } from '../../../shared/revisions.ts';
+import type { CauseCode } from '../../../shared/tags.ts';
 import { parseBbox, taipeiDate } from '../../../shared/validation.ts';
 import type { ValidatedReport } from '../validate/report.ts';
 import { readTurnstileToken, validateReport } from '../validate/report.ts';
@@ -145,6 +150,43 @@ export async function handleUpdateReport(
   return Response.json({ id, updated_at: updatedAt }, { headers: NO_STORE });
 }
 
+/** Correctable fields whose stored value `report` changes; lat and lng go together. */
+function editedCorrectableFields(row: EditableRow, report: ValidatedReport): CorrectableField[] {
+  const fields: CorrectableField[] = [];
+  if (row.lat !== report.lat || row.lng !== report.lng) {
+    fields.push('lat', 'lng');
+  }
+  if (report.species !== row.species) {
+    fields.push('species');
+  }
+  if (
+    !sameFieldValue(
+      'causes',
+      JSON.parse(row.causes) as CauseCode[],
+      report.causes as CauseCode[],
+    )
+  ) {
+    fields.push('causes');
+  }
+  if (report.evidence !== row.evidence) {
+    fields.push('evidence');
+  }
+  if (report.protected_tree_id !== row.protected_tree_id) {
+    fields.push('protected_tree_id');
+  }
+  if (report.inventory_tree_id !== row.inventory_tree_id) {
+    fields.push('inventory_tree_id');
+  }
+  return fields;
+}
+
+/** Active revisions of the report that change any of `fields`. */
+function supersedeStatement(fields: readonly CorrectableField[]): string {
+  const touches = fields.map((field) => `json_type(changes, '$.${field}') IS NOT NULL`);
+  return `UPDATE report_revisions SET status = ${String(REVISION_SUPERSEDED)}
+WHERE report_id = ? AND status = ${String(REVISION_ACTIVE)} AND (${touches.join(' OR ')})`;
+}
+
 async function updateReport(
   env: Env,
   id: string,
@@ -152,7 +194,11 @@ async function updateReport(
   report: ValidatedReport,
   updatedAt: string,
 ): Promise<boolean> {
-  const result = await env.DB.prepare(UPDATE_EDITABLE)
+  const row = await env.DB.prepare(SELECT_EDITABLE).bind(id, hash).first<EditableRow>();
+  if (row === null) {
+    return false;
+  }
+  const update = env.DB.prepare(UPDATE_EDITABLE)
     .bind(
       report.lat,
       report.lng,
@@ -168,9 +214,12 @@ async function updateReport(
       updatedAt,
       id,
       hash,
-    )
-    .run();
-  return result.meta.changes > 0;
+    );
+  const fields = editedCorrectableFields(row, report);
+  const statements =
+    fields.length === 0 ? [update] : [update, env.DB.prepare(supersedeStatement(fields)).bind(id)];
+  const [result] = await env.DB.batch(statements);
+  return (result?.meta.changes ?? 0) > 0;
 }
 
 /**

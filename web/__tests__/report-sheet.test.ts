@@ -21,11 +21,11 @@ describe('report sheet header', () => {
     }
 
     setWidths(sheet.headerSlot, 237, 215);
-    sheet.setEditing(false);
+    sheet.setHeading('create');
     expect(header.classList.contains('panel-header-compact')).toBe(true);
 
     setWidths(sheet.headerSlot, 180, 215);
-    sheet.setEditing(false);
+    sheet.setHeading('create');
     expect(header.classList.contains('panel-header-compact')).toBe(false);
   });
 });

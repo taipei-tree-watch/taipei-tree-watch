@@ -13,12 +13,13 @@ import {
 } from './routes/report-edit.ts';
 import { handleCreateReport } from './routes/reports.ts';
 import { runSnapshotCron } from './snapshot/cron.ts';
-import { handleSnapshotRequest } from './snapshot/route.ts';
+import { handleCreateRevision } from './routes/revisions.ts';
+import { handleRevisionsRequest, handleSnapshotRequest } from './snapshot/route.ts';
 
 export interface Env {
   /** D1 database holding the `reports` table. */
   DB: D1Database;
-  /** KV namespace holding `snapshot:latest`, `snapshot:<ts>` and `snapshot:index`. */
+  /** KV namespace holding `snapshot:latest`, `snapshot:<ts>`, `snapshot:index` and `revisions:latest`. */
   SNAPSHOTS: KVNamespace;
   /** Static assets built from web/ into web/dist. */
   ASSETS: Fetcher;
@@ -72,8 +73,20 @@ export default {
       return new Response(null, { status: 405, headers: { allow: 'GET, PUT, DELETE' } });
     }
 
+    const revisionsPath = /^\/api\/reports\/([^/]+)\/revisions$/.exec(url.pathname);
+    if (revisionsPath !== null) {
+      if (request.method !== 'POST') {
+        return new Response(null, { status: 405, headers: { allow: 'POST' } });
+      }
+      return handleCreateRevision(request, env, revisionsPath[1] ?? '');
+    }
+
     if (request.method === 'GET' && url.pathname === '/api/snapshot') {
       return handleSnapshotRequest(request, env.SNAPSHOTS);
+    }
+
+    if (request.method === 'GET' && url.pathname === '/api/revisions') {
+      return handleRevisionsRequest(request, env.SNAPSHOTS);
     }
 
     return env.ASSETS.fetch(request);

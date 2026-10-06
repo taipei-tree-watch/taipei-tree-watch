@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { SNAPSHOT_COLUMNS } from '../../shared/snapshot.ts';
+import { SNAPSHOT_BASE_COLUMNS, SNAPSHOT_COLUMNS } from '../../shared/snapshot.ts';
 import { DecodeError } from '../src/data/columns.ts';
 import { decodeSnapshot } from '../src/data/snapshot.ts';
 import { decodeTrees } from '../src/data/trees.ts';
@@ -20,6 +20,9 @@ const FIELDS: Readonly<Record<string, unknown>> = {
   protected_tree_id: '1525',
   inventory_tree_id: null,
   created_at: '2026-09-18T07:02:11Z',
+  follows_report_id: '01JTREEWATCH000000000000',
+  revision_count: 2,
+  revised_at: '2026-09-18T07:30:00Z',
 };
 
 function rowFor(columns: readonly string[]): unknown[] {
@@ -57,6 +60,21 @@ describe('decodeSnapshot', () => {
       protectedTreeId: '1525',
       inventoryTreeId: null,
       createdAt: '2026-09-18T07:02:11Z',
+      followsReportId: '01JTREEWATCH000000000000',
+      revisionCount: 2,
+      revisedAt: '2026-09-18T07:30:00Z',
+    });
+  });
+
+  it('reads a schema 1 snapshot as uncorrected reports that follow nothing', () => {
+    const decoded = decodeSnapshot(payloadFor(SNAPSHOT_BASE_COLUMNS));
+
+    expect(decoded.reports).toHaveLength(1);
+    expect(decoded.reports[0]).toMatchObject({
+      species: '\u6995',
+      followsReportId: null,
+      revisionCount: 0,
+      revisedAt: null,
     });
   });
 

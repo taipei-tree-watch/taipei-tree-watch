@@ -6,7 +6,7 @@
  * columns on the producing side does not break the map. Rows that cannot
  * yield a usable point are skipped and counted instead of aborting the load.
  */
-import { SNAPSHOT_COLUMNS } from '../../../shared/snapshot.ts';
+import { SNAPSHOT_BASE_COLUMNS } from '../../../shared/snapshot.ts';
 import type {
   CauseCode,
   DispositionCode,
@@ -41,6 +41,12 @@ export interface ReportRecord {
   readonly protectedTreeId: string | null;
   readonly inventoryTreeId: string | null;
   readonly createdAt: string | null;
+  /** Earlier report of the same tree; absent from schema 1 snapshots. */
+  readonly followsReportId?: string | null;
+  /** Corrections applied to this report; 0 or absent when there are none. */
+  readonly revisionCount?: number;
+  /** When the latest applied correction was sent. */
+  readonly revisedAt?: string | null;
   /**
    * True only for a report this browser submitted that no snapshot carries
    * yet. The decoder never sets it; it comes from report/pending.ts.
@@ -60,7 +66,11 @@ export interface DecodedSnapshot {
   readonly skipped: number;
 }
 
-const REQUIRED_COLUMNS = SNAPSHOT_COLUMNS;
+/**
+ * Columns added since schema 1 are read when present and default otherwise,
+ * so a snapshot restored from before them still draws the map.
+ */
+const REQUIRED_COLUMNS = SNAPSHOT_BASE_COLUMNS;
 
 export function decodeSnapshot(payload: unknown): DecodedSnapshot {
   if (!isRecord(payload)) {
@@ -114,5 +124,8 @@ function decodeRow(row: Row, index: ReadonlyMap<string, number>): ReportRecord |
     protectedTreeId: asText(cell(row, index, 'protected_tree_id')),
     inventoryTreeId: asText(cell(row, index, 'inventory_tree_id')),
     createdAt: asText(cell(row, index, 'created_at')),
+    followsReportId: asText(cell(row, index, 'follows_report_id')),
+    revisionCount: asFiniteNumber(cell(row, index, 'revision_count')) ?? 0,
+    revisedAt: asText(cell(row, index, 'revised_at')),
   };
 }

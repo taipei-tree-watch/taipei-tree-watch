@@ -51,9 +51,11 @@ taipei-tree-watch/
 ├── CONTEXT.md                 詞彙表
 ├── docs/                      SPEC、RESEARCH、TECH-SPEC、TECH-STACK、TASKS、DEPLOY、RUNBOOK
 ├── shared/                    前後端與管線共用的 source of truth
-│   ├── tags.ts                原因、處置、證據來源、資料來源的代碼表
+│   ├── tags.ts                原因、處置、參考來源、資料來源的代碼表
 │   ├── domains.ts             連結網域白名單
 │   ├── snapshot.ts            快照 schema 型別與版本號
+│   ├── revisions.ts           可更正欄位、版本套用規則、版本檔格式
+│   ├── geo.ts                 距離計算（選點與 30 公尺上限共用）
 │   └── generated/             build 時由上面三檔與 validation.ts 的欄位上限產出的 JSON，給 Python 讀（進 git）
 ├── web/                       Vite 前端：index.html、src/
 ├── worker/                    Worker：src/index.ts、routes/、validate/、snapshot/
@@ -63,7 +65,8 @@ taipei-tree-watch/
 │   ├── delisting/             官方解列紀錄：<meeting-id>.json、pending.json（待定位）
 │   ├── removal-plans/         公園處移除與移植計畫書：plans.json、import.sql、index.json、pending.json、review.json
 │   ├── inventory/             M3：清冊 diff 結果
-│   └── snapshots/             每日公開快照 latest.json ＋ <date>.json
+│   ├── snapshots/             每日公開快照 latest.json ＋ <date>.json
+│   └── revisions/             每日公開版本檔 latest.json ＋ <date>.json
 ├── pipelines/                 Python：pyproject.toml、src/ttw_pipelines/、tests/
 ├── wrangler.toml
 ├── package.json
@@ -80,17 +83,17 @@ taipei-tree-watch/
 - 單一頁面，手機優先，地圖全螢幕。回報表單是底部 sheet，桌面寬度變側欄。說明與免責是可展開區塊，安全警語常駐在表單開頭；表單只放 `safety.html` 裡標了 `safety-brief` 的兩段（褐根病無預警倒伏、1999 通報），完整警語留在「說明」面板。
 - 啟動時載入兩個檔：`/api/snapshot`（回報）與 `/trees.json`（受保護樹木靜態資產）。兩者都是一次載入、全在記憶體篩選。
 - 圖層：底圖 raster（NLSC）、正射 raster（目前 NLSC `PHOTO2`，都發局待授權確認，見第 7 節；由地圖右上角的「顯示航照」浮動鈕切換（與「目前位置」鈕疊在一起；桌面開著回報側欄時移到側欄左側），選點時不自動切換）、受保護樹木（灰色小點）、回報點（依原因著色，褐根病最醒目）、清冊消失層（M3 之後）。
-- 篩選：原因、處置、證據來源、資料來源、發現日期範圍，全部在前端對快照做。資料來源選項取自 `shared/tags.ts` 的 `sources`，可以只看官方紀錄或只看使用者回報。開站時預設只勾「使用者回報」，匯入的官方紀錄要自己勾才出現，讓第一眼看到的都是有人到過現場的回報；「回到預設條件」也回到這個狀態，不是全部清空。該組底下一行小字說明預設值與空心圓的意思。permalink 指到的計畫樹照樣會被補畫出來（見 permalink 一節）。
+- 篩選：原因、處置、參考來源、資料來源、發現日期範圍，全部在前端對快照做。資料來源選項取自 `shared/tags.ts` 的 `sources`，可以只看官方紀錄或只看使用者回報。開站時預設只勾「使用者回報」，匯入的官方紀錄要自己勾才出現，讓第一眼看到的都是有人到過現場的回報；「回到預設條件」也回到這個狀態，不是全部清空。該組底下一行小字說明預設值與空心圓的意思。permalink 指到的計畫樹照樣會被補畫出來（見 permalink 一節）。
 - 公園處計畫樹（資料來源＝公園處移除計畫書，第 4.2.1 節）畫成空心圓：原因色移到外圈（3 px），圓心填 halo 色。計畫書只說要移除或移植，沒有人看到樹已經不在，實心點則是有人看到的狀況，兩者不能讀成同一件事。卡片開頭另有一行「這棵樹列在公園處的移除（移植）計畫書上……不代表已經移除（移植）」，原因句改為「計畫書記載的原因為……」，日期欄標為「上網日期」。資料來源列寫「公園處移除計畫書 · <案名>」並連到公園處的案件頁，接著是「計畫狀態」（已核准／審查中／狀態不明）與「計畫處置」（計畫移除／計畫移植）；參考連結與案件頁相同時不再重複列出。案名、狀態與處置來自 `/removal-plans.json`（第 3.6 節），以回報 id 對應，載入後併進回報紀錄；這個檔載入失敗時卡片仍顯示開頭那行與參考連結，只是叫不出案名，不另外提示。
 - 選點流程（SPEC 第 6 節）：GPS 只用來 flyTo（由地圖上的「目前位置」浮動鈕觸發，回報 sheet 裡沒有另一顆），地圖中心固定準心，zoom 未達 18 或超出收件範圍時「開始填寫」停用；按下「開始填寫」就鎖定點位（表單改讀當下的中心點，地圖手勢、縮放鈕、點擊點位與「目前位置」鈕都暫停），手機上表單填滿頂列以下的畫面，要改位置得按「重新定位」回到選點。用編輯連結打開既有回報時，直接鎖在該筆存的座標，不看地圖飛行中途的中心點。正射圖層維持使用者原本的選擇，要看樹冠就用地圖右上角的「顯示航照」鈕。頂列「回報」和「說明」一樣是開關，再按一次就收起 sheet。收起再打開時，填到一半的欄位原樣保留；送出成功（或修改、撤回完成）後再打開，則從空白表單的選點開始，不停在成功畫面。準心 20 公尺內有受保護樹木時，sheet 顯示「這是受保護樹木 #編號 樹種 嗎？」讓使用者一鍵關聯。準心 20 公尺內已有回報時，同一處以同樣的提示框列出最近那筆回報的內容（與地圖卡片同一套欄位），問「是同一棵樹嗎？」。答「不是」就照常回報；答「是」再給「對這筆回報」的三個選擇（見下方）。答案只對那一筆有效，準心移到另一筆或重開 sheet 就重問。同一棵樹的多筆回報仍各自獨立、不會合併。受保護樹木的資訊框有「回報這棵樹」按鈕：打開回報 sheet、先關聯這棵樹（樹種未填時帶入），地圖飛到該樹、縮放至少 18，點位仍由使用者對準，因為清冊座標可能差幾公尺。座標數字以小字顯示。選點時附近的受保護樹木與既有回報只以一行小字點名（距離與編號，或「已關聯」），上面兩種提示框與它們的按鈕要等按下「開始填寫」鎖定點位後才展開，免得選點時蓋住地圖。選點時的操作說明由 sheet 標題列的「說明」開關收合，收合狀態記在 localStorage（`ttw:picker-guide-open`）；沒有記錄時手機預設收合、桌面側欄預設展開。手機上選點時間距也收緊，讓 sheet 盡量矮、準心周圍的地圖盡量大。
-- 「對這筆回報」的三個選擇，選點流程與回報卡片共用同一個元件（`web/src/ui/` 內一個模組，兩處各自 mount）：
-  - **樹況有變化，繼續回報**：帶入那筆的樹種與兩種樹木編號（只填空著的欄位，原因、處置、證據、說明、連結、日期不帶），切到填表，送出時帶 `follows_report_id`。從卡片進來時先開 sheet、flyTo 到那筆的位置並把答案設成「是同一棵」。送出前若回報者把準心移到 20 公尺外，提示「離那筆回報已經超過 20 公尺，還是同一棵嗎？」並讓他取消接續。
-  - **內容有誤，提出更正**：sheet 進入第三個模式 `correcting`（與 `picking`、`form` 並列）。欄位只列可更正的五項（SPEC 第 3 節），預填目前值；座標用同一個準心，flyTo 到那筆位置，縮放同樣要 18 以上，並即時顯示「距離目前位置 N 公尺」，超過 30 公尺停用送出鈕。理由必填（100 字，剝 URL），憑據連結可選（白名單）。只送有變的欄位；一個都沒變時停用送出鈕。成功後顯示「已送出，約 15 分鐘後出現在這筆回報上」，不做本機暫存覆蓋，因為更正可能與別人的更正衝突，以伺服器結果為準。
+- 「對這筆回報」的三個選擇，選點流程的鄰近回報框與回報卡片各有一組按鈕，走同一套流程（卡片上的「對這筆回報」按鈕展開三個選擇，選點流程在答「是同一棵」之後出現）：
+  - **樹況有變化，繼續回報**：帶入那筆的樹種與兩種樹木編號（只填空著的欄位，原因、處置、參考來源、說明、連結、日期不帶），切到填表，送出時帶 `follows_report_id`。從卡片進來時先開 sheet、flyTo 到那筆的位置，答案直接設成「樹況有變化」，回報者照常對準後按「開始填寫」。送出時若準心離那筆超過 20 公尺，以 confirm 問「還是同一棵樹嗎？」，按取消就改成一般回報再送出。
+  - **內容有誤，提出更正**：sheet 進入第三個模式 `correcting`（與 `picking`、`form` 並列，`web/src/ui/correction-panel.ts`）。欄位只列可更正的五項（SPEC 第 3 節），預填快照裡的目前值。位置預設不變；按「修正位置」才進入對準步驟：flyTo 到那筆，sheet 縮成選點時的高度，即時顯示「準心距離目前位置 N 公尺」，縮放未達 18、超出收件範圍或超過 30 公尺時停用「用這個位置」；按下後鎖定該點，也可以「不改位置」取消。理由必填（100 字，剝 URL），參考連結可選（白名單）。只送有變的欄位，一個都沒變時停用送出鈕。成功後顯示「已送出，約 15 分鐘後出現在這筆回報上」，不做本機暫存覆蓋，因為更正可能與別人的更正衝突，以伺服器結果為準。
   - **跟這筆一樣，不用回報**：選點流程清空表單並關 sheet；卡片上就是收起選單。
   - 資料來源不是使用者回報的卡片不顯示這個按鈕；待同步（本機暫存）的回報也不顯示，因為伺服器上還查不到它的版本。
-- 回報卡片的版本與同樹資訊：有更正時在卡片底部顯示「已更正 N 次，最近 YYYY-MM-DD」，點開才載入 `/api/revisions` 列出每一版改了哪個欄位、從什麼改成什麼、理由與連結網域。有接續關係時顯示「同一棵樹的其他回報 N 筆」，依發現日期排序，每筆連到它的 permalink。兩者都只讀快照與版本檔，不打 D1。
+- 回報卡片的版本與同樹資訊：有更正時在卡片底部顯示「已更正 N 次，最近 YYYY-MM-DD」，按「看更正紀錄」才載入 `/api/revisions`（`web/src/data/revisions.ts`，一次瀏覽只抓一次，失敗才重抓），由新到舊列出每一版改了哪個欄位、從什麼改成什麼、理由與連結網域。有接續關係時顯示「同一棵樹的其他回報 N 筆」：沿 `follows_report_id` 雙向找出同一串的所有回報，依發現日期（沒有就用送出日期）排序，每筆是它的 permalink，點了直接在頁內開那筆的卡片。兩者都只讀快照與版本檔，不打 D1。
 - 查詢地點：地圖右上角「顯示航照」與「目前位置」之間的「查詢地點」浮動鈕，按下在按鈕列左側展開查詢面板，再按一次或按 Esc 收合（`web/src/ui/place-lookup.ts`）。可貼上從地圖 app 複製的位置或輸入受保護樹木編號，結果和 GPS 一樣只用來 flyTo，飛到 zoom 18；不必打開回報 sheet，選點中也能用，準心讀的是即時地圖中心。全部在本機解析、不送出（`web/src/report/lookup.ts`、`web/src/report/coordinates.ts`）。位置接受十進位度（可加括號，經緯順序顛倒時自動對調）、度分秒、Plus Code（完整碼，或後面接地名的簡碼，以收件範圍中心補回前 4 碼），超出收件範圍時只提示不移動；純數字視為受保護樹木編號，在已載入的 `trees.json` 裡找。網址與地址不支援，其他輸入一律提示可用的格式。填寫模式鎖定點位時，按鈕和「目前位置」一起隱藏、面板收合。
-- 表單欄位對應 SPEC 第 3 節：只有位置必填。證據來源預設「無公告，僅目擊」；選了它時整個原因區塊隱藏，已勾的原因一併清掉；其他來源（含「高風險掛牌」）都顯示原因區塊。說明欄 300 字，前端即時剝 URL 並提示「連結請填在下方欄位」。連結欄即時比對白名單並顯示網域；提示旁的 i 按鈕以 popover 列出白名單上的所有網域（取自 `shared/domains.ts`）。
+- 表單欄位對應 SPEC 第 3 節：只有位置必填。參考來源預設「無公告，僅目擊」；選了它時整個原因區塊隱藏，已勾的原因一併清掉；其他來源（含「高風險掛牌」）都顯示原因區塊。說明欄 300 字，前端即時剝 URL 並提示「連結請填在下方欄位」。連結欄即時比對白名單並顯示網域；提示旁的 i 按鈕以 popover 列出白名單上的所有網域（取自 `shared/domains.ts`）。
 - 送出成功後顯示「已收到，你的地圖上已經看得到這個點，約 15 分鐘後其他人也會看到」，並在本機 `localStorage` 暫存該點讓回報者立刻看到自己的點（僅本機、標示為待同步：地圖上填色半透明並多一圈外環，卡片開頭註明尚未公開）。同一個畫面有「複製分享連結」鈕（這筆回報的 permalink，修改完成後也有，撤回後沒有），以及編輯連結與「複製編輯連結」鈕，並寫明拿到編輯連結的人都能修改或撤回、連結存在哪裡（第 3.2 節「編輯連結」）。
 - 修改與撤回也寫進同一份本機暫存：修改後的版本取代快照裡的同一筆，撤回的那筆不畫；快照的 `generated_at` 晚於或等於 Worker 回的 `updated_at` 時才退場，因為快照早就有那個 id，光看 id 分不出新舊。
 - 呈現措辭遵守 SPEC 第 8 節：「此處的公告記載原因為……」；連結顯示網域、`rel="nofollow noopener"`。
@@ -162,7 +165,7 @@ CREATE TABLE reports (
   species           TEXT,                             -- 自由文字，<= 50 字
   causes            TEXT NOT NULL DEFAULT '[]',       -- JSON: 原因代碼陣列
   dispositions      TEXT NOT NULL DEFAULT '[]',       -- JSON: 處置代碼陣列
-  evidence          INTEGER NOT NULL,                 -- 證據來源代碼
+  evidence          INTEGER NOT NULL,                 -- 參考來源代碼
   source            INTEGER NOT NULL DEFAULT 1,       -- 資料來源代碼，1 = 使用者回報
   note              TEXT,                             -- <= 300 字，已剝 URL
   link              TEXT,                             -- 完整 URL，網域在白名單
@@ -193,8 +196,8 @@ CREATE TABLE report_revisions (
   base_revision_id TEXT,                              -- 送出者看到的最新生效版本；NULL = 原回報
   changes          TEXT NOT NULL,                     -- JSON 物件，只含有改的欄位與新值
   reason           TEXT NOT NULL,                     -- <= 100 字，已剝 URL
-  link             TEXT,                              -- 憑據連結，網域在白名單
-  status           INTEGER NOT NULL DEFAULT 0,        -- 0 生效、1 已退回
+  link             TEXT,                              -- 參考連結，網域在白名單
+  status           INTEGER NOT NULL DEFAULT 0,        -- 0 生效、1 已退回、2 被回報者的修改取代
   reporter_hash    TEXT NOT NULL,                     -- 同 reports.reporter_hash
   created_at       TEXT NOT NULL
 );
@@ -203,9 +206,10 @@ CREATE INDEX idx_revisions_reporter ON report_revisions(reporter_hash);
 ```
 
 - `reports` 的原始列不因更正而 UPDATE，它就是第 0 版；會改寫它的只有回報者用編輯連結的 `PUT`，也就是回報者改自己的第 0 版。目前值是原始列依 `id` 順序套上所有 `status = 0` 的 `changes`，後面的版本蓋過前面同一欄位。
+- 套用時若某一版會讓「無公告，僅目擊」底下出現原因（第 6 節第 6 條），這一版跳過不套，也不列進版本檔。寫入時已檢查過這條，只有在它依賴的前一版被退回後才會發生。「最新生效版本」指的是實際套用的最後一版，寫入 API 的 409 判斷與前端送的 `base_revision_id` 都用它，跳過的那版不算。
 - 退回一版是把它的 `status` 改成 1，不刪列。退回中間某版時，後面的版本照樣套用，所以「A 把樹種改成樟、B 再改成楓，退回 B」會回到樟；「只退回 A」則維持楓。
 - `changes` 的鍵只能是 `lat`、`lng`、`species`、`causes`、`evidence`、`protected_tree_id`、`inventory_tree_id`；`lat` 與 `lng` 必須成對。
-- 編輯連結與更正同時存在時，兩者可能改到同一欄位：回報者修改了樹種，但別人先前的更正也改過樹種，照上面的套用規則會一直顯示更正的值，回報者的修改看不到。預定行為是「同一欄位以較晚送出的為準」，作法待定（SPEC 第 9 節第 8 條）。
+- 編輯連結與更正改到同一欄位時以較晚送出的為準（2026-09-28 定案）：`PUT` 比對新值與原始列，凡是回報者改動的可更正欄位（座標成對算），同一筆裡 `changes` 含有該欄位的生效版本一律改成 `status = 2`（被回報者的修改取代），與 UPDATE 在同一個 batch。整版一起取代，所以那一版裡回報者沒動的其他欄位也跟著失效；`PUT` 之後才送出的更正照常套用。被取代的版本仍在資料庫裡，要恢復就把 `status` 改回 0。修改表單預填的是原始列（`GET /api/reports/<id>`），不是套用更正後的值，所以回報者沒碰的欄位送出時與原始列相同，不會誤把別人的更正蓋掉。
 - `follows_report_id` 不設 foreign key（D1 預設不強制，軟刪除也不該連帶影響後續回報），存在性由寫入 API 檢查一次。指向的回報之後被軟刪除時，快照照樣輸出這個 id，前端找不到對象就不顯示接續關係。
 
 受保護樹木不進 D1（決策：它只讀、不與回報 join 出任何查詢）。
@@ -326,7 +330,7 @@ Python 與 uv（版本與套件見 `TECH-STACK.md` 第 5 節），在本機執�
 ### 4.4 更正（M5）
 
 1. 前端從快照讀目前值、從 `revisions:latest` 找這筆最新的生效版本 id 當 `base_revision_id`，完成更正表單後 `POST /api/reports/:id/revisions`。
-2. Worker 依第 6.1 節檢查；`base_revision_id` 與資料庫裡該筆最新生效版本不同時回 `409`，前端提示「這筆回報剛被別人更正過」並重新載入快照與版本檔後讓他重填。快照最多落後 15 分鐘，所以這個衝突在正常使用下也會發生，不是錯誤處理的邊角。
+2. Worker 依第 6.1 節檢查；`base_revision_id` 與資料庫裡該筆最新生效版本不同時回 `409`（body 另帶 `latest_revision_id`）。前端提示「這筆回報剛被別人更正過，新的內容最晚約 15 分鐘後出現在地圖上，到時重新整理再更正」，填的內容保留。不在當下重新載入，因為衝突的那一版多半還沒進快照，重新載入拿到的仍是同一份，只會再撞一次 409。快照最多落後 15 分鐘，所以這個衝突在正常使用下也會發生，不是錯誤處理的邊角。
 3. 通過則寫入 `report_revisions`，回 `201 {id}`。
 4. 下一次 cron 把它套進快照並更新 `revisions:latest`。
 
@@ -359,7 +363,7 @@ export const causes = [
 ] as const;
 ```
 
-處置（僅修枝葉、僅剩主幹、僅剩根部、連根移除、已移植、樹穴填平、原地保留）、證據來源（六項）、資料來源（四項）同格式。`domains.ts` 是白名單陣列，第一版收 14 個網域：`threads.net`、`threads.com`、`instagram.com`、`facebook.com`、`fb.com`、`x.com`、`twitter.com`、`imgur.com`、`flickr.com`、`youtube.com`、`youtu.be`、`plurk.com`、`dcard.tw`、`ptt.cc`；比對規則見第 6 節第 9 條。`snapshot.ts` 定義快照欄位順序與 `schema` 版本。build script 把三者輸出成 `shared/generated/*.json` 並 commit，Python 只讀 JSON。
+處置（僅修枝葉、僅剩主幹、僅剩根部、連根移除、已移植、樹穴填平、原地保留）、參考來源（六項）、資料來源（四項）同格式。`domains.ts` 是白名單陣列，第一版收 14 個網域：`threads.net`、`threads.com`、`instagram.com`、`facebook.com`、`fb.com`、`x.com`、`twitter.com`、`imgur.com`、`flickr.com`、`youtube.com`、`youtu.be`、`plurk.com`、`dcard.tw`、`ptt.cc`；比對規則見第 6 節第 9 條。`snapshot.ts` 定義快照欄位順序與 `schema` 版本。build script 把三者輸出成 `shared/generated/*.json` 並 commit，Python 只讀 JSON。
 
 快照格式：
 
@@ -382,7 +386,7 @@ M5 起 `schema` 升為 2，欄位列尾端加三欄：`follows_report_id`（字�
 ```
 
 - `previous` 是這一版套用前、同一批欄位的值，由 cron 重播時順手算出，前端顯示「從什麼改成什麼」不必自己重播。
-- 只含 `status = 0` 的版本，不含 `reporter_hash`、`base_revision_id`。已退回的版本不公開，因為被退回的多半就是垃圾內容；它在 `previous` 的計算裡也視同不存在。
+- 只含 `status = 0` 且實際套用的版本，而且只列目前還顯示的回報，不含 `reporter_hash`、`base_revision_id`。已退回（1）與被取代（2）的版本不公開，因為被退回的多半就是垃圾內容；它們在 `previous` 的計算裡也視同不存在。
 
 ---
 
@@ -411,9 +415,9 @@ M5 起 `schema` 升為 2，欄位列尾端加三欄：`follows_report_id`（字�
 1. 同第 6 節第 1 到 3 條（body 上限同為 16 KB）。
 2. 路徑的 `:id` 是 ULID，且 D1 中存在 `status = 0`、`source = 1`（使用者回報）的那一筆；否則 `404`。
 3. `changes` 至少一個鍵，只能是第 3.3 節列的七個；每個值依第 6 節對應欄位的規則驗證（座標第 4 條、tag 第 5 條、樹種第 7 條、兩種編號第 11 條）。
-4. 以「目前值套上這次 `changes`」的結果檢查第 6 節第 6 條（證據來源與原因的搭配），所以只改證據來源也可能被擋。
+4. 以「目前值套上這次 `changes`」的結果檢查第 6 節第 6 條（參考來源與原因的搭配），所以只改參考來源也可能被擋。
 5. `changes` 有座標時，新點與目前位置（套用既有版本後）的距離不超過 30 公尺。
-6. 每個鍵的新值都必須與目前值不同；全部相同回 400，避免灌出沒有內容的版本。
+6. 每個鍵的新值都必須與目前值不同（座標成對算一個，原因以集合比較），否則 400，避免灌出沒有內容的版本。值先正規化再比：樹種去空白、空字串視為清空、樹籤編號轉大寫、原因排序去重。
 7. `reason` 必填，去頭尾空白，剝 URL 後 1 到 100 字。`link` 規則同第 6 節第 9 條。
 8. `base_revision_id` 等於該筆最新生效版本 id（沒有版本時必須是 null），否則 `409`。
 9. 計算 `reporter_hash`，同第 6 節。
@@ -467,7 +471,7 @@ D1 免費層無自動備份；若之後需要更長的完整備份再評估綁�
 
 - **軟刪除**：`wrangler d1 execute taipei-tree-watch --remote --command "UPDATE reports SET status = 1 WHERE id = '…'"`，最多 15 分鐘後從快照消失；要立即生效再手動觸發 cron（`wrangler triggers` 或 dashboard）。`status = 2` 是回報者自己撤回的，除非回報者要求，不要改回 0。
 - **補發編輯連結**：`npm run issue:edit-links -- --remote`，見 `RUNBOOK.md` 第 5 節。輸出檔是可用的憑證，存完就刪。
-- **退回更正**（M5）：單一版本 `UPDATE report_revisions SET status = 1 WHERE id = '…'`；同一個送出者的全部版本 `UPDATE report_revisions SET status = 1 WHERE reporter_hash = (SELECT reporter_hash FROM report_revisions WHERE id = '…')`。回應的 `changes` 就是退回的版數。和軟刪除一樣最多 15 分鐘後反映，也一樣可以把 `status` 改回 0 復原。這兩條要在上線前演練並寫進 `RUNBOOK.md`。
+- **退回更正**（M5）：單一版本 `UPDATE report_revisions SET status = 1 WHERE id = '…'`；同一個送出者的全部版本 `UPDATE report_revisions SET status = 1 WHERE reporter_hash = (SELECT reporter_hash FROM report_revisions WHERE id = '…') AND status = 0`。回應的 `changes` 就是退回的版數。和軟刪除一樣最多 15 分鐘後反映，也一樣可以把 `status` 改回 0 復原。步驟在 `RUNBOOK.md` 第 6 節，上線後要遠端演練一次。
 - **回滾快照**：從 `snapshot:index` 挑版本，`wrangler kv key get` 再 `put` 回 `snapshot:latest`；或從 `data/snapshots/<date>.json` 復原。回滾只撐到下一次 cron，cron 會用資料庫現況蓋回去。
 - 兩者的完整步驟與 2026-09-20 的演練紀錄在 `RUNBOOK.md`。實測 cron 寫完 KV 後，公開端點還要約 30 到 80 秒才讀得到新版（KV 全球傳播），另外 `/api/snapshot` 的 `max-age=300` 會讓沒帶查詢字串的讀取再晚最多五分鐘。
 - **觀測**：Workers Logs（dashboard）與 `wrangler tail`；Web Analytics 看流量。不接第三方錯誤追蹤。

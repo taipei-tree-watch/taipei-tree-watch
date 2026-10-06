@@ -8,6 +8,14 @@
 import { setIconOnly, X } from '../icons.ts';
 import strings from '../ui-strings.json';
 
+export type SheetHeading = 'create' | 'edit' | 'correct';
+
+const HEADINGS: Readonly<Record<SheetHeading, string>> = {
+  create: strings.sheet.title,
+  edit: strings.sheet.editTitle,
+  correct: strings.sheet.correctTitle,
+};
+
 export interface ReportSheet {
   /** Container the report form is mounted into. */
   readonly contentElement: HTMLElement;
@@ -16,8 +24,8 @@ export interface ReportSheet {
   open(): void;
   close(): void;
   isOpen(): boolean;
-  /** Heading for a new report, or for editing an existing one. */
-  setEditing(editing: boolean): void;
+  /** Heading for a new report, an edit of one, or a correction. */
+  setHeading(kind: SheetHeading): void;
   onOpenChange(listener: (open: boolean) => void): () => void;
 }
 
@@ -91,8 +99,8 @@ export function createReportSheet(element: HTMLElement): ReportSheet {
     isOpen() {
       return !element.hidden;
     },
-    setEditing(editing) {
-      title.textContent = editing ? strings.sheet.editTitle : strings.sheet.title;
+    setHeading(kind) {
+      title.textContent = HEADINGS[kind];
       fitHeader();
     },
     onOpenChange(listener) {

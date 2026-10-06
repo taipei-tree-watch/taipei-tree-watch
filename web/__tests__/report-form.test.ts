@@ -33,6 +33,9 @@ function options(overrides: Partial<ReportFormOptions> = {}): ReportFormOptions 
     onEditLink: vi.fn(),
     onEditLinkGone: vi.fn(),
     onEditingChange: vi.fn(),
+    onCorrectingChange: vi.fn(),
+    loadRevisions: () => Promise.resolve(new Map()),
+    flyTo: vi.fn(),
     editLinkUrl: () => 'https://example.test/?edit=x',
     reportUrl: (id) => `https://example.test/?report=${id}`,
     copy: () => Promise.resolve('copied'),
@@ -271,7 +274,7 @@ describe('nearby while aiming', () => {
   };
 
   function boxes(container: HTMLElement): HTMLElement[] {
-    return [...container.querySelectorAll<HTMLElement>('.form-nearby')];
+    return [...container.querySelectorAll<HTMLElement>('.form-picker .form-nearby')];
   }
 
   it('names a nearby tree in one line and keeps the box shut', () => {

@@ -64,7 +64,7 @@
 ### E1.5 前端地圖與圖層
 - MapLibre 初始化、NLSC 底圖、都發局正射（預設關）、attribution
 - 載入 `/api/snapshot` 與 `/trees.json`，兩層渲染，回報點依原因著色與 cluster
-- 篩選面板：原因、處置、證據來源、資料來源、日期範圍（資料來源篩選在 E2.5 匯入公園處計畫書時加回）
+- 篩選面板：原因、處置、參考來源、資料來源、日期範圍（資料來源篩選在 E2.5 匯入公園處計畫書時加回）
 - 點擊回報顯示卡片：措辭依 SPEC 第 8 節，連結顯示網域、nofollow
 - 說明區塊沿用 `web/src/content/` 六個片段（E1.7 已寫好），重排版面即可；attribution 的顯名年份改由 `trees.json` 的 `fetched_at` 帶入，不寫死
 - 完成條件：手機與桌面各檢查一次；Lighthouse 行動版 FCP 低於 2 秒且 CLS 低於 0.1（performance 分數只記錄，理由見 TECH-SPEC 第 12 節）
@@ -74,7 +74,7 @@
 ### E1.6 選點與表單
 - 準心選點：GPS flyTo、zoom 門檻 18、選點時自動開正射
 - 20 公尺內受保護樹木偵測與一鍵關聯
-- 底部 sheet 表單：欄位、預設值、原因區塊依證據來源隱藏、說明欄即時剝 URL、連結欄白名單提示、Turnstile widget；`web/src/content/safety.html` 常駐表單開頭；前端驗證直接呼叫 `shared/validation.ts`
+- 底部 sheet 表單：欄位、預設值、原因區塊依參考來源隱藏、說明欄即時剝 URL、連結欄白名單提示、Turnstile widget；`web/src/content/safety.html` 常駐表單開頭；前端驗證直接呼叫 `shared/validation.ts`
 - 送出、成功訊息、`localStorage` 暫存點
 - 前端驗證與 `shared/` 共用同一份 tag 與白名單
 - 完成條件：真機（iOS Safari、Android Chrome）完成一筆回報；錯誤訊息逐欄顯示
@@ -182,7 +182,7 @@
 
 ### E4.1 空間聚集
 - 半徑 N 公尺內褐根病回報計數、同路段或同公園分組（路段從說明或清冊 `Region` 對應）
-- 可依證據來源與資料來源切門檻
+- 可依參考來源與資料來源切門檻
 - 可切換「算回報」與「算樹」：後者把 `follows_report_id` 串起來的回報視為一棵（依 M5）
 
 ### E4.2 時間與風險層
@@ -204,28 +204,33 @@
 - `shared/snapshot.ts` 升 schema 2，加三欄；cron 套用版本、算 `previous`、寫 `revisions:latest`
 - `GET /api/revisions`
 - 完成條件：本機 seed 幾筆版本（含已退回的）後，快照是套用後的值、版本檔不含已退回版本，schema 1 舊快照前端仍能載入
+- 狀態（2026-09-28）：本機完成，待遠端套用 `0003`。Worker 測試涵蓋套用、退回中間一版、同一人全部退回、跳過違反原因規則的版本；本機 seed 後 cron 產出 schema 2 快照與版本檔
 
 ### E5.2 後續回報
 - `POST /api/reports` 接受並驗證 `follows_report_id`（TECH-SPEC 第 6 節第 13 條）
 - 前端「樹況有變化」帶上它；準心移出 20 公尺時的確認提示
 - 卡片的「同一棵樹的其他回報」
 - 完成條件：選點與卡片兩個入口送出的後續回報，cron 後在兩筆卡片上互相看得到
+- 狀態（2026-09-28）：本機完成（兩個入口都帶出 `follows_report_id`，本機 seed 的接續關係在兩筆卡片上互相列出），線上送出待部署後驗證
 
 ### E5.3 更正 API
 - `POST /api/reports/:id/revisions`，TECH-SPEC 6.1 全部規則，含 404、409 與 30 公尺上限
 - 共用規則放 `shared/validation.ts`，前端表單直接呼叫
 - 完成條件：6.1 每一條都有對應的 Worker 測試
+- 狀態（2026-09-28）：完成（`worker/__tests__/revisions.test.ts`）。另定案編輯連結與更正的先後：`PUT` 改到的欄位，先前的更正標為被取代（`status = 2`）
 
 ### E5.4 「對這筆回報」共用元件與更正模式
 - 三個選擇的元件，選點流程（取代現在的「樹況有變化嗎？」那一步）與卡片各自 mount
 - sheet 的 `correcting` 模式：五個可更正欄位、準心改座標與距離顯示、理由與連結、只送有變的欄位、409 的重新整理流程
 - 卡片的「已更正 N 次」與版本列表
 - 完成條件：真機走完卡片進入、選點進入兩條路，各自送出更正與後續回報
+- 狀態（2026-09-28）：本機瀏覽器走完兩個入口到送出前（桌面與手機寬度），送出本身因本機 Turnstile 無法通過只由單元測試涵蓋；真機待部署。實作差異：共用的是流程而非同一個元件（卡片與選點框各有按鈕）；更正的位置要按「修正位置」才會動；409 不當場重新載入（見 TECH-SPEC 4.4）
 
 ### E5.5 維運
 - `RUNBOOK.md` 加「退回一版」「退回同一人的全部版本」，遠端演練一次並記錄
 - `snapshot-backup` 一併備份版本檔到 `data/revisions/`
 - 完成條件：演練時被退回的值在 15 分鐘內從公開快照恢復
+- 狀態（2026-09-28）：`RUNBOOK.md` 第 6 節與備份到 `data/revisions/` 已完成；遠端演練待部署後做
 
 ---
 

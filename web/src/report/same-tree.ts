@@ -53,3 +53,54 @@ export function prefillFromReport(draft: ReportDraft, report: ReportRecord): Rep
       draft.inventoryTreeId === '' ? (report.inventoryTreeId ?? '') : draft.inventoryTreeId,
   };
 }
+
+/** When a report describes the tree: the observation date, else when it was sent. */
+function sortKey(report: ReportRecord): string {
+  return report.observedAt ?? report.createdAt?.slice(0, 10) ?? '';
+}
+
+/**
+ * The other reports of the same tree: everything reachable from `report`
+ * through follow-up links in either direction, oldest first. A link to a
+ * report that is no longer visible simply ends the chain there.
+ */
+export function sameTreeReports(
+  report: ReportRecord,
+  reports: readonly ReportRecord[],
+): ReportRecord[] {
+  const byId = new Map(reports.map((entry) => [entry.id, entry]));
+  const neighbours = new Map<string, string[]>();
+  const connect = (a: string, b: string): void => {
+    neighbours.set(a, [...(neighbours.get(a) ?? []), b]);
+    neighbours.set(b, [...(neighbours.get(b) ?? []), a]);
+  };
+  for (const entry of reports) {
+    if (entry.followsReportId != null && byId.has(entry.followsReportId)) {
+      connect(entry.id, entry.followsReportId);
+    }
+  }
+  if (report.followsReportId != null && byId.has(report.followsReportId)) {
+    connect(report.id, report.followsReportId);
+  }
+
+  const seen = new Set<string>([report.id]);
+  const queue = [report.id];
+  const found: ReportRecord[] = [];
+  for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
+    for (const id of neighbours.get(next) ?? []) {
+      if (seen.has(id)) {
+        continue;
+      }
+      seen.add(id);
+      queue.push(id);
+      const entry = byId.get(id);
+      if (entry !== undefined) {
+        found.push(entry);
+      }
+    }
+  }
+  return found.sort((a, b) => {
+    const byDate = sortKey(a).localeCompare(sortKey(b));
+    return byDate !== 0 ? byDate : a.id.localeCompare(b.id);
+  });
+}

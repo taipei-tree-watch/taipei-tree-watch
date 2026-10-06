@@ -1,14 +1,15 @@
 /**
- * GET /api/snapshot: hands back the KV snapshot with caching headers.
+ * GET /api/snapshot and GET /api/revisions: hand back a KV document with
+ * caching headers.
  *
- * The ETag is the snapshot's `generated_at`, taken from the KV metadata so a
+ * The ETag is the document's `generated_at`, taken from the KV metadata so a
  * request never has to parse the body. A snapshot restored by hand (see the
  * rollback procedure) carries no metadata, so the timestamp is then read from
  * the head of the document instead.
  */
-import { emptySnapshot } from './build.ts';
+import { emptyRevisions, emptySnapshot } from './build.ts';
 import type { SnapshotMetadata } from './store.ts';
-import { SNAPSHOT_LATEST_KEY } from './store.ts';
+import { REVISIONS_LATEST_KEY, SNAPSHOT_LATEST_KEY } from './store.ts';
 
 const CACHE_CONTROL = 'public, max-age=300, stale-while-revalidate=900';
 
@@ -33,14 +34,24 @@ function isEtagMatch(ifNoneMatch: string | null, etag: string): boolean {
   });
 }
 
-export async function handleSnapshotRequest(request: Request, kv: KVNamespace): Promise<Response> {
-  const { value, metadata } = await kv.getWithMetadata<SnapshotMetadata>(
-    SNAPSHOT_LATEST_KEY,
-    'text',
-  );
+export function handleSnapshotRequest(request: Request, kv: KVNamespace): Promise<Response> {
+  return serveDocument(request, kv, SNAPSHOT_LATEST_KEY, emptySnapshot);
+}
+
+export function handleRevisionsRequest(request: Request, kv: KVNamespace): Promise<Response> {
+  return serveDocument(request, kv, REVISIONS_LATEST_KEY, emptyRevisions);
+}
+
+async function serveDocument(
+  request: Request,
+  kv: KVNamespace,
+  key: string,
+  empty: (generatedAt: Date) => unknown,
+): Promise<Response> {
+  const { value, metadata } = await kv.getWithMetadata<SnapshotMetadata>(key, 'text');
 
   if (value === null) {
-    return Response.json(emptySnapshot(new Date()), {
+    return Response.json(empty(new Date()), {
       headers: { 'Cache-Control': 'no-store' },
     });
   }

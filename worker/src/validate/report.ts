@@ -1,8 +1,8 @@
 /**
- * Field-level validation for POST /api/reports.
+ * Field-level validation for POST /api/reports and PUT /api/reports/<id>.
  *
  * Runs checks 3 to 11 of the server-side validation list in TECH-SPEC section
- * 6, in that order, and stops at the first step that fails. A step reports
+ * 6, in that order, plus the format half of check 13, and stops at the first step that fails. A step reports
  * every error it found, so the form can highlight several fields at once
  * without the request being validated twice.
  *
@@ -21,6 +21,7 @@ import {
   isInventoryTreeId,
   isObservedDateInRange,
   isProtectedTreeId,
+  isReportId,
   normalizeInventoryTreeId,
   roundCoordinate,
   stripUrls,
@@ -52,6 +53,8 @@ export interface ValidatedReport {
   readonly observed_at: string | null;
   readonly protected_tree_id: string | null;
   readonly inventory_tree_id: string | null;
+  /** Earlier report of the same tree; its existence is checked by the route. */
+  readonly follows_report_id: string | null;
 }
 
 export type ValidationResult =
@@ -63,6 +66,11 @@ export interface ValidateReportOptions {
   readonly bbox: Bbox;
   /** Today in Asia/Taipei as YYYY-MM-DD; the latest accepted observation date. */
   readonly today: string;
+  /**
+   * Whether the body may name the report it follows. Only creation does: an
+   * edit keeps the link the report was created with.
+   */
+  readonly acceptsFollows?: boolean;
 }
 
 /** Nullable free-text field: absent, null, or a string. */
@@ -73,7 +81,7 @@ const optionalText = z.string().nullish();
  * `source` is accepted but ignored: the server always stores the user-report
  * code, so a client that sends another value is not an error, just overridden.
  */
-const reportBodySchema = z.strictObject({
+const reportFields = {
   turnstile_token: z.string(),
   lat: z.number(),
   lng: z.number(),
@@ -87,7 +95,11 @@ const reportBodySchema = z.strictObject({
   observed_at: optionalText,
   protected_tree_id: optionalText,
   inventory_tree_id: optionalText,
-});
+};
+
+const reportBodySchema = z.strictObject(reportFields);
+
+const createBodySchema = z.strictObject({ ...reportFields, follows_report_id: optionalText });
 
 const CAUSE_CODES: ReadonlySet<number> = new Set(causeTags.map((tag) => tag.code));
 const DISPOSITION_CODES: ReadonlySet<number> = new Set(dispositionTags.map((tag) => tag.code));
@@ -122,11 +134,13 @@ function textOrNull(value: string | null | undefined): string | null {
 
 export function validateReport(body: unknown, options: ValidateReportOptions): ValidationResult {
   // Check 3: types and unknown fields.
-  const parsed = reportBodySchema.safeParse(body);
+  const parsed = (options.acceptsFollows === true ? createBodySchema : reportBodySchema).safeParse(
+    body,
+  );
   if (!parsed.success) {
     return { ok: false, errors: issuesToErrors(parsed.error) };
   }
-  const input = parsed.data;
+  const input: z.infer<typeof createBodySchema> = parsed.data;
 
   // Check 4: coordinates inside the accepted box, then rounded for storage.
   if (!Number.isFinite(input.lat) || !Number.isFinite(input.lng)) {
@@ -242,6 +256,15 @@ export function validateReport(body: unknown, options: ValidateReportOptions): V
     return { ok: false, errors: idErrors };
   }
 
+  // Check 13, format only: whether that report exists is for the route to ask D1.
+  const followsReportId = textOrNull(input.follows_report_id);
+  if (followsReportId !== null && !isReportId(followsReportId)) {
+    return {
+      ok: false,
+      errors: [{ field: 'follows_report_id', message: 'Followed report id must be a ULID' }],
+    };
+  }
+
   return {
     ok: true,
     report: {
@@ -258,6 +281,7 @@ export function validateReport(body: unknown, options: ValidateReportOptions): V
       protected_tree_id: protectedTreeId,
       inventory_tree_id:
         inventoryTreeId === null ? null : normalizeInventoryTreeId(inventoryTreeId),
+      follows_report_id: followsReportId,
     },
   };
 }

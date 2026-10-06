@@ -78,6 +78,11 @@ function harness(outcome: CopyOutcome, overrides: Partial<DetailCardOptions> = {
     canEdit: () => false,
     onEdit: () => undefined,
     onReportTree: vi.fn(),
+    sameTreeReports: () => [],
+    loadRevisions: () => Promise.resolve(new Map()),
+    onFollowUp: vi.fn(),
+    onCorrect: vi.fn(),
+    onShowReport: vi.fn(),
     ...overrides,
   });
 
@@ -260,5 +265,116 @@ describe('pending notice', () => {
     card.showReport({ ...REPORT, pending: true });
     card.showReport(REPORT);
     expect(element.querySelector('.card-pending')).toBeNull();
+  });
+});
+
+describe('detail card choices about a report', () => {
+  function labelled(element: HTMLElement, label: string): HTMLButtonElement {
+    const found = [...element.querySelectorAll('button')].find(
+      (candidate) => candidate.textContent === label,
+    );
+    if (found === undefined) {
+      throw new Error(`button ${label} is missing`);
+    }
+    return found;
+  }
+
+  it('offers follow-up, correction and nothing to add for a user report', () => {
+    const onFollowUp = vi.fn();
+    const onCorrect = vi.fn();
+    const { card, element } = harness('copied', { onFollowUp, onCorrect });
+    card.showReport(REPORT);
+
+    const about = labelled(element, strings.card.about);
+    expect(about.hidden).toBe(false);
+    const box = element.querySelector<HTMLElement>('.card-about');
+    expect(box?.hidden).toBe(true);
+
+    about.click();
+    expect(box?.hidden).toBe(false);
+    labelled(element, strings.card.followUp).click();
+    labelled(element, strings.card.correct).click();
+    expect(onFollowUp).toHaveBeenCalledWith(REPORT);
+    expect(onCorrect).toHaveBeenCalledWith(REPORT);
+
+    labelled(element, strings.card.unchanged).click();
+    expect(box?.hidden).toBe(true);
+  });
+
+  it('offers nothing for an official record or a report not yet public', () => {
+    const { card, element } = harness('copied');
+    card.showReport({ ...REPORT, source: 2 });
+    expect(labelled(element, strings.card.about).hidden).toBe(true);
+    card.showReport({ ...REPORT, pending: true });
+    expect(labelled(element, strings.card.about).hidden).toBe(true);
+    card.showTree(TREE);
+    expect(labelled(element, strings.card.about).hidden).toBe(true);
+  });
+});
+
+describe('detail card corrections and same tree', () => {
+  it('counts corrections and lists them only when asked', async () => {
+    const loadRevisions = vi.fn(() =>
+      Promise.resolve(
+        new Map([
+          [
+            ULID,
+            [
+              {
+                id: '01',
+                reportId: ULID,
+                changes: { species: '樟' },
+                previous: { species: '榕' },
+                reason: '樹牌寫的是樟樹',
+                link: 'https://www.threads.net/@a/post/1',
+                createdAt: '2026-09-18T07:30:00.000Z',
+              },
+            ],
+          ],
+        ]),
+      ),
+    );
+    const { card, element } = harness('copied', { loadRevisions });
+    card.showReport({ ...REPORT, revisionCount: 1, revisedAt: '2026-09-18T07:30:00.000Z' });
+
+    const section = element.querySelector<HTMLElement>('.card-revisions');
+    expect(section?.textContent).toContain('已更正 1 次，最近 2026-09-18');
+    expect(loadRevisions).not.toHaveBeenCalled();
+
+    const toggle = section?.querySelector('button');
+    toggle?.click();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const list = element.querySelector<HTMLElement>('.card-revision-list');
+    expect(list?.hidden).toBe(false);
+    expect(list?.textContent).toContain('榕 → 樟');
+    expect(list?.textContent).toContain('理由：樹牌寫的是樟樹');
+    expect(list?.querySelector('a')?.textContent).toBe('www.threads.net');
+    expect(list?.querySelector('a')?.rel).toBe('nofollow noopener');
+  });
+
+  it('shows no correction section for an uncorrected report', () => {
+    const { card, element } = harness('copied');
+    card.showReport(REPORT);
+    expect(element.querySelector('.card-revisions')).toBeNull();
+  });
+
+  it('links the other reports of the same tree to their own cards', () => {
+    const earlier: ReportRecord = { ...REPORT, id: '01JBZ8QF7KJ9M3N4P5R6S7T8V0', observedAt: '2026-08-01' };
+    const onShowReport = vi.fn();
+    const { card, element } = harness('copied', {
+      sameTreeReports: () => [earlier],
+      onShowReport,
+    });
+    card.showReport({ ...REPORT, followsReportId: earlier.id });
+
+    const section = element.querySelector<HTMLElement>('.card-same-tree');
+    expect(section?.textContent).toContain('同一棵樹的其他回報 1 筆');
+    const anchor = section?.querySelector('a');
+    expect(anchor?.textContent).toBe('2026-08-01 的回報');
+    expect(anchor?.getAttribute('href')).toContain(earlier.id);
+    anchor?.click();
+    expect(onShowReport).toHaveBeenCalledWith(earlier);
   });
 });

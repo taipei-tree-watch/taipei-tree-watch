@@ -9,15 +9,22 @@
  * the two leaves the index naming keys that are already gone, which the next run
  * trims again; the reverse order would leak keys that nothing points at any more.
  */
+import type { RevisionsFile } from '../../../shared/revisions.ts';
 import type { Snapshot } from '../../../shared/snapshot.ts';
 
 export const SNAPSHOT_LATEST_KEY = 'snapshot:latest';
+
+/**
+ * Only the latest revisions file is kept: rolling it back means nothing,
+ * because a revert changes D1 and the next cron publishes the result.
+ */
+export const REVISIONS_LATEST_KEY = 'revisions:latest';
 export const SNAPSHOT_INDEX_KEY = 'snapshot:index';
 
 /** History versions to keep: 48 quarter-hourly snapshots, i.e. 12 hours. */
 export const SNAPSHOT_HISTORY_LIMIT = 48;
 
-/** KV metadata on both snapshot keys, so the read path can build an ETag without parsing the body. */
+/** KV metadata on both snapshot keys and the revisions key, so the read path can build an ETag without parsing the body. */
 export interface SnapshotMetadata {
   readonly generated_at: string;
 }
@@ -59,4 +66,11 @@ export async function storeSnapshot(
   await kv.put(SNAPSHOT_INDEX_KEY, JSON.stringify(index));
 
   return { historyKey, chars: body.length, deletedKeys };
+}
+
+export async function storeRevisions(kv: KVNamespace, revisions: RevisionsFile): Promise<number> {
+  const body = JSON.stringify(revisions);
+  const metadata: SnapshotMetadata = { generated_at: revisions.generated_at };
+  await kv.put(REVISIONS_LATEST_KEY, body, { metadata });
+  return body.length;
 }

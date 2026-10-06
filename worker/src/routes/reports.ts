@@ -1,7 +1,7 @@
 /**
  * POST /api/reports: the only write path in the system.
  *
- * Runs the twelve server-side checks of TECH-SPEC section 6 in order and stops
+ * Runs the thirteen server-side checks of TECH-SPEC section 6 in order and stops
  * at the first failure. The frontend performs the same field checks, but only
  * this handler decides what reaches D1.
  *
@@ -24,9 +24,11 @@ const INSERT_REPORT = `
 INSERT INTO reports (
   id, lat, lng, species, causes, dispositions, evidence, source,
   note, link, observed_at, protected_tree_id, inventory_tree_id,
-  status, reporter_hash, edit_token_hash, created_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
+  status, reporter_hash, edit_token_hash, created_at, follows_report_id
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
 `;
+
+const SELECT_VISIBLE_ID = 'SELECT id FROM reports WHERE id = ? AND status = 0';
 
 export function errorResponse(status: number, errors: readonly FieldError[]): Response {
   return Response.json({ errors }, { status });
@@ -37,7 +39,7 @@ export function singleError(status: number, field: string, message: string): Res
 }
 
 /** Check 12: sha256(REPORTER_SALT + ip) as lowercase hex. */
-async function reporterHash(salt: string, ip: string): Promise<string> {
+export async function reporterHash(salt: string, ip: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(salt + ip));
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
@@ -94,8 +96,12 @@ export async function handleCreateReport(request: Request, env: Env): Promise<Re
     return singleError(403, 'turnstile_token', 'Turnstile verification failed');
   }
 
-  // Checks 3 to 11.
-  const result = validateReport(body, { bbox, today: taipeiDate(new Date()) });
+  // Checks 3 to 11, and the format of check 13.
+  const result = validateReport(body, {
+    bbox,
+    today: taipeiDate(new Date()),
+    acceptsFollows: true,
+  });
   if (!result.ok) {
     return errorResponse(400, result.errors);
   }
@@ -105,6 +111,16 @@ export async function handleCreateReport(request: Request, env: Env): Promise<Re
     env.REPORTER_SALT,
     request.headers.get('CF-Connecting-IP') ?? '',
   );
+
+  // Check 13: a follow-up points at a report that is on the map now.
+  const follows = result.report.follows_report_id;
+  if (follows !== null) {
+    const target = await env.DB.prepare(SELECT_VISIBLE_ID).bind(follows).first();
+    if (target === null) {
+      return singleError(400, 'follows_report_id', 'Followed report does not exist');
+    }
+  }
+
   const editToken = newEditToken();
   await insertReport(
     env,
@@ -144,6 +160,7 @@ async function insertReport(
       hash,
       editTokenHash,
       createdAt,
+      report.follows_report_id,
     )
     .run();
 }

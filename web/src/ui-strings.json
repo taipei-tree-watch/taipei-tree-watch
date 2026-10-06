@@ -64,7 +64,21 @@
     "unknownValue": "未填寫",
     "listSeparator": "、",
     "edit": "修改這筆回報",
-    "pending": "尚未公開：這個版本目前只有這個瀏覽器看得到，約 15 分鐘後其他人才會看到。"
+    "pending": "尚未公開：這個版本目前只有這個瀏覽器看得到，約 15 分鐘後其他人才會看到。",
+    "about": "對這筆回報",
+    "aboutHint": "你看到的現況跟這筆回報一樣嗎？",
+    "followUp": "樹況有變化，繼續回報",
+    "correct": "內容有誤，提出更正",
+    "unchanged": "跟這筆一樣，不用回報",
+    "revised": "已更正 {count} 次，最近 {date}",
+    "showRevisions": "看更正紀錄",
+    "hideRevisions": "收起更正紀錄",
+    "revisionsLoading": "正在載入更正紀錄……",
+    "revisionsFailed": "更正紀錄載不起來，請稍後再試。",
+    "revisionsStale": "更正紀錄還在更新，請稍後再看。",
+    "sameTree": "同一棵樹的其他回報 {count} 筆",
+    "sameTreeItem": "{date} 的回報",
+    "sameTreeUndated": "日期未填的回報"
   },
   "planStatus": {
     "approved": "已核准",
@@ -83,7 +97,8 @@
     "title": "回報",
     "close": "關閉",
     "editTitle": "修改回報",
-    "mine": "我的回報"
+    "mine": "我的回報",
+    "correctTitle": "更正回報"
   },
   "map": {
     "ortho": "顯示航照",
@@ -142,11 +157,13 @@
     "nearbyReportSame": "是同一棵",
     "nearbyReportDifferent": "不是",
     "nearbyReportChanged": "樹況跟這筆回報比起來有變化嗎？",
-    "nearbyReportUpdate": "有新狀況，繼續回報",
+    "nearbyReportUpdate": "樹況有變化，繼續回報",
+    "nearbyReportCorrect": "內容有誤，提出更正",
     "nearbyReportUnchanged": "跟這筆一樣，不用回報",
     "nearbyReportRecheck": "重新確認",
     "nearbyReportDifferentNote": "不是附近那筆回報的樹，照常回報。",
     "nearbyReportUpdateNote": "回報同一棵樹的新狀況。這筆會和先前那筆並列，不會合併。",
+    "followTooFar": "準心離那筆回報已經超過 20 公尺，還是同一棵樹嗎？按「確定」維持接續那筆回報，按「取消」改成一般回報再送出。",
     "optional": "可留空",
     "safetyDismiss": "我知道了",
     "species": "樹種",
@@ -156,7 +173,7 @@
     "causes": "原因",
     "causesHint": "請參考公告內容填寫，非個人判斷。",
     "dispositions": "處置",
-    "dispositionsHint": "現場看到樹被處理到什麼程度，憑據是樹穴與殘株的照片。",
+    "dispositionsHint": "現場看到樹被處理到什麼程度，可參考樹穴與殘株的照片。",
     "note": "說明",
     "noteHint": "請參考公告全文。連結請填在下方欄位。",
     "charCounter": "({count} ／ {max} 字)",
@@ -234,5 +251,61 @@
     "copied": "已複製編輯連結",
     "copyManual": "無法自動複製，請手動複製這個網址。",
     "notFound": "地圖上還找不到這筆回報，可能尚未同步。"
+  },
+  "revisions": {
+    "empty": "（空白）",
+    "arrow": "{from} → {to}",
+    "reason": "理由：{reason}",
+    "link": "參考：",
+    "fields": {
+      "location": "位置",
+      "species": "樹種",
+      "evidence": "參考來源",
+      "causes": "原因",
+      "protectedTreeId": "受保護樹木編號",
+      "inventoryTreeId": "樹籤編號"
+    },
+    "locationFrom": "原位置",
+    "locationMoved": "移動約 {distance} 公尺"
+  },
+  "correction": {
+    "intro": "更正的是這棵樹是什麼、在哪裡、參考資料怎麼說。處置、說明、發現日期與連結是原回報者當天看到的內容，不能更正；樹況有變化請改送一筆後續回報。",
+    "publicNote": "更正送出後直接公開，並和理由一起列在這筆回報的更正紀錄裡。",
+    "location": "位置",
+    "locationKept": "位置不變。",
+    "locationMoved": "位置改到準心處，移動約 {distance} 公尺。",
+    "aim": "修正位置",
+    "reaim": "重新定位",
+    "keepLocation": "不改位置",
+    "useLocation": "用這個位置",
+    "aimHint": "拖動地圖，讓準心對準這棵樹正確的位置。",
+    "distance": "準心距離這筆回報目前的位置約 {distance} 公尺，最多可移動 {max} 公尺。",
+    "reason": "更正理由",
+    "reasonHint": "寫下你參考了什麼，例如樹牌、公告或照片上的內容。連結請填在下方欄位。",
+    "link": "參考連結",
+    "submit": "送出更正",
+    "submitting": "正在送出……",
+    "cancel": "取消更正",
+    "success": "已送出，約 15 分鐘後出現在這筆回報上。",
+    "done": "完成",
+    "issues": {
+      "noChanges": "還沒有改動任何欄位。",
+      "zoom": "請再拉近，放大到看得出單棵樹冠。",
+      "bbox": "這個位置超出收件範圍。",
+      "tooFar": "一次更正最多只能移動 30 公尺。",
+      "speciesLength": "樹種最多 50 字。",
+      "protectedTreeId": "樹木編號只能是數字。",
+      "inventoryTreeId": "樹籤編號是兩碼英文字母加十碼數字。",
+      "reasonMissing": "請填寫更正理由。",
+      "reasonLength": "更正理由剝除連結後最多 100 字。",
+      "linkDomain": "這個網域不在收件名單內。"
+    },
+    "errors": {
+      "conflict": "這筆回報剛被別人更正過，新的內容最晚約 15 分鐘後出現在地圖上。請到時重新整理頁面，看過新內容再更正。",
+      "missing": "這筆回報已經無法更正，可能已撤回或被移除。",
+      "rejected": "有欄位沒有通過伺服器檢查，請檢查後再送出。",
+      "network": "送出失敗，填的內容都還在，請再試一次。",
+      "revisions": "讀不到這筆回報目前的版本，請稍後再試。"
+    }
   }
 }

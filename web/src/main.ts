@@ -19,6 +19,7 @@ import type { ReportRecord } from './data/snapshot.ts';
 import type { ProtectedTree } from './data/trees.ts';
 import { loadMapData } from './data/load.ts';
 import { attachPlans } from './data/removal-plans.ts';
+import { createRevisionsLoader } from './data/revisions.ts';
 import type { FilterState } from './filters.ts';
 import { applyFilters, defaultFilterState } from './filters.ts';
 import { Funnel, Info, Layers, List, LocateFixed, MapPin, Search, setIconLabel } from './icons.ts';
@@ -44,6 +45,7 @@ import {
 import type { PendingReport, StorageLike } from './report/pending.ts';
 import { addPending, prunePending, readPending, toReportRecord } from './report/pending.ts';
 import { browserWriteText, copyLink } from './copy-link.ts';
+import { sameTreeReports } from './report/same-tree.ts';
 import strings from './ui-strings.json';
 import { watchDeviceColorScheme } from './theme.ts';
 import { createCrosshair } from './ui/crosshair.ts';
@@ -132,6 +134,9 @@ const notify = (message: string): void => {
   toast.show(message);
 };
 
+/** Fetched the first time a card lists corrections or a correction starts. */
+const loadRevisions = createRevisionsLoader((input) => fetch(input));
+
 const detailCard = createDetailCard(required('#detail-card'), {
   permalinkUrl: (target) => permalinkUrl(target, window.location.href),
   copy: copyUrl,
@@ -151,6 +156,23 @@ const detailCard = createDetailCard(required('#detail-card'), {
     }
   },
   onReportTree: reportOnTree,
+  sameTreeReports: (report) => sameTreeReports(report, reports),
+  loadRevisions,
+  onFollowUp: (report) => {
+    beginOnReport((form) => {
+      form.startFollowUp(report);
+    });
+  },
+  onCorrect: (report) => {
+    beginOnReport((form) => {
+      form.startCorrection(report);
+    });
+  },
+  onShowReport(report) {
+    const shown = findReport(report.id) ?? report;
+    focusOn(shown.lat, shown.lng);
+    detailCard.showReport(shown);
+  },
 });
 const infoPanel = createInfoPanel(required('#info-panel'));
 infoPanel.onOpenChange((open) => {
@@ -397,6 +419,21 @@ function reportOnTree(tree: ProtectedTree): void {
 }
 
 /**
+ * A follow-up or correction started from a report card. The sheet takes over
+ * from the card; the form flies the map to the report itself.
+ */
+function beginOnReport(start: (form: ReportForm) => void): void {
+  const form = reportForm;
+  if (form === null) {
+    return;
+  }
+  openOnly(null);
+  detailCard.hide();
+  reportSheet.open();
+  start(form);
+}
+
+/**
  * While the report fields are open the aimed point is locked, so the map and
  * the button that flies it elsewhere are put out of reach until the reporter
  * goes back to aiming or closes the sheet.
@@ -631,7 +668,16 @@ async function start(): Promise<void> {
       setEditLinks(removeEditLink(storage, id));
     },
     onEditingChange(editing) {
-      reportSheet.setEditing(editing);
+      reportSheet.setHeading(editing ? 'edit' : 'create');
+    },
+    onCorrectingChange(correcting) {
+      reportSheet.setHeading(
+        correcting ? 'correct' : reportForm?.isEditing() === true ? 'edit' : 'create',
+      );
+    },
+    loadRevisions,
+    flyTo(point) {
+      controller.flyTo(point, Math.max(controller.getZoom(), MIN_SUBMIT_ZOOM));
     },
     editLinkUrl: (link) => editLinkUrl(link, window.location.href),
     reportUrl: (id) => permalinkUrl({ kind: 'report', id }, window.location.href),
